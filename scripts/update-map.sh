@@ -18,7 +18,7 @@ cd "$REPO_ROOT"
 OUTPUT="docs/map_data.geojson"
 mkdir -p "$(dirname "$OUTPUT")"
 
-echo "→ Regenerating $OUTPUT from Airtable…"
+echo "→ Querying Airtable for flight + airport data (takes ~30s)…"
 ./logbook-tools/.venv/bin/python -m logbook_import.cli export-map --output "$OUTPUT"
 
 if ! git diff --quiet -- "$OUTPUT"; then
