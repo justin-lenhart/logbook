@@ -64,16 +64,36 @@ were off by the airport's UTC offset. Caused incorrect night/landing classificat
 
 ---
 
+### Airport Map / Leaflet — completed
+- [x] Re-validated `export-map` against live Airtable data (post-schema-fix, post-timezone-fix)
+- [x] Hosting strategy chosen: static GeoJSON committed to repo under `docs/`,
+      published via GitHub Pages from `justin-lenhart/logbook` (free, public)
+- [x] Built `docs/index.html` — vanilla Leaflet 1.9.4 via CDN, OSM tiles,
+      auto-fit bounds, click popups, route weight scaled by visit count
+- [x] Wrote `scripts/update-map.sh` — runs `export-map`, diffs the geojson,
+      commits + pushes only on change. Status line warns users of the
+      ~30s Airtable query. Validated both branches (changed / no-change)
+- [x] First commit pushed to GH; Pages enabled from `main` / `/docs`
+- [x] Validated map renders at https://justin-lenhart.github.io/logbook/
+- [x] Cross-cutting: added `.gitignore` excluding operational data
+      (`inbox/`, `recorded/`, `sampleDataStorage/`, `misc/`, `.env`, editor state)
+- [x] **Equipment Family cleanup** — removed dead defensive `_base_has_field`
+      check from `cli.py` (field exists; saves one API call per commit)
+- [x] **Cross Country Time** — now auto-written to every non-deadhead flight
+      at import time (`block_hours` mirrored to `Cross Country Time` field)
+
+---
+
 ## 🟡 Up Next
 
-### Airport Map / Leaflet
+### Embed the map on Justin's WordPress.com blog
+*Will be handled by a separate Claude agent — handoff prompt below in conversation history*
 
-- [ ] Re-validate `export-map` end-to-end now that airport schema + IANA tz are in place
-- [ ] Research Leaflet vs alternatives — evaluate WordPress plugin compatibility and embed options
-- [ ] Decide GeoJSON hosting strategy (static file committed to repo? S3? WordPress media?)
-- [ ] Build Leaflet (or equivalent) embed on WordPress blog
-- [ ] Validate map renders correctly with real flight data
-- [ ] Publish on blog
+- [ ] Connect the WordPress.com MCP to Claude (Justin)
+- [ ] Identify the target WordPress.com site + plan tier
+- [ ] Pick embed strategy (iframe / plugin / fallback) based on plan capabilities
+- [ ] Publish the page with the embedded map
+- [ ] Validate from a fresh browser (incognito) that the map renders inside WordPress
 
 ---
 
