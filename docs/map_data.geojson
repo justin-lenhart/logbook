@@ -54,6 +54,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -88.114557,
+          45.81911
+        ]
+      },
+      "properties": {
+        "iata": "IMT",
+        "name": "Ford Airport",
+        "city": "Kingsford",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -93.4030990600586,
           48.5662002563477
         ]
@@ -140,6 +156,27 @@
         "type": "LineString",
         "coordinates": [
           [
+            -83.353786,
+            42.21377
+          ],
+          [
+            -88.114557,
+            45.81911
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DTW",
+        "destination": "IMT",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
             -93.221741,
             44.880081
           ],
@@ -153,6 +190,27 @@
         "origin": "MSP",
         "destination": "XWA",
         "count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -88.114557,
+            45.81911
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "IMT",
+        "destination": "MSP",
+        "count": 1
       }
     },
     {
