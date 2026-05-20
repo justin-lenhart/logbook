@@ -1,0 +1,47 @@
+# --- Operational data — DO NOT COMMIT ---
+# Raw SkedPlus exports contain crew names, tail numbers, hotel info, and
+# pairing details.  Stays local.
+inbox/
+recorded/
+
+# Sample data
+sampleDataStorage/
+
+# Miscellaneous local-only stuff
+misc/
+
+# --- Local environment ---
+.env
+.env.local
+*.env
+
+# --- Editor / OS ---
+.DS_Store
+.idea/
+.vscode/
+.claude/
+.cursor/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Distribution / build
+build/
+dist/
+*.egg
+
+# Coverage
+.coverage
+htmlcov/
+.tox/
