@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flight Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  #header { padding: 12px 16px; background: #1f2937; color: #f9fafb; border-bottom: 1px solid #111827; }
+  #header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  #header p { margin: 4px 0 0; font-size: 12px; opacity: 0.75; }
+  #map { height: calc(100% - 56px); width: 100%; }
+  .leaflet-popup-content { font-size: 13px; line-height: 1.4; margin: 10px 12px; }
+  .leaflet-popup-content .iata { font-weight: 600; font-size: 14px; }
+  .leaflet-popup-content .meta { color: #6b7280; }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>Flight Map</h1>
+  <p id="subtitle">Loading…</p>
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script>
+  const map = L.map("map", { worldCopyJump: true });
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+
+  fetch("map_data.geojson", { cache: "no-cache" })
+    .then((r) => {
+      if (!r.ok) throw new Error("Failed to load map_data.geojson (HTTP " + r.status + ")");
+      return r.json();
+    })
+    .then((data) => render(data))
+    .catch((err) => {
+      document.getElementById("subtitle").textContent = "Error: " + err.message;
+      map.setView([39.5, -98.35], 4); // continental US fallback
+    });
+
+  function render(data) {
+    const points = data.features.filter((f) => f.geometry.type === "Point");
+    const lines = data.features.filter((f) => f.geometry.type === "LineString");
+
+    // Visit count per airport, derived from route counts.
+    const visits = {};
+    lines.forEach((l) => {
+      const o = l.properties.origin, d = l.properties.destination, c = l.properties.count || 1;
+      visits[o] = (visits[o] || 0) + c;
+      visits[d] = (visits[d] || 0) + c;
+    });
+
+    // Routes: weight scales with count, capped so frequent routes don't overwhelm.
+    const maxCount = Math.max(1, ...lines.map((l) => l.properties.count || 1));
+    const routesLayer = L.geoJSON(
+      { type: "FeatureCollection", features: lines },
+      {
+        style: (feat) => {
+          const c = feat.properties.count || 1;
+          const weight = 1.5 + 3.5 * (c / maxCount);
+          return { color: "#2563eb", weight, opacity: 0.7 };
+        },
+        onEachFeature: (feat, layer) => {
+          const p = feat.properties;
+          layer.bindPopup(
+            `<div><span class="iata">${p.origin} ↔ ${p.destination}</span><br>` +
+            `<span class="meta">${p.count} leg${p.count === 1 ? "" : "s"} flown</span></div>`
+          );
+        },
+      }
+    ).addTo(map);
+
+    const airportsLayer = L.geoJSON(
+      { type: "FeatureCollection", features: points },
+      {
+        pointToLayer: (feat, latlng) =>
+          L.circleMarker(latlng, {
+            radius: 5,
+            fillColor: "#dc2626",
+            color: "#7f1d1d",
+            weight: 1.5,
+            fillOpacity: 0.9,
+          }),
+        onEachFeature: (feat, layer) => {
+          const p = feat.properties;
+          const v = visits[p.iata] || 0;
+          layer.bindPopup(
+            `<div><span class="iata">${p.iata}</span> — ${p.name}<br>` +
+            `<span class="meta">${p.city}${p.country ? ", " + p.country : ""}</span><br>` +
+            `<span class="meta">${v} leg${v === 1 ? "" : "s"} touching this airport</span></div>`
+          );
+        },
+      }
+    ).addTo(map);
+
+    // Fit to bounds of all data.
+    const all = L.featureGroup([routesLayer, airportsLayer]);
+    if (points.length > 0) {
+      map.fitBounds(all.getBounds(), { padding: [40, 40] });
+    } else {
+      map.setView([39.5, -98.35], 4);
+    }
+
+    document.getElementById("subtitle").textContent =
+      `${points.length} airports · ${lines.length} routes`;
+  }
+</script>
+</body>
+</html>
