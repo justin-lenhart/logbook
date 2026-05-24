@@ -169,16 +169,23 @@ def build_import_plan(
         if mode != ImportMode.ACTUAL:
             continue
 
+        special_categories = ["SDuty"] if duty.sduty else []
+
         for leg in duty.legs:
             if not is_loggable_flight(leg):
                 continue
+
+            # Use the per-leg calendar date when available (SDuty continuation
+            # legs get the next-day date from the parser even though they share
+            # a DutyDay with the evening legs).
+            leg_date = leg.duty_date if leg.duty_date is not None else duty.duty_date
 
             deadhead = is_deadhead(leg)
             pic_hours, sic_hours = _pic_sic_hours(leg.block_hours, role, deadhead)
             flight_num = normalize_flight_number(leg.flight)
             if_key = import_flight_key(
                 pairing.pairing_id,
-                duty.duty_date,
+                leg_date,
                 flight_num,
                 leg.origin,
                 leg.destination,
@@ -186,7 +193,7 @@ def build_import_plan(
             )
 
             out_utc, in_utc, warns = _to_utc(
-                duty.duty_date,
+                leg_date,
                 leg.departure,
                 leg.arrival,
                 leg.origin,
@@ -201,7 +208,7 @@ def build_import_plan(
                     import_flight_key=if_key,
                     trip_key=t_key,
                     duty_period_key=dp_key,
-                    duty_date=duty.duty_date,
+                    duty_date=leg_date,
                     flight_number=flight_num,
                     tail_number=leg.tail,
                     origin=leg.origin.upper(),
@@ -216,6 +223,7 @@ def build_import_plan(
                     aircraft_code=leg.aircraft_type or pairing.equipment_family,
                     operation=operation,
                     airline=airline,
+                    special_categories=special_categories,
                 )
             )
 

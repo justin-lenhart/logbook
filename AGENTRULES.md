@@ -28,6 +28,16 @@ Dispatch replay / airline ops simulation system
 Keep architecture lean and practical.
 
 ---
+## >**< Dev Notes >**<
+* ICAO code /=/ IATA code - it seems like the SkedPlus exports/system in general uses a three character code, as opposed to a four character code. IATA codes are three characters and ICAO is four characters. We need to confirm through sampling that SkedPlus uses IATA codes, as would be suggested by being three characters
+* When refering to tables and fields in Airtable, use table.field
+    - for example: Airport.ICAO, Flights.Credit Time
+- The definition of logging night TIME and light LANDINGS use 1 hour after sunset and 1 hour before sunrise as the limit
+    - So if I land at or after sunset, or at or before sunrise that is a night landing. The flight (PIC & SIC) hours between those two times are logged as night hours
+- Cursor suggested UTC offset for each airport - that sounds handy, but very computational intensive for nearly 50,000 airports. Maybe, if we do need it, the script fills it out on a per-usage basis. i.e., if we use KRAP/RAP, there is a util that looks up the UTC offset
+    -- But HOW? Use the region? I cannot decipher what the region codes are, and cannot determine if they will provide enough info. On the other hand, the majority of the time zones I will fly to are limited span about give across (only CONUS US time zones). VERDICT: add Airports.UTC Offset determination to a future feature/TO DO
+    - 
+
 
 # Agent Role Separation
 

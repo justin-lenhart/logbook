@@ -179,6 +179,24 @@ class AirtableImporter:
                         f"Flight {flight.import_flight_key}: unknown aircraft code "
                         f"{flight.aircraft_code!r}; Aircraft link omitted"
                     )
+
+            dep_id = self._airport_index.get(flight.origin, {}).get("record_id")
+            arr_id = self._airport_index.get(flight.destination, {}).get("record_id")
+            if dep_id:
+                fields[F.F_FLIGHT_DEPARTURE] = [dep_id]
+            else:
+                warnings.append(
+                    f"Flight {flight.import_flight_key}: airport {flight.origin!r} "
+                    f"not in index; Departure Airport link omitted"
+                )
+            if arr_id:
+                fields[F.F_FLIGHT_ARRIVAL] = [arr_id]
+            else:
+                warnings.append(
+                    f"Flight {flight.import_flight_key}: airport {flight.destination!r} "
+                    f"not in index; Arrival Airport link omitted"
+                )
+
             flight_payloads.append(fields)
 
         flight_result, flight_key_index = _upsert_records(

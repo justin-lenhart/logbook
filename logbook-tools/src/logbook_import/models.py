@@ -46,6 +46,7 @@ class DutyDay:
     duty_hours: float = 0.0
     hotel: str | None = None
     layover: str | None = None
+    sduty: bool = False
 
     @property
     def planned_leg_count(self) -> int:
@@ -144,6 +145,7 @@ class PlannedFlightRecord:
     aircraft_code: str | None
     operation: str | None
     airline: str | None
+    special_categories: list[str] = field(default_factory=list)
 
 
 @dataclass

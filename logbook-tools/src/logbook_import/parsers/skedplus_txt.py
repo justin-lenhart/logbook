@@ -23,6 +23,10 @@ DAY_TOTAL_RE = re.compile(
 )
 HOTEL_RE = re.compile(r"^Hotel:\s*(.+?)\s+Layover:\s*(\S+)", re.IGNORECASE)
 LEG_LINE_RE = re.compile(r"^\s*(\d+)\.\s+(.+?)\s*$")
+# Matches a bare "Weekday MM-DD-YYYY" continuation line inside an SDuty FDP
+# (no Report:/Release: means this is NOT a new duty period — it's the morning
+# segment of the same FDP after the split-duty rest break).
+CONTINUATION_DATE_RE = re.compile(r"^\w+\s+(\d{2}-\d{2}-\d{4})\s*$")
 CREW_LINE_RE = re.compile(
     r"^\s*(\d+)\.\s+CA:\s*(.*?)\s+FO:\s*(.*?)\s+FA:\s*(.*?)\s*$"
 )
@@ -97,6 +101,7 @@ def parse_skedplus_txt(path: Path | str) -> PairingExport:
 
     header: PairingExport | None = None
     current_duty: DutyDay | None = None
+    continuation_date: date | None = None
     in_crew_section = False
     crew_by_leg: dict[int, CrewAssignment] = {}
 
@@ -147,6 +152,7 @@ def parse_skedplus_txt(path: Path | str) -> PairingExport:
 
         duty_match = DUTY_HEADER_RE.match(line)
         if duty_match:
+            continuation_date = None  # reset for every new full duty period
             current_duty = DutyDay(
                 duty_date=parse_date_mdy(duty_match.group(1)),
                 report_time=parse_time_hhmm(duty_match.group(2)),
@@ -162,6 +168,7 @@ def parse_skedplus_txt(path: Path | str) -> PairingExport:
                 current_duty.day_credit_hours = parse_duration_hmm(day_total.group(2))
                 current_duty.duty_hours = parse_duration_hmm(day_total.group(3))
                 current_duty = None
+                continuation_date = None
                 continue
 
             hotel_match = HOTEL_RE.match(line)
@@ -171,10 +178,18 @@ def parse_skedplus_txt(path: Path | str) -> PairingExport:
                 duty.layover = hotel_match.group(2).strip()
                 continue
 
+            # SDuty continuation: bare "Weekday MM-DD-YYYY" with no Report/Release.
+            # The morning segment belongs to the same FDP but on the next calendar day.
+            cont_match = CONTINUATION_DATE_RE.match(line)
+            if cont_match:
+                continuation_date = parse_date_mdy(cont_match.group(1))
+                current_duty.sduty = True
+                continue
+
             leg_match = LEG_LINE_RE.match(line)
             if leg_match and "Flight" not in line:
                 leg = _parse_leg_body(int(leg_match.group(1)), leg_match.group(2))
-                leg.duty_date = header.duty_days[-1].duty_date
+                leg.duty_date = continuation_date or header.duty_days[-1].duty_date
                 header.duty_days[-1].legs.append(leg)
                 continue
 

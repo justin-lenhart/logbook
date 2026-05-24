@@ -59,6 +59,7 @@ def fetch_airport_index(api_key: str, base_id: str) -> dict[str, dict]:
         tz = tf.timezone_at(lat=lat, lng=lon) or ""
 
         index[iata] = {
+            "record_id": record["id"],
             "name": str(row.get(F.F_AIRPORT_NAME) or ""),
             "city": str(row.get(F.F_AIRPORT_CITY) or ""),
             "country": str(row.get(F.F_AIRPORT_COUNTRY) or ""),

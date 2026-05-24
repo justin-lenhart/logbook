@@ -59,6 +59,7 @@ F_FLIGHT_NIGHT_TIME = "Night Time"
 F_FLIGHT_DAY_LANDING = "Day Landing"
 F_FLIGHT_NIGHT_LANDING = "Night Landing"
 F_FLIGHT_XC_TIME = "Cross Country Time"
+F_FLIGHT_SPECIAL_CATEGORY = "Special Category"
 
 # Aircraft
 F_AIRCRAFT_CODE = "Aircraft"

@@ -132,6 +132,19 @@ def _run_import(
         click.echo(format_run_summary(plans, all_warnings))
         return
 
+    # Abort if any flight times could not be converted to UTC.  Naive datetimes
+    # in the fallback path look valid to Airtable but store local time as UTC,
+    # corrupting logbook data silently.
+    if mode == ImportMode.ACTUAL:
+        naive_warns = [w for w in all_warnings if "times left naive" in w]
+        if naive_warns:
+            for w in naive_warns:
+                click.echo(f"ERROR: {w}", err=True)
+            raise click.ClickException(
+                "Aborting commit: one or more flight times could not be converted to UTC. "
+                "Ensure all airports are in the Airports table with lat/lon before committing."
+            )
+
     assert settings is not None  # we already raised above if not dry_run
     importer = AirtableImporter(
         settings,

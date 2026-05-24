@@ -60,8 +60,6 @@ def map_flight_fields(flight: PlannedFlightRecord) -> dict[str, Any]:
         F.F_IMPORT_FLIGHT_KEY: flight.import_flight_key,
         F.F_FLIGHT_DATE: format_airtable_date(flight.duty_date),
         F.F_FLIGHT_NUMBER: flight.flight_number,
-        F.F_FLIGHT_DEPARTURE: flight.origin,
-        F.F_FLIGHT_ARRIVAL: flight.destination,
         F.F_FLIGHT_OUT_TIME: format_airtable_datetime(flight.out_time),
         F.F_FLIGHT_IN_TIME: format_airtable_datetime(flight.in_time),
         F.F_FLIGHT_BLOCK_TIME: flight.block_hours,
@@ -77,6 +75,8 @@ def map_flight_fields(flight: PlannedFlightRecord) -> dict[str, Any]:
         fields[F.F_FLIGHT_TAIL] = flight.tail_number
     if flight.operation:
         fields[F.F_FLIGHT_OPERATION] = flight.operation
+    if flight.special_categories:
+        fields[F.F_FLIGHT_SPECIAL_CATEGORY] = flight.special_categories
     return fields
 
 
