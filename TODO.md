@@ -95,17 +95,64 @@ were off by the airport's UTC offset. Caused incorrect night/landing classificat
 - [ ] Publish the page with the embedded map
 - [ ] Validate from a fresh browser (incognito) that the map renders inside WordPress
 
+### Make manually / form-entered Flight records show up on the map
+*Today: `export-map` pulls Flights from Airtable using `Departure Airport` and
+`Arrival Airport` string fields.  Records added through Airtable UI or a form
+may or may not satisfy that contract — depends on how the form is set up.
+Worth confirming what currently happens and closing any gaps.*
+
+Open questions before coding:
+- Does the user enter airports as IATA strings, or pick from a linked-record
+  field?  (`export-map` currently expects strings.)
+- Do form-entered records have Out/In Time?  If yes, in what timezone format —
+  are they local or UTC?  (Different fix path depending on the answer.)
+- Should night/landing enrichment be triggered for manual entries too, or only
+  for SkedPlus-imported ones?
+
+Candidate approaches (pick after answering the questions):
+- **Airtable-side:** automation/formula that auto-populates derived fields
+  (linked airport record, UTC times, night/landing) on record create/update —
+  consistent with the AGENTRULES "Airtable handles visualization + manual entry"
+  philosophy
+- **Python-side:** small `enrich-manual` CLI subcommand that scans for records
+  missing derived fields and fills them in (sibling to `enrich-night`)
+- **Hybrid:** Airtable form normalizes inputs, Python handles UTC + night math
+
 ---
 
 ## 🔵 Later
 
 ### Legacy Logbook Import
-*Important — deprioritized until map is complete*
+*~1500 hours pre-SkyWest across multiple aircraft types. Goal: one summary row per aircraft
+type in the Flights table (not individual legs). `Legacy Summary` checkbox already exists
+on the Flights schema.*
 
-- [ ] Analyze `misc/LEN2J-AnytimeLogbook2025.12.01.xlsx` — understand column structure
-- [ ] Define field mapping from legacy format → Flights table (summary-style rows, not individual legs)
-- [ ] Confirm aircraft/category mapping for pre-SkyWest types (H1, B300, etc.)
-- [ ] **Cursor:** Implement legacy import mode
+Source data: `misc/LEN2J-AnytimeLogbook2025.12.01.xlsx`
+
+Three implementation options (decided in conversation 2026-05-23 — pick one before starting):
+
+**Option A — Manual Airtable entry**
+Manually create one Flights record per aircraft type directly in Airtable.
+- Pro: zero code, immediate, full field control
+- Con: tedious; no auditability or re-run path; error-prone for totals
+
+**Option B — Python script (recommended for this repo)**
+Script reads the Excel, aggregates by aircraft type, writes one Airtable record per type.
+Could be extended to accept ForeFlight or LogTen Pro CSV exports — making it useful
+for other pilots using this logbook system.
+- Pro: reproducible, auditable, expandable to other formats
+- Con: one-time dev effort; requires column mapping from legacy format
+
+**Option C — Claude/AI agent**
+Feed the Excel to a Claude agent with Airtable MCP access; agent reviews and writes records.
+- Pro: handles messy/unstructured data; no code needed
+- Con: less transparent; harder to reproduce or audit; potential for silent errors
+
+Tasks (pending option choice):
+- [ ] Analyze `misc/LEN2J-AnytimeLogbook2025.12.01.xlsx` — column structure, aircraft types, date range
+- [ ] Define field mapping from legacy columns → Flights table fields
+- [ ] Confirm Aircraft table entries exist for pre-SkyWest types (H1, B300, etc.)
+- [ ] Implement chosen import path
 
 ### Airtable Interfaces
 *UI work, no code — build these in Airtable directly*
@@ -113,6 +160,27 @@ were off by the airport's UTC offset. Caused incorrect night/landing classificat
 - [ ] Import review page — grouped by Import Batch, shows linked Flights/Trips/Duty Periods
 - [ ] Flights view — browse all Flight records with key fields visible
 - [ ] Trips view — browse all Trip records
+
+### CLI polish
+*Quality-of-life improvements for day-to-day use*
+
+- [ ] **Config file support** — add a `.logbook.json` (or similar) in the project root that
+      stores per-pilot defaults so the common invocation shrinks to just
+      `logbook-import import-actual --commit`. Proposed keys:
+      ```json
+      { "role": "sic", "operator": "skw", "type": "cl65" }
+      ```
+      CLI reads the file on startup and uses values as flag defaults, overridable at runtime.
+      `type` would gate a new `--type` flag (aircraft family override, not yet implemented).
+- [ ] **`--help` text completeness** — audit every subcommand; ensure flag descriptions,
+      value choices, and default behavior are clearly documented in Click decorators so
+      `logbook-import import-actual --help` is self-contained without needing the README.
+
+### Special Category expansions
+- [ ] **Ferry autodetect** — add `"Ferry"` to `Flight.Special Category` options in Airtable,
+      then detect it in the parser: a leg is a Ferry if `leg.crew.flight_attendant is None`
+      (no FA listed in the SkedPlus crew section). Combine with SDuty/Reposition in the
+      `special_categories` list — not mutually exclusive.
 
 ### Loose ends / cleanup
 *Not blocking — pick up when convenient*
