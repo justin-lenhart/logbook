@@ -6,6 +6,54 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -98.4217987060547,
+          45.4491004943848
+        ]
+      },
+      "properties": {
+        "iata": "ABR",
+        "name": "Aberdeen Regional Airport",
+        "city": "Aberdeen",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.801697,
+          42.748299
+        ]
+      },
+      "properties": {
+        "iata": "ALB",
+        "name": "Albany International Airport",
+        "city": "Albany",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -88.519,
+          44.258515
+        ]
+      },
+      "properties": {
+        "iata": "ATW",
+        "name": "Appleton International Airport",
+        "city": "Appleton",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -97.15470123,
           44.91400146
         ]
@@ -38,6 +86,54 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -94.129727,
+          46.402861
+        ]
+      },
+      "properties": {
+        "iata": "BRD",
+        "name": "Brainerd Lakes Regional Airport",
+        "city": "Brainerd",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.038002,
+          32.896801
+        ]
+      },
+      "properties": {
+        "iata": "DFW",
+        "name": "Dallas Fort Worth International Airport",
+        "city": "Dallas-Fort Worth",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -107.753998,
+          37.151501
+        ]
+      },
+      "properties": {
+        "iata": "DRO",
+        "name": "Durango La Plata County Airport",
+        "city": "Durango",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -83.353786,
           42.21377
         ]
@@ -54,6 +150,54 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -96.741152,
+          43.585463
+        ]
+      },
+      "properties": {
+        "iata": "FSD",
+        "name": "Sioux Falls Regional Airport",
+        "city": "Sioux Falls",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.176102,
+          47.949299
+        ]
+      },
+      "properties": {
+        "iata": "GFK",
+        "name": "Grand Forks International Airport",
+        "city": "Grand Forks",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.937262,
+          36.09937
+        ]
+      },
+      "properties": {
+        "iata": "GSO",
+        "name": "Piedmont Triad International Airport",
+        "city": "Greensboro",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -88.114557,
           45.81911
         ]
@@ -62,6 +206,22 @@
         "iata": "IMT",
         "name": "Ford Airport",
         "city": "Kingsford",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -86.294403,
+          39.7173
+        ]
+      },
+      "properties": {
+        "iata": "IND",
+        "name": "Indianapolis International Airport",
+        "city": "Indianapolis",
         "country": "US"
       }
     },
@@ -102,6 +262,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -112.005905,
+          33.435302
+        ]
+      },
+      "properties": {
+        "iata": "PHX",
+        "name": "Phoenix Sky Harbor International Airport",
+        "city": "Phoenix",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -103.056999206543,
           44.0452995300293
         ]
@@ -110,6 +286,38 @@
         "iata": "RAP",
         "name": "Rapid City Regional Airport",
         "city": "Rapid City",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -121.929188,
+          37.362452
+        ]
+      },
+      "properties": {
+        "iata": "SJC",
+        "name": "Norman Y. Mineta San Jose International Airport",
+        "city": "San Jose",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -95.886225,
+          36.197084
+        ]
+      },
+      "properties": {
+        "iata": "TUL",
+        "name": "Tulsa International Airport",
+        "city": "Tulsa",
         "country": "US"
       }
     },
@@ -132,6 +340,43 @@
     {
       "type": "Feature",
       "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.609375,
+          32.650938
+        ]
+      },
+      "properties": {
+        "iata": "YUM",
+        "name": "Yuma International Airport / Marine Corps Air Station Yuma",
+        "city": "Yuma",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -96.741152,
+            43.585463
+          ],
+          [
+            -112.005905,
+            33.435302
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "FSD",
+        "destination": "PHX",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
         "type": "LineString",
         "coordinates": [
           [
@@ -148,6 +393,195 @@
         "origin": "INL",
         "destination": "MSP",
         "count": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -97.038002,
+            32.896801
+          ],
+          [
+            -96.741152,
+            43.585463
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DFW",
+        "destination": "FSD",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -73.801697,
+            42.748299
+          ],
+          [
+            -83.353786,
+            42.21377
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ALB",
+        "destination": "DTW",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -88.519,
+            44.258515
+          ],
+          [
+            -83.353786,
+            42.21377
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ATW",
+        "destination": "DTW",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -98.4217987060547,
+            45.4491004943848
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ABR",
+        "destination": "MSP",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -83.353786,
+            42.21377
+          ],
+          [
+            -79.937262,
+            36.09937
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DTW",
+        "destination": "GSO",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -94.93370056,
+            47.50939941
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "BJI",
+        "destination": "MSP",
+        "count": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -97.038002,
+            32.896801
+          ],
+          [
+            -114.609375,
+            32.650938
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DFW",
+        "destination": "YUM",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -107.753998,
+            37.151501
+          ],
+          [
+            -112.005905,
+            33.435302
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DRO",
+        "destination": "PHX",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -88.519,
+            44.258515
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ATW",
+        "destination": "MSP",
+        "count": 1
       }
     },
     {
@@ -219,6 +653,69 @@
         "type": "LineString",
         "coordinates": [
           [
+            -94.129727,
+            46.402861
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "BRD",
+        "destination": "MSP",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -112.005905,
+            33.435302
+          ],
+          [
+            -121.929188,
+            37.362452
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "PHX",
+        "destination": "SJC",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -97.176102,
+            47.949299
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "GFK",
+        "destination": "MSP",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
             -97.15470123,
             44.91400146
           ],
@@ -240,8 +737,8 @@
         "type": "LineString",
         "coordinates": [
           [
-            -94.93370056,
-            47.50939941
+            -93.221741,
+            44.880081
           ],
           [
             -93.221741,
@@ -250,9 +747,72 @@
         ]
       },
       "properties": {
-        "origin": "BJI",
+        "origin": "MSP",
         "destination": "MSP",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -83.353786,
+            42.21377
+          ],
+          [
+            -86.294403,
+            39.7173
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DTW",
+        "destination": "IND",
         "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -112.005905,
+            33.435302
+          ],
+          [
+            -95.886225,
+            36.197084
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "PHX",
+        "destination": "TUL",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -83.353786,
+            42.21377
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DTW",
+        "destination": "MSP",
+        "count": 1
       }
     },
     {
@@ -273,6 +833,48 @@
       "properties": {
         "origin": "DTW",
         "destination": "RAP",
+        "count": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -86.294403,
+            39.7173
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "IND",
+        "destination": "MSP",
+        "count": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -112.005905,
+            33.435302
+          ],
+          [
+            -114.609375,
+            32.650938
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "PHX",
+        "destination": "YUM",
         "count": 1
       }
     }
