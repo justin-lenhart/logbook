@@ -419,6 +419,29 @@ Dry-run should always be safe.
 
 ---
 
+# Git + Worktree Rules
+
+## Worktree hygiene
+
+Claude agents spawned in isolated worktrees (`.claude/worktrees/`) **must commit their
+work before stopping**, even if it is a WIP commit. An uncommitted worktree branch
+persists indefinitely and creates a merge conflict trap: later work on `main` may
+re-implement the same changes, leaving the branch as a zombie with diverging diffs to
+the same files.
+
+Rules for all agents:
+
+- Always `git commit` before ending a worktree session, even for partial work
+- If a worktree task is abandoned, explicitly document this in the conversation so
+  the human can delete the branch (`git worktree remove` + `git branch -d`)
+- Before starting work in a new session, check `git worktree list` and review any
+  existing open worktrees for the same files you are about to edit
+- Never leave untracked files in a worktree without committing or documenting them
+
+The human should not have to discover zombie branches by accident.
+
+---
+
 # Safety Rules
 
 Until Airtable write path is fully validated:
