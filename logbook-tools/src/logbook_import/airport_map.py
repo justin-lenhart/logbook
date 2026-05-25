@@ -11,8 +11,25 @@ _FLIGHT_FORMULA = (
 )
 
 
-def fetch_flight_airport_pairs(api_key: str, base_id: str) -> list[tuple[str, str]]:
-    """Fetch non-deadhead flown legs and return (origin, destination) ICAO pairs."""
+def _resolve_iata(raw: object, record_id_to_iata: dict[str, str]) -> str:
+    """Resolve a departure/arrival field value to an IATA code.
+
+    Airtable linked record fields return a list of record IDs; plain text
+    fields return a string. Both formats are handled here.
+    """
+    if isinstance(raw, list):
+        return record_id_to_iata.get(raw[0], "") if raw else ""
+    return str(raw).strip().upper()
+
+
+def fetch_flight_airport_pairs(
+    api_key: str,
+    base_id: str,
+    airport_index: dict[str, dict],
+) -> list[tuple[str, str]]:
+    """Fetch non-deadhead flown legs and return (origin, destination) IATA pairs."""
+    record_id_to_iata = {v["record_id"]: k for k, v in airport_index.items()}
+
     table = Api(api_key).base(base_id).table(F.TABLE_FLIGHTS)
     fields = [
         F.F_FLIGHT_DEPARTURE,
@@ -30,8 +47,8 @@ def fetch_flight_airport_pairs(api_key: str, base_id: str) -> list[tuple[str, st
         dest_raw = row.get(F.F_FLIGHT_ARRIVAL)
         if not origin_raw or not dest_raw:
             continue
-        origin = str(origin_raw).strip().upper()
-        dest = str(dest_raw).strip().upper()
+        origin = _resolve_iata(origin_raw, record_id_to_iata)
+        dest = _resolve_iata(dest_raw, record_id_to_iata)
         if not origin or not dest:
             continue
         pairs.append((origin, dest))

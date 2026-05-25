@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 import click
@@ -16,7 +18,7 @@ from logbook_import.airport_map import (
 )
 from logbook_import.airtable_settings import load_airtable_settings
 from logbook_import.airtable_sync import AirtableImporter, format_commit_summary
-from logbook_import.config import RECORDED_DIR, discover_pairing_file_sets, move_processed_files
+from logbook_import.config import RECORDED_DIR, WORKSPACE_ROOT, discover_pairing_file_sets, move_processed_files
 from logbook_import.dry_run import format_run_summary
 from logbook_import.import_planner import build_plans_for_exports
 from logbook_import.models import CrewRole, ImportMode, Operator
@@ -67,14 +69,22 @@ def import_planned(
 
 @main.command("import-actual")
 @_import_options
+@click.option(
+    "--update-map",
+    "update_map",
+    is_flag=True,
+    default=False,
+    help="After a successful --commit, regenerate map_data.geojson and push to GitHub.",
+)
 def import_actual(
     role: str,
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    update_map: bool,
 ) -> None:
     """Import actual flown legs as Flight rows."""
-    _run_import(ImportMode.ACTUAL, role, operator, dry_run, commit)
+    _run_import(ImportMode.ACTUAL, role, operator, dry_run, commit, update_map=update_map)
 
 
 def _run_import(
@@ -83,6 +93,7 @@ def _run_import(
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    update_map: bool = False,
 ) -> None:
     if dry_run and commit:
         raise click.ClickException("Use only one of --dry-run or --commit")
@@ -130,6 +141,9 @@ def _run_import(
 
     if dry_run:
         click.echo(format_run_summary(plans, all_warnings))
+        if airport_index is not None:
+            click.echo("\nMap data (current state — import not committed):")
+            _update_map(settings, airport_index, push=False)
         return
 
     # Abort if any flight times could not be converted to UTC.  Naive datetimes
@@ -163,28 +177,76 @@ def _run_import(
     if moved:
         click.echo(f"\nMoved {len(moved)} file(s) to {dest_dir.relative_to(RECORDED_DIR.parent)}/")
 
+    click.echo("\nMap data:")
+    assert airport_index is not None
+    _update_map(settings, airport_index, push=update_map)
+
+
+def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
+    """Show map stats and optionally write + commit + push map_data.geojson."""
+    flight_pairs = fetch_flight_airport_pairs(settings.api_key, settings.base_id, airport_index)  # type: ignore[attr-defined]
+    if not flight_pairs:
+        click.echo("  No qualifying flights found.")
+        return
+
+    resolved, valid_pairs, missing = resolve_airports(flight_pairs, airport_index)
+    for iata in missing:
+        click.echo(f"  WARNING: Airport not found in Airports table: {iata}", err=True)
+
+    pair_counts = Counter(tuple(sorted((o, d))) for o, d in flight_pairs)
+    valid_pairs_with_counts = [(pair, pair_counts[pair]) for pair in valid_pairs]
+
+    click.echo(f"  {len(resolved)} airports · {len(valid_pairs)} routes")
+
+    if not push:
+        click.echo("  (run with --update-map to write and push to GitHub Pages)")
+        return
+
+    geojson = build_geojson(resolved, valid_pairs_with_counts)
+    output_path = WORKSPACE_ROOT / "docs" / "map_data.geojson"
+    output_path.write_text(json.dumps(geojson, indent=2), encoding="utf-8")
+
+    repo = str(WORKSPACE_ROOT)
+    today = date.today().strftime("%Y-%m-%d")
+    subprocess.run(["git", "-C", repo, "add", "docs/map_data.geojson"], check=True)
+    subprocess.run(
+        ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
+        check=True,
+    )
+    subprocess.run(["git", "-C", repo, "push"], check=True)
+    click.echo(f"  Wrote {len(resolved)} airports, {len(valid_pairs)} routes → committed and pushed to GitHub Pages.")
+
 
 @main.command("export-map")
 @click.option(
     "--output",
     "output_path",
     type=click.Path(path_type=Path),
-    default="map_data.geojson",
-    show_default=True,
-    help="File path for GeoJSON output.",
+    default=None,
+    show_default=False,
+    help="File path for GeoJSON output (default: docs/map_data.geojson in repo root).",
 )
-def export_map(output_path: Path) -> None:
+@click.option(
+    "--update",
+    "update",
+    is_flag=True,
+    default=False,
+    help="After writing the file, commit and push to GitHub Pages.",
+)
+def export_map(output_path: Path | None, update: bool) -> None:
     """Export airport points and route lines as GeoJSON."""
     try:
         settings = load_airtable_settings()
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    flight_pairs = fetch_flight_airport_pairs(settings.api_key, settings.base_id)
+    resolved_output = output_path or (WORKSPACE_ROOT / "docs" / "map_data.geojson")
+
+    airport_index = fetch_airport_index(settings.api_key, settings.base_id)
+    flight_pairs = fetch_flight_airport_pairs(settings.api_key, settings.base_id, airport_index)
     if not flight_pairs:
         raise click.ClickException("No qualifying flights found in Flights table")
 
-    airport_index = fetch_airport_index(settings.api_key, settings.base_id)
     resolved, valid_pairs, missing = resolve_airports(flight_pairs, airport_index)
 
     for iata in missing:
@@ -199,11 +261,22 @@ def export_map(output_path: Path) -> None:
     valid_pairs_with_counts = [(pair, pair_counts[pair]) for pair in valid_pairs]
 
     geojson = build_geojson(resolved, valid_pairs_with_counts)
-    output_path.write_text(json.dumps(geojson, indent=2), encoding="utf-8")
+    resolved_output.write_text(json.dumps(geojson, indent=2), encoding="utf-8")
 
     n_airports = len(resolved)
     n_routes = len(valid_pairs)
-    click.echo(f"Exported {n_airports} airports, {n_routes} routes → {output_path}")
+    click.echo(f"Exported {n_airports} airports, {n_routes} routes → {resolved_output}")
+
+    if update:
+        repo = str(WORKSPACE_ROOT)
+        today = date.today().strftime("%Y-%m-%d")
+        subprocess.run(["git", "-C", repo, "add", "docs/map_data.geojson"], check=True)
+        subprocess.run(
+            ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
+            check=True,
+        )
+        subprocess.run(["git", "-C", repo, "push"], check=True)
+        click.echo("Map committed and pushed to GitHub Pages.")
 
 
 @main.command("enrich-night")
