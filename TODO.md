@@ -86,6 +86,70 @@ were off by the airport's UTC offset. Caused incorrect night/landing classificat
 
 ## 🟡 Up Next
 
+### Milestone: Planned vs Actual Metrics (Task #1)
+*Compare scheduled trip data against what was actually flown. Foundation for understanding schedule reliability and credit vs block variance.*
+
+**Approach:**
+- Airtable rollup fields on Trips and Duty Periods derive actual totals from linked Flights (no Python needed for display)
+- Python import behavior fix: `import-actual` must not overwrite `Planned Block/Credit/Legs` — those values come from the original planned import and represent what was scheduled
+
+**Airtable schema additions (Trips table):**
+- [ ] `Actual Block` — rollup SUM of `Block Time` from linked Flights (filter: Deadhead = false)
+- [ ] `Actual Credit` — rollup SUM of `Credit Time` from linked Flights (filter: Deadhead = false)
+- [ ] `Actual Legs` — rollup COUNT of linked Flights (filter: Deadhead = false)
+- [ ] `Block Variance` — formula: `Actual Block - Planned Block`
+- [ ] `Credit Variance` — formula: `Actual Credit - Planned Credit`
+
+**Airtable schema additions (Duty Periods table):**
+- [ ] `Actual Block` — rollup SUM from linked Flights
+- [ ] `Actual Credit` — rollup SUM from linked Flights
+- [ ] `Actual Legs` — rollup COUNT from linked Flights
+- [ ] `Block Variance` / `Credit Variance` — formula fields
+
+**Python fix:**
+- [ ] `map_trip_fields()` and `map_duty_period_fields()` in `airtable_mapper.py`: skip writing Planned fields when mode is ACTUAL (so a prior planned import's values are preserved on upsert)
+- [ ] Pass `mode` through to mapper; update `airtable_sync.py` accordingly
+
+**Data entry:**
+- [ ] Import June 2026 planned trips via `import-planned` (full month entered for analysis baseline)
+
+**Airtable interface:**
+- [ ] Build Trips view showing Planned Block | Actual Block | Block Variance | Planned Credit | Actual Credit | Credit Variance side by side
+
+---
+
+### Milestone: Trip Efficiency (Task #2)
+*How many block and/or credit hours were flown per calendar day of a trip. Also analyzable at the duty day level.*
+
+- [ ] Define "efficiency" formula: `Block Hours / TAFB Days` and `Credit Hours / TAFB Days` at trip level
+- [ ] Duty-day variant: `Block Hours / Duty Hours` (productivity per duty day)
+- [ ] Add Airtable formula fields for both metrics on Trips table
+- [ ] Add duty-day efficiency field on Duty Periods table
+- [ ] Build Airtable interface view surfacing efficiency metrics (sortable, filterable by month/equipment)
+
+---
+
+### Milestone: Pilot Application Metrics (Task #3)
+*Replicate the Anytime logbook summary interface. Dedicated Airtable interface for filling out FAA 8710, airline applications, and job bids.*
+
+Reference: `misc/LEN2J-AnytimeLogbook2025.12.01.xlsx` — existing legacy logbook with metric layout to replicate
+
+**Minimum viable (FAA Form 8710 required fields):**
+- [ ] Total Time
+- [ ] PIC / SIC time
+- [ ] Cross Country time
+- [ ] Night time
+- [ ] Instrument time (actual + simulated)
+- [ ] Landings (day / night)
+- [ ] Category/Class breakdowns (AMEL, etc.)
+
+**Full Anytime logbook replication:**
+- [ ] Analyze existing xlsx to extract all displayed metric categories
+- [ ] Map each to Airtable fields or rollup sources
+- [ ] Build dedicated Airtable interface tab — "Pilot Application" page
+
+---
+
 ### Embed the map on Justin's WordPress.com blog
 *Will be handled by a separate Claude agent — handoff prompt below in conversation history*
 

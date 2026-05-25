@@ -20,6 +20,11 @@ F_TRIP_PLANNED_BLOCK = "Planned Block"
 F_TRIP_PLANNED_CREDIT = "Planned Credit"
 F_TRIP_PLANNED_LEGS = "Planned Legs"
 F_TRIP_PLANNED_DUTY_PERIODS = "Planned Duty Periods"
+F_TRIP_ACTUAL_BLOCK = "Actual Block"       # rollup from linked Flights
+F_TRIP_ACTUAL_CREDIT = "Actual Credit"     # rollup from linked Flights
+F_TRIP_ACTUAL_LEGS = "Actual Legs"         # rollup from linked Flights
+F_TRIP_BLOCK_VARIANCE = "Block Variance"   # formula: Actual Block - Planned Block
+F_TRIP_CREDIT_VARIANCE = "Credit Variance" # formula: Actual Credit - Planned Credit
 F_TRIP_EQUIPMENT_FAMILY = "Equipment Family"
 F_TRIP_IMPORT_BATCH = "Import Batch"
 
@@ -33,6 +38,11 @@ F_DUTY_RELEASE_TIME = "Release Time"
 F_DUTY_PLANNED_BLOCK = "Planned Block"
 F_DUTY_PLANNED_CREDIT = "Planned Credit"
 F_DUTY_PLANNED_LEGS = "Planned Legs"
+F_DUTY_ACTUAL_BLOCK = "Actual Block"       # rollup from linked Flights
+F_DUTY_ACTUAL_CREDIT = "Actual Credit"     # rollup from linked Flights
+F_DUTY_ACTUAL_LEGS = "Actual Legs"         # rollup from linked Flights
+F_DUTY_BLOCK_VARIANCE = "Block Variance"   # formula: Actual Block - Planned Block
+F_DUTY_CREDIT_VARIANCE = "Credit Variance" # formula: Actual Credit - Planned Credit
 F_DUTY_IMPORT_BATCH = "Import Batch"
 
 # Flights

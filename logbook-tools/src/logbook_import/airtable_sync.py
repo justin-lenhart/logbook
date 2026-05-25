@@ -118,6 +118,7 @@ class AirtableImporter:
             {
                 **map_trip_fields(
                     trip,
+                    mode=plan.mode,
                     include_equipment_family=self._include_equipment_family,
                 ),
                 F.F_TRIP_IMPORT_BATCH: [batch_id],
@@ -138,7 +139,7 @@ class AirtableImporter:
                 continue
             duty_payloads.append(
                 {
-                    **map_duty_period_fields(duty),
+                    **map_duty_period_fields(duty, mode=plan.mode),
                     F.F_DUTY_TRIPS: [trip_id],
                     F.F_DUTY_IMPORT_BATCH: [batch_id],
                 }

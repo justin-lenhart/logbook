@@ -6,6 +6,7 @@ from typing import Any
 from logbook_import import airtable_fields as F
 from logbook_import.models import (
     ImportBatchRecord,
+    ImportMode,
     PlannedDutyPeriodRecord,
     PlannedFlightRecord,
     PlannedTripRecord,
@@ -23,6 +24,7 @@ def format_airtable_datetime(value: datetime) -> str:
 def map_trip_fields(
     trip: PlannedTripRecord,
     *,
+    mode: ImportMode = ImportMode.PLANNED,
     include_equipment_family: bool = False,
 ) -> dict[str, Any]:
     fields: dict[str, Any] = {
@@ -32,27 +34,36 @@ def map_trip_fields(
         F.F_TRIP_START_DATE: format_airtable_date(trip.start_date),
         F.F_TRIP_END_DATE: format_airtable_date(trip.end_date),
         F.F_TRIP_BASE: trip.base,
-        F.F_TRIP_PLANNED_BLOCK: trip.planned_block,
-        F.F_TRIP_PLANNED_CREDIT: trip.planned_credit,
-        F.F_TRIP_PLANNED_LEGS: trip.planned_legs,
-        F.F_TRIP_PLANNED_DUTY_PERIODS: trip.planned_duty_periods,
     }
+    # Only write planned fields on planned import — preserves the original scheduled
+    # values when the same trip is later imported as actual (upsert won't clear them).
+    if mode == ImportMode.PLANNED:
+        fields[F.F_TRIP_PLANNED_BLOCK] = trip.planned_block
+        fields[F.F_TRIP_PLANNED_CREDIT] = trip.planned_credit
+        fields[F.F_TRIP_PLANNED_LEGS] = trip.planned_legs
+        fields[F.F_TRIP_PLANNED_DUTY_PERIODS] = trip.planned_duty_periods
     if include_equipment_family:
         fields[F.F_TRIP_EQUIPMENT_FAMILY] = trip.equipment_family
     return fields
 
 
-def map_duty_period_fields(duty: PlannedDutyPeriodRecord) -> dict[str, Any]:
-    return {
+def map_duty_period_fields(
+    duty: PlannedDutyPeriodRecord,
+    *,
+    mode: ImportMode = ImportMode.PLANNED,
+) -> dict[str, Any]:
+    fields: dict[str, Any] = {
         F.F_DUTY_PERIOD_KEY: duty.duty_period_key,
         F.F_DUTY_STATUS: duty.status,
         F.F_DUTY_DATE: format_airtable_date(duty.duty_date),
         F.F_DUTY_REPORT_TIME: format_airtable_datetime(duty.report_at),
         F.F_DUTY_RELEASE_TIME: format_airtable_datetime(duty.release_at),
-        F.F_DUTY_PLANNED_BLOCK: duty.planned_block,
-        F.F_DUTY_PLANNED_CREDIT: duty.planned_credit,
-        F.F_DUTY_PLANNED_LEGS: duty.planned_legs,
     }
+    if mode == ImportMode.PLANNED:
+        fields[F.F_DUTY_PLANNED_BLOCK] = duty.planned_block
+        fields[F.F_DUTY_PLANNED_CREDIT] = duty.planned_credit
+        fields[F.F_DUTY_PLANNED_LEGS] = duty.planned_legs
+    return fields
 
 
 def map_flight_fields(flight: PlannedFlightRecord) -> dict[str, Any]:
