@@ -28,7 +28,7 @@ from pyairtable import Api
 
 TOOLS_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = TOOLS_ROOT.parent
-DEFAULT_XLSX = REPO_ROOT / "misc" / "LEN2J-AnytimeLogbook2025.12.01.xlsx"
+DEFAULT_XLSX = REPO_ROOT / "recorded" / "actual" / "LEN2J-AnytimeLogbook2025.12.01.xlsx"
 ENV_PATH = TOOLS_ROOT / ".env"
 
 # ── Airtable IDs ──────────────────────────────────────────────────────────────
@@ -52,20 +52,23 @@ COL_SIC        = 24  # Y — SIC time
 COL_DUAL       = 25  # Z — dual received
 COL_CFI        = 26  # AA — dual given (IP/CFI)
 
-# ── Aircraft metadata for records not yet in Airtable ─────────────────────────
-# (code, faa_type, category, class_or_none, engine_type)
+# ── Aircraft metadata ─────────────────────────────────────────────────────────
+# master_code: (airtable_name, faa_type, category, class_or_none, engine_type)
+# airtable_name must match the Aircraft field value in the Airtable Aircraft table.
+# class_or_none: None means the field is omitted (e.g. Powered Lift has no class).
 # All fields are singleSelect in Airtable; typecast=True creates new options.
-AIRCRAFT_META: dict[str, tuple[str, str, str | None, str]] = {
-    "AH1W":  ("AH-1",       "Rotorcraft",   "Helicopter", "Turboshaft"),
-    "AH1Z":  ("AH-1",       "Rotorcraft",   "Helicopter", "Turboshaft"),
-    "TH57B": ("TH-57",      "Rotorcraft",   "Helicopter", "Turboshaft"),
-    "TH57C": ("TH-57",      "Rotorcraft",   "Helicopter", "Turboshaft"),
-    "T6B":   ("T-6B",       "Airplane",     "Single-engine Land", "Turboprop"),
-    "C172":  ("C172",       "Airplane",     "Single-engine Land", "Reciprocating"),
-    "PA44":  ("PA-44",      "Airplane",     "Multi-engine Land",  "Reciprocating"),
-    "UC12W": ("UC-12W",     "Airplane",     "Multi-engine Land",  "Turboprop"),
-    "UH1Y":  ("UH-1Y",     "Rotorcraft",   "Helicopter", "Turboshaft"),
-    "MV22B": ("MV-22B",    "Powered Lift", None,         "Turboshaft"),
+AIRCRAFT_META: dict[str, tuple[str, str, str, str | None, str]] = {
+    #  master    airtable   faa_type  category        class                  engine
+    "AH1W":  ("AH1-W",   "H1",   "Rotorcraft",   "Helicopter",          "Turboshaft"),
+    "AH1Z":  ("AH-1Z",   "H1",   "Rotorcraft",   "Helicopter",          "Turboshaft"),
+    "TH57B": ("TH-57B",  "H57",  "Rotorcraft",   "Helicopter",          "Turboshaft"),
+    "TH57C": ("TH-57C",  "H57",  "Rotorcraft",   "Helicopter",          "Turboshaft"),
+    "T6B":   ("T-6B",    "T6",   "Airplane",     "Single-Engine Land",  "Turboprop"),
+    "C172":  ("C172",    "C172", "Airplane",     "Single-Engine Land",  "Reciprocating"),
+    "PA44":  ("PA-44",   "PA44", "Airplane",     "Multi-Engine Land",   "Reciprocating"),
+    "UC12W": ("UC-12W",  "B300", "Airplane",     "Multi-Engine Land",   "Turboprop"),
+    "UH1Y":  ("UH-1Y",   "H1",   "Rotorcraft",   "Helicopter",          "Turboshaft"),
+    "MV22B": ("MV-22",   "V22",  "Powered Lift", None,                  "Turboshaft"),
 }
 
 SOURCE_FILENAME = "LEN2J-AnytimeLogbook2025.12.01.xlsx"
@@ -141,9 +144,9 @@ def build_aircraft_fields(code: str) -> dict | None:
     meta = AIRCRAFT_META.get(code)
     if meta is None:
         return None
-    faa_type, category, class_, engine = meta
+    ac_name, faa_type, category, class_, engine = meta
     fields: dict = {
-        "Aircraft":    code,
+        "Aircraft":    ac_name,
         "FAA Type":    faa_type,
         "Category":    category,
         "Engine Type": engine,
@@ -210,32 +213,33 @@ def main() -> None:
         print(f"── {code} ({'%.1f' % data['total']} hrs) ──────────────────────")
 
         # ── Aircraft record ───────────────────────────────────────────────────
-        aircraft_id = existing_ac.get(code)
+        meta = AIRCRAFT_META.get(code)
+        if meta is None:
+            print(f"  [WARN] No metadata defined for {code} — skipping (add to AIRCRAFT_META).")
+            print()
+            continue
+        ac_name, faa_type, category, class_, engine = meta
+        aircraft_id = existing_ac.get(ac_name)
         if aircraft_id:
-            print(f"  Aircraft: existing ({aircraft_id})")
+            print(f"  Aircraft: {ac_name} — existing ({aircraft_id})")
         else:
-            ac_fields = build_aircraft_fields(code)
-            if ac_fields is None:
-                print(f"  [WARN] No metadata defined for {code} — skipping (add to AIRCRAFT_META).")
-                print()
-                continue
-            meta = AIRCRAFT_META[code]
             print(
-                f"  Aircraft: NEW — FAA Type={meta[0]}, Category={meta[1]}, "
-                f"Class={meta[2]!r}, Engine={meta[3]}"
+                f"  Aircraft: {ac_name} — NEW — FAA Type={faa_type}, "
+                f"Category={category}, Class={class_!r}, Engine={engine}"
             )
             if not dry_run:
-                rec = aircraft_tbl.create(ac_fields, typecast=True)
+                rec = aircraft_tbl.create(build_aircraft_fields(code), typecast=True)
                 aircraft_id = rec["id"]
-                existing_ac[code] = aircraft_id
+                existing_ac[ac_name] = aircraft_id
                 created_ac += 1
                 print(f"             → Created {aircraft_id}")
 
         # ── Flights upsert ────────────────────────────────────────────────────
-        flight_fields = build_flight_fields(code, data, aircraft_id if not dry_run else None)
+        flight_fields = build_flight_fields(code, data, aircraft_id)
+        flight_key = f"LEGACY|{code}"
         dates = data["dates"]
         print(
-            f"  Flights:  LEGACY|{code}  date={max(dates).strftime('%Y-%m-%d')}"
+            f"  Flights:  {flight_key}  date={max(dates).strftime('%Y-%m-%d')}"
             f"  block={flight_fields['Block Time']}  PIC={flight_fields['PIC Time']}"
             f"  SIC={flight_fields['SIC Time']}  night={flight_fields['Night Time']}"
             f"  IMC={flight_fields['Instrument Time']}  XC={flight_fields['Cross Country Time']}"
@@ -243,14 +247,15 @@ def main() -> None:
             f"  dualRcv={flight_fields['Dual Received']}  dualGvn={flight_fields['Dual Given']}"
         )
         if not dry_run:
-            result = flights_tbl.upsert(
-                [{"fields": flight_fields}],
-                key_fields=["Import Flight Key"],
-                typecast=True,
+            existing = flights_tbl.first(
+                formula=f"{{Import Flight Key}}='{flight_key}'"
             )
-            n_created = len(result.get("createdRecords", []))
-            n_updated = len(result.get("updatedRecords", []))
-            action = "Created" if n_created else "Updated"
+            if existing:
+                flights_tbl.update(existing["id"], flight_fields, typecast=True)
+                action = "Updated"
+            else:
+                flights_tbl.create(flight_fields, typecast=True)
+                action = "Created"
             upserted_flights += 1
             print(f"             → {action} Flights record")
         print()
