@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -12,8 +11,9 @@ import click
 from logbook_import import airtable_fields as F
 from logbook_import.airtable_airports import fetch_airport_index
 from logbook_import.airport_map import (
+    aggregate_route_stats,
     build_geojson,
-    fetch_flight_airport_pairs,
+    fetch_flight_records,
     resolve_airports,
 )
 from logbook_import.airtable_settings import load_airtable_settings
@@ -184,25 +184,23 @@ def _run_import(
 
 def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
     """Show map stats and optionally write + commit + push map_data.geojson."""
-    flight_pairs = fetch_flight_airport_pairs(settings.api_key, settings.base_id, airport_index)  # type: ignore[attr-defined]
-    if not flight_pairs:
+    flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)  # type: ignore[attr-defined]
+    if not flight_records:
         click.echo("  No qualifying flights found.")
         return
 
-    resolved, valid_pairs, missing = resolve_airports(flight_pairs, airport_index)
+    route_stats = aggregate_route_stats(flight_records)
+    resolved, missing = resolve_airports(route_stats, airport_index)
     for iata in missing:
         click.echo(f"  WARNING: Airport not found in Airports table: {iata}", err=True)
 
-    pair_counts = Counter(tuple(sorted((o, d))) for o, d in flight_pairs)
-    valid_pairs_with_counts = [(pair, pair_counts[pair]) for pair in valid_pairs]
-
-    click.echo(f"  {len(resolved)} airports · {len(valid_pairs)} routes")
+    click.echo(f"  {len(resolved)} airports · {len(route_stats)} routes")
 
     if not push:
         click.echo("  (run with --update-map to write and push to GitHub Pages)")
         return
 
-    geojson = build_geojson(resolved, valid_pairs_with_counts)
+    geojson = build_geojson(resolved, route_stats)
     output_path = WORKSPACE_ROOT / "docs" / "map_data.geojson"
     output_path.write_text(json.dumps(geojson, indent=2), encoding="utf-8")
 
@@ -243,11 +241,12 @@ def export_map(output_path: Path | None, update: bool) -> None:
     resolved_output = output_path or (WORKSPACE_ROOT / "docs" / "map_data.geojson")
 
     airport_index = fetch_airport_index(settings.api_key, settings.base_id)
-    flight_pairs = fetch_flight_airport_pairs(settings.api_key, settings.base_id, airport_index)
-    if not flight_pairs:
+    flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)
+    if not flight_records:
         raise click.ClickException("No qualifying flights found in Flights table")
 
-    resolved, valid_pairs, missing = resolve_airports(flight_pairs, airport_index)
+    route_stats = aggregate_route_stats(flight_records)
+    resolved, missing = resolve_airports(route_stats, airport_index)
 
     for iata in missing:
         click.echo(
@@ -255,16 +254,11 @@ def export_map(output_path: Path | None, update: bool) -> None:
             err=True,
         )
 
-    pair_counts = Counter(
-        tuple(sorted((origin, dest))) for origin, dest in flight_pairs
-    )
-    valid_pairs_with_counts = [(pair, pair_counts[pair]) for pair in valid_pairs]
-
-    geojson = build_geojson(resolved, valid_pairs_with_counts)
+    geojson = build_geojson(resolved, route_stats)
     resolved_output.write_text(json.dumps(geojson, indent=2), encoding="utf-8")
 
     n_airports = len(resolved)
-    n_routes = len(valid_pairs)
+    n_routes = len(route_stats)
     click.echo(f"Exported {n_airports} airports, {n_routes} routes → {resolved_output}")
 
     if update:
