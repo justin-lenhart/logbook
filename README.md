@@ -75,7 +75,7 @@ logbook-import enrich-night --commit
 
 ## Map pipeline detail
 
-`export-map` reads every non-deadhead flight with PIC or SIC time from the Airtable Flights table, resolves the linked Departure/Arrival airport records to IATA codes, counts route frequencies, and writes a GeoJSON FeatureCollection with:
+`export-map` reads every non-deadhead flight with PIC or SIC time from the Airtable Flights table, resolves the linked Departure/Arrival airport records to IATA codes, aggregates per-route stats, and writes a GeoJSON FeatureCollection with:
 
 - **Point** features for each airport visited
-- **LineString** features for each unique route, with a `count` property used to weight line thickness on the map
+- **LineString** features for each unique route, with properties: `count`, `avg_block`, `min_block`, `max_block`, `avg_credit` (decimal hours) — used by the Leaflet map for line weight and popup display
