@@ -207,12 +207,16 @@ def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
     repo = str(WORKSPACE_ROOT)
     today = date.today().strftime("%Y-%m-%d")
     subprocess.run(["git", "-C", repo, "add", "docs/map_data.geojson"], check=True)
-    subprocess.run(
-        ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
-        check=True,
-    )
+    diff = subprocess.run(["git", "-C", repo, "diff", "--cached", "--quiet"])
+    if diff.returncode != 0:
+        subprocess.run(
+            ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
+            check=True,
+        )
+    else:
+        click.echo("  Map data unchanged — skipping commit.")
     subprocess.run(["git", "-C", repo, "push", "--set-upstream", "origin", "HEAD"], check=True)
-    click.echo(f"  Wrote {len(resolved)} airports, {len(route_stats)} routes → committed and pushed to GitHub Pages.")
+    click.echo(f"  Wrote {len(resolved)} airports, {len(route_stats)} routes → pushed to GitHub Pages.")
 
 
 @main.command("export-map")
@@ -265,12 +269,17 @@ def export_map(output_path: Path | None, update: bool) -> None:
         repo = str(WORKSPACE_ROOT)
         today = date.today().strftime("%Y-%m-%d")
         subprocess.run(["git", "-C", repo, "add", "docs/map_data.geojson"], check=True)
-        subprocess.run(
-            ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
-            check=True,
-        )
+        diff = subprocess.run(["git", "-C", repo, "diff", "--cached", "--quiet"])
+        if diff.returncode != 0:
+            subprocess.run(
+                ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
+                check=True,
+            )
+            click.echo("Map data committed.")
+        else:
+            click.echo("Map data unchanged — skipping commit.")
         subprocess.run(["git", "-C", repo, "push", "--set-upstream", "origin", "HEAD"], check=True)
-        click.echo("Map committed and pushed to GitHub Pages.")
+        click.echo("Pushed to GitHub Pages.")
 
 
 @main.command("enrich-night")
