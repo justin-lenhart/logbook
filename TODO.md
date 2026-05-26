@@ -150,6 +150,27 @@ Reference: `misc/LEN2J-AnytimeLogbook2025.12.01.xlsx` — existing legacy logboo
 
 ---
 
+### Milestone: Map Route Stats — Block & Credit Time in Popups
+*Enrich the Leaflet route popups with per-route block and credit time stats fetched from Airtable at export time. Stats are embedded in the GeoJSON so the static site stays dependency-free.*
+
+**Python — `airport_map.py`:**
+- [ ] Expand `fetch_flight_airport_pairs` to also fetch `Block Time` and `Credit Time` fields; change return type from `list[tuple[str, str]]` to `list[dict]` with keys `origin`, `dest`, `block`, `credit` (None if missing)
+- [ ] Add `aggregate_route_stats(flight_records)` — groups by normalized route key, computes `count`, `avg_block`, `min_block`, `max_block`, `avg_credit` per route; replaces the ad-hoc `Counter` logic currently duplicated in `resolve_airports` and `cli.py`
+- [ ] Update `build_geojson` to embed the four new stat keys in each LineString `properties`
+
+**Python — `cli.py`:**
+- [ ] `_update_map` — replace manual `pair_counts` Counter + `valid_pairs_with_counts` with call to `aggregate_route_stats`
+- [ ] `export_map` — same replacement
+
+**Frontend — `docs/index.html`:**
+- [ ] Add `formatTime(hours)` JS helper (decimal hours → `H:MM` string)
+- [ ] Expand route popup to show avg / min / max block and avg credit below the leg count
+
+**Open question (confirm before coding):**
+- Verify `Block Time` and `Credit Time` are stored in Airtable as decimal hours (e.g. `1.25` = 1h15m)
+
+---
+
 ### Embed the map on Justin's WordPress.com blog
 *Will be handled by a separate Claude agent — handoff prompt below in conversation history*
 

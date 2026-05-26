@@ -47,6 +47,12 @@
       map.setView([39.5, -98.35], 4); // continental US fallback
     });
 
+  function formatTime(h) {
+    if (h == null) return "—";
+    const total = Math.round(h * 60);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+  }
+
   function render(data) {
     const points = data.features.filter((f) => f.geometry.type === "Point");
     const lines = data.features.filter((f) => f.geometry.type === "LineString");
@@ -71,9 +77,17 @@
         },
         onEachFeature: (feat, layer) => {
           const p = feat.properties;
+          const blockStr = p.avg_block != null
+            ? `Block: ${formatTime(p.avg_block)} avg (${formatTime(p.min_block)} min / ${formatTime(p.max_block)} max)`
+            : "Block: —";
+          const creditStr = p.avg_credit != null
+            ? `Credit: ${formatTime(p.avg_credit)} avg`
+            : "Credit: —";
           layer.bindPopup(
             `<div><span class="iata">${p.origin} ↔ ${p.destination}</span><br>` +
-            `<span class="meta">${p.count} leg${p.count === 1 ? "" : "s"} flown</span></div>`
+            `<span class="meta">${p.count} leg${p.count === 1 ? "" : "s"} flown</span><br>` +
+            `<span class="meta">${blockStr}</span><br>` +
+            `<span class="meta">${creditStr}</span></div>`
           );
         },
       }
