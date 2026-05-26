@@ -211,8 +211,8 @@ def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
         ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
         check=True,
     )
-    subprocess.run(["git", "-C", repo, "push"], check=True)
-    click.echo(f"  Wrote {len(resolved)} airports, {len(valid_pairs)} routes → committed and pushed to GitHub Pages.")
+    subprocess.run(["git", "-C", repo, "push", "--set-upstream", "origin", "HEAD"], check=True)
+    click.echo(f"  Wrote {len(resolved)} airports, {len(route_stats)} routes → committed and pushed to GitHub Pages.")
 
 
 @main.command("export-map")
@@ -269,7 +269,7 @@ def export_map(output_path: Path | None, update: bool) -> None:
             ["git", "-C", repo, "commit", "-m", f"Update map data ({today})"],
             check=True,
         )
-        subprocess.run(["git", "-C", repo, "push"], check=True)
+        subprocess.run(["git", "-C", repo, "push", "--set-upstream", "origin", "HEAD"], check=True)
         click.echo("Map committed and pushed to GitHub Pages.")
 
 
