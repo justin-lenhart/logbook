@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Flight Map — Logbook{% endblock %}
+{% block nav_map %}active{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #map { height: 72vh; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+  #map-loading {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(255,255,255,0.92); padding: 1.5rem 2.5rem;
+    border-radius: 8px; text-align: center; z-index: 1000;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="fw-bold mb-0">Flight Map</h4>
+    <p class="text-muted small mb-0">Live view from your Airtable logbook data.</p>
+  </div>
+  {% if map_url %}
+  <a href="{{ map_url }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+    Open public map &nearr;
+  </a>
+  {% endif %}
+</div>
+
+<div class="position-relative">
+  <div id="map"></div>
+  <div id="map-loading">
+    <div class="spinner-border text-primary mb-2" role="status"></div>
+    <div class="small text-muted">Loading flight data from Airtable…</div>
+  </div>
+</div>
+
+<div id="map-error" class="alert alert-danger mt-3" style="display:none"></div>
+
+<div class="row g-3 mt-2">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <p class="small mb-1"><strong>About this map</strong></p>
+        <p class="small text-muted mb-0">
+          Shows all non-deadhead flights with PIC or SIC time.
+          Line weight reflects the number of times you've flown a route.
+          Click a line or airport for details.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <p class="small mb-1"><strong>Airports</strong></p>
+        <p class="small text-muted mb-0" id="stat-airports">Loading…</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <p class="small mb-1"><strong>Routes</strong></p>
+        <p class="small text-muted mb-0" id="stat-routes">Loading…</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([39.5, -98.35], 4);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18,
+}).addTo(map);
+
+function formatHours(h) {
+  if (h == null) return '—';
+  const hrs = Math.floor(h);
+  const mins = Math.round((h - hrs) * 60);
+  return `${hrs}:${String(mins).padStart(2,'0')}`;
+}
+
+async function loadGeoJSON() {
+  try {
+    const resp = await fetch('/api/map/geojson');
+    const data = await resp.json();
+    document.getElementById('map-loading').style.display = 'none';
+
+    if (data.error) {
+      document.getElementById('map-error').textContent = 'Error loading map data: ' + data.error;
+      document.getElementById('map-error').style.display = 'block';
+      return;
+    }
+
+    if (!data.features || data.features.length === 0) {
+      document.getElementById('map-error').textContent = 'No flight data found. Import some flights first.';
+      document.getElementById('map-error').style.display = 'block';
+      document.getElementById('stat-airports').textContent = '0';
+      document.getElementById('stat-routes').textContent = '0';
+      return;
+    }
+
+    let airportCount = 0, routeCount = 0;
+    const bounds = [];
+
+    L.geoJSON(data, {
+      pointToLayer(feature, latlng) {
+        airportCount++;
+        bounds.push(latlng);
+        return L.circleMarker(latlng, {
+          radius: 5, fillColor: '#1a2744', color: '#fff',
+          weight: 1.5, fillOpacity: 0.9,
+        });
+      },
+      style(feature) {
+        const count = feature.properties?.count || 1;
+        return {
+          color: '#4a90d9',
+          weight: Math.min(1 + count * 0.8, 6),
+          opacity: 0.7,
+        };
+      },
+      onEachFeature(feature, layer) {
+        const p = feature.properties || {};
+        if (feature.geometry.type === 'Point') {
+          layer.bindPopup(
+            `<strong>${p.iata || ''}</strong><br>${p.name || ''}<br>
+             <em>${p.municipality || ''}</em><br>
+             Visits: ${p.visits || 1}`
+          );
+        } else if (feature.geometry.type === 'LineString') {
+          routeCount++;
+          layer.bindPopup(
+            `<strong>${p.origin} → ${p.dest}</strong><br>
+             Legs: ${p.count || 1}<br>
+             Avg block: ${formatHours(p.avg_block)}<br>
+             Min: ${formatHours(p.min_block)} / Max: ${formatHours(p.max_block)}<br>
+             Avg credit: ${formatHours(p.avg_credit)}`
+          );
+        }
+      }
+    }).addTo(map);
+
+    if (bounds.length > 1) {
+      map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40] });
+    } else if (bounds.length === 1) {
+      map.setView(bounds[0], 6);
+    }
+
+    document.getElementById('stat-airports').textContent = `${airportCount} airport(s) visited`;
+    document.getElementById('stat-routes').textContent = `${routeCount} unique route(s)`;
+
+  } catch (err) {
+    document.getElementById('map-loading').style.display = 'none';
+    document.getElementById('map-error').textContent = 'Failed to load map: ' + err;
+    document.getElementById('map-error').style.display = 'block';
+  }
+}
+
+loadGeoJSON();
+</script>
+{% endblock %}

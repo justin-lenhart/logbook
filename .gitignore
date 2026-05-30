@@ -14,6 +14,7 @@ misc/
 .env
 .env.local
 *.env
+logbook.json
 
 # --- Editor / OS ---
 .DS_Store

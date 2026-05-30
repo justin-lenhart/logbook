@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Import — Logbook{% endblock %}
+{% block nav_import %}active{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-12">
+    <h4 class="fw-bold text-dark mb-0">Import Flights</h4>
+    <p class="text-muted small">Preview and commit your SkedPlus export files to Airtable.</p>
+  </div>
+
+  <!-- Inbox files -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header card-header-navy">Inbox Files</div>
+      <div class="card-body" id="inbox-panel">
+        {% if inbox_files %}
+          <p class="small text-muted mb-2">Files ready to import:</p>
+          <ul class="list-unstyled small" id="file-list">
+            {% for f in inbox_files %}
+              <li>&#128196; {{ f }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted small">
+            No files found in <code>inbox/</code>.<br><br>
+            Copy your SkedPlus <code>.txt</code> and <code>.csv</code> exports there, then refresh this page.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Import options -->
+    <div class="card mt-3">
+      <div class="card-header card-header-navy">Options</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Import Mode</label>
+          <select class="form-select form-select-sm" id="sel-mode">
+            <option value="actual" selected>Actual (flown legs)</option>
+            <option value="planned">Planned (schedule only)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Your Role</label>
+          <select class="form-select form-select-sm" id="sel-role">
+            <option value="sic" {% if cfg.pilot.role == 'sic' %}selected{% endif %}>SIC (First Officer)</option>
+            <option value="pic" {% if cfg.pilot.role == 'pic' %}selected{% endif %}>PIC (Captain)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Operator</label>
+          <select class="form-select form-select-sm" id="sel-operator">
+            <option value="skw" {% if cfg.pilot.operator == 'skw' %}selected{% endif %}>SKW — SkyWest</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Output area -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header card-header-navy d-flex justify-content-between align-items-center">
+        <span>Output</span>
+        <span class="spinner-border spinner-border-sm text-light spinner-wrap" id="spinner" role="status"></span>
+      </div>
+      <div class="card-body">
+
+        <div class="d-flex gap-2 mb-3">
+          <button class="btn btn-outline-primary" id="btn-dry-run" {% if not inbox_files %}disabled{% endif %}>
+            &#128269; Dry Run (Preview)
+          </button>
+          <button class="btn btn-success" id="btn-commit" disabled>
+            &#9989; Commit to Airtable
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" id="btn-clear" style="display:none">
+            Clear
+          </button>
+        </div>
+
+        <div id="status-msg" class="small text-muted mb-2">
+          {% if not inbox_files %}
+            Add files to <code>inbox/</code> to get started.
+          {% else %}
+            Click <strong>Dry Run</strong> to preview what will be imported.
+          {% endif %}
+        </div>
+
+        <pre id="output-box"></pre>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const dryRunBtn = document.getElementById('btn-dry-run');
+const commitBtn = document.getElementById('btn-commit');
+const clearBtn  = document.getElementById('btn-clear');
+const outputBox = document.getElementById('output-box');
+const statusMsg = document.getElementById('status-msg');
+const spinner   = document.getElementById('spinner');
+
+function setLoading(loading) {
+  spinner.style.display = loading ? 'inline-block' : 'none';
+  dryRunBtn.disabled = loading;
+  commitBtn.disabled = loading || commitBtn.dataset.ready !== '1';
+}
+
+function showOutput(text, ok) {
+  outputBox.textContent = text;
+  outputBox.style.display = 'block';
+  clearBtn.style.display = 'inline-block';
+  outputBox.style.borderLeft = ok ? '3px solid #28a745' : '3px solid #dc3545';
+}
+
+async function runImport(commit) {
+  setLoading(true);
+  statusMsg.textContent = commit ? 'Committing to Airtable…' : 'Running dry-run preview…';
+  commitBtn.dataset.ready = '0';
+  commitBtn.disabled = true;
+
+  const payload = {
+    mode:     document.getElementById('sel-mode').value,
+    role:     document.getElementById('sel-role').value,
+    operator: document.getElementById('sel-operator').value,
+  };
+
+  const endpoint = commit ? '/api/import/commit' : '/api/import/dry-run';
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    showOutput(data.output || '(no output)', data.ok);
+    if (!commit && data.ok) {
+      commitBtn.dataset.ready = '1';
+      commitBtn.disabled = false;
+      statusMsg.textContent = 'Dry run complete. Review the output above, then click Commit if it looks correct.';
+    } else if (commit && data.ok) {
+      statusMsg.textContent = 'Import committed successfully!';
+      commitBtn.dataset.ready = '0';
+      commitBtn.disabled = true;
+      // Refresh the file list
+      const inboxResp = await fetch('/api/inbox');
+      const inboxData = await inboxResp.json();
+      updateInboxList(inboxData.files || []);
+    } else {
+      statusMsg.textContent = 'Something went wrong. See output above.';
+    }
+  } catch (err) {
+    showOutput('Network error: ' + err, false);
+    statusMsg.textContent = 'Could not reach the server.';
+  } finally {
+    setLoading(false);
+  }
+}
+
+function updateInboxList(files) {
+  const ul = document.getElementById('file-list');
+  if (!ul) return;
+  if (files.length === 0) {
+    ul.innerHTML = '<li class="text-muted">Inbox is now empty — files moved to recorded/.</li>';
+    dryRunBtn.disabled = true;
+  } else {
+    ul.innerHTML = files.map(f => `<li>&#128196; ${f}</li>`).join('');
+  }
+}
+
+dryRunBtn.addEventListener('click', () => runImport(false));
+commitBtn.addEventListener('click', () => {
+  if (!confirm('Commit these flights to Airtable? This will write records and move files from inbox to recorded.')) return;
+  runImport(true);
+});
+clearBtn.addEventListener('click', () => {
+  outputBox.style.display = 'none';
+  outputBox.textContent = '';
+  clearBtn.style.display = 'none';
+  commitBtn.dataset.ready = '0';
+  commitBtn.disabled = true;
+  statusMsg.textContent = 'Click Dry Run to preview.';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Logbook{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-12">
+    <h4 class="fw-bold text-dark mb-0">Dashboard</h4>
+    <p class="text-muted small">Welcome back. Here's a summary of your logbook status.</p>
+  </div>
+
+  <!-- Inbox status -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header card-header-navy d-flex align-items-center gap-2">
+        <span>&#128228;</span> Inbox
+      </div>
+      <div class="card-body">
+        {% if inbox_count > 0 %}
+          <p class="fs-3 fw-bold text-success mb-1">{{ inbox_count }}</p>
+          <p class="text-muted small mb-3">file(s) ready to import</p>
+          <a href="/import" class="btn btn-primary btn-sm">Go to Import &rarr;</a>
+        {% else %}
+          <p class="text-muted mb-2">No files in inbox.</p>
+          <p class="small text-muted">
+            Drop your SkedPlus <code>.txt</code> and <code>.csv</code> files into the
+            <code>inbox/</code> folder, then come back here to import them.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Flight map -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header card-header-navy d-flex align-items-center gap-2">
+        <span>&#127758;</span> Flight Map
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">View all your logged routes on an interactive map.</p>
+        <a href="/map" class="btn btn-primary btn-sm">Open Local Map &rarr;</a>
+        {% if map_url %}
+          <p class="small text-muted mt-3">
+            <a href="{{ map_url }}" target="_blank" rel="noopener">Open public map &nearr;</a>
+            <span class="d-block mt-1" style="font-size:0.75rem">
+              (reflects data as of last push to GitHub Pages)
+            </span>
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Config status -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header card-header-navy d-flex align-items-center gap-2">
+        <span>&#9881;&#65039;</span> Configuration
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled small mb-3">
+          <li>&#10003; Airtable: <strong>{{ cfg.airtable.base_id[:8] ~ '…' if cfg.airtable.base_id else '—' }}</strong></li>
+          <li>&#10003; Role: <strong>{{ cfg.pilot.role | upper }}</strong></li>
+          <li>&#10003; Operator: <strong>{{ cfg.pilot.operator | upper }}</strong></li>
+          <li>&#10003; Format: <strong>{{ cfg['import']['format'] }}</strong></li>
+        </ul>
+        <a href="/config" class="btn btn-outline-secondary btn-sm">Edit Settings</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to use -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header card-header-navy">Quick Start</div>
+      <div class="card-body">
+        <ol class="mb-0 small">
+          <li>Export your schedule from <strong>SkedPlus</strong> (both <code>.txt</code> and <code>.csv</code>).</li>
+          <li>Copy those files into the <code>inbox/</code> folder inside this project directory.</li>
+          <li>Go to <a href="/import"><strong>Import</strong></a>, click <strong>Dry Run</strong> to preview, then <strong>Commit</strong> to save to Airtable.</li>
+          <li>Visit <a href="/map"><strong>Map</strong></a> to see your routes plotted.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

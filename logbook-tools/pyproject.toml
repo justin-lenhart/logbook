@@ -15,6 +15,7 @@ dependencies = [
     "astral>=3.2",
     "timezonefinder>=6.5",
     "openpyxl>=3.1",
+    "flask>=3.0",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Settings — Logbook{% endblock %}
+{% block nav_config %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    {% if first_run %}
+    <div class="alert alert-primary mb-4">
+      <strong>Welcome to Logbook!</strong><br>
+      Before you can import flights, you'll need to enter your Airtable credentials below.
+      See the README for step-by-step instructions on getting these values.
+    </div>
+    {% endif %}
+
+    <h4 class="fw-bold mb-1">Settings</h4>
+    <p class="text-muted small mb-4">Your configuration is saved locally on this computer only — never shared.</p>
+
+    <div id="save-banner" class="alert alert-success" style="display:none">
+      &#10003; Settings saved successfully.
+    </div>
+    <div id="error-banner" class="alert alert-danger" style="display:none"></div>
+
+    <form id="config-form">
+
+      <!-- Airtable -->
+      <div class="card mb-4">
+        <div class="card-header card-header-navy">Airtable Connection</div>
+        <div class="card-body">
+          <p class="small text-muted mb-3">
+            Find these values in your Airtable account.
+            Your API key starts with <code>pat</code>.
+            The Base ID starts with <code>app</code>.
+            <a href="https://airtable.com/create/tokens" target="_blank" rel="noopener">
+              Create a token here &nearr;
+            </a>
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">API Token (Personal Access Token)</label>
+            <input type="password" class="form-control" id="api-key"
+                   placeholder="pat…"
+                   value="{{ '•••••••••••••••' if cfg.airtable.api_key else '' }}"
+                   autocomplete="off">
+            <div class="form-text">Leave unchanged to keep your existing token.</div>
+          </div>
+          <div class="mb-0">
+            <label class="form-label fw-semibold">Base ID</label>
+            <input type="text" class="form-control" id="base-id"
+                   placeholder="app…"
+                   value="{{ cfg.airtable.base_id }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Pilot info -->
+      <div class="card mb-4">
+        <div class="card-header card-header-navy">Pilot &amp; Operator</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">Your Role</label>
+              <select class="form-select" id="role">
+                <option value="sic" {% if cfg.pilot.role == 'sic' %}selected{% endif %}>SIC — First Officer</option>
+                <option value="pic" {% if cfg.pilot.role == 'pic' %}selected{% endif %}>PIC — Captain</option>
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">Operator Code</label>
+              <input type="text" class="form-control" id="operator"
+                     placeholder="e.g. skw"
+                     value="{{ cfg.pilot.operator }}"
+                     maxlength="10">
+              <div class="form-text">3-letter code for your airline (e.g. <code>skw</code> for SkyWest).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import format -->
+      <div class="card mb-4">
+        <div class="card-header card-header-navy">Import File Format</div>
+        <div class="card-body">
+          <label class="form-label fw-semibold">Schedule Export Format</label>
+          <select class="form-select" id="import-format">
+            {% for p in parser_choices %}
+            <option value="{{ p.key }}"
+              {% if cfg['import']['format'] == p.key %}selected{% endif %}>
+              {{ p.label }}
+            </option>
+            {% endfor %}
+          </select>
+          {% for p in parser_choices %}
+          <div class="form-text parser-desc" data-key="{{ p.key }}"
+               style="{% if cfg['import']['format'] != p.key %}display:none{% endif %}">
+            {{ p.description }}<br>
+            <em>{{ p.file_hint }}</em>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Paths -->
+      <div class="card mb-4">
+        <div class="card-header card-header-navy">File Locations</div>
+        <div class="card-body">
+          <div class="mb-0">
+            <label class="form-label fw-semibold">Inbox Folder</label>
+            <input type="text" class="form-control" id="inbox-path"
+                   value="{{ cfg.paths.inbox }}">
+            <div class="form-text">
+              Full path to the folder where you drop your export files.
+              Default: <code>inbox/</code> inside the project folder.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div class="card mb-4">
+        <div class="card-header card-header-navy">Flight Map (optional)</div>
+        <div class="card-body">
+          <label class="form-label fw-semibold">Public Map URL</label>
+          <input type="url" class="form-control" id="map-url"
+                 placeholder="https://your-username.github.io/logbook/"
+                 value="{{ cfg.map.url }}">
+          <div class="form-text">
+            Leave blank to use only the built-in map at <a href="/map">/map</a>.
+            If you've set up GitHub Pages for a public version, enter that URL here.
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary px-4">Save Settings</button>
+      <a href="/" class="btn btn-link text-muted ms-2">Cancel</a>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show description for selected parser
+document.getElementById('import-format').addEventListener('change', function() {
+  document.querySelectorAll('.parser-desc').forEach(el => {
+    el.style.display = el.dataset.key === this.value ? '' : 'none';
+  });
+});
+
+document.getElementById('config-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const apiKeyVal = document.getElementById('api-key').value.trim();
+  const payload = {
+    airtable: {
+      // Only send API key if user typed something new (not the masked placeholder)
+      api_key: apiKeyVal.startsWith('•') ? '***' : apiKeyVal,
+      base_id: document.getElementById('base-id').value.trim(),
+    },
+    paths: {
+      inbox: document.getElementById('inbox-path').value.trim(),
+    },
+    pilot: {
+      role: document.getElementById('role').value,
+      operator: document.getElementById('operator').value.trim().toLowerCase(),
+    },
+    import: {
+      format: document.getElementById('import-format').value,
+    },
+    map: {
+      url: document.getElementById('map-url').value.trim(),
+    },
+  };
+
+  try {
+    const resp = await fetch('/api/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      const banner = document.getElementById('save-banner');
+      banner.style.display = 'block';
+      setTimeout(() => { banner.style.display = 'none'; }, 3000);
+      document.getElementById('error-banner').style.display = 'none';
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch (err) {
+    const eb = document.getElementById('error-banner');
+    eb.textContent = 'Could not save settings: ' + err;
+    eb.style.display = 'block';
+  }
+});
+</script>
+{% endblock %}

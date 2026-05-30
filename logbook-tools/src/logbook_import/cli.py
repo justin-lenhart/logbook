@@ -467,6 +467,32 @@ def enrich_night(commit: bool) -> None:
     click.echo(f"Updated {len(updates)} flight(s) with night time and landing data.")
 
 
+@main.command("serve")
+@click.option("--port", default=5000, show_default=True, help="Port to listen on.")
+@click.option("--no-browser", is_flag=True, default=False, help="Don't auto-open browser.")
+def serve(port: int, no_browser: bool) -> None:
+    """Start the logbook web interface."""
+    try:
+        from logbook_import.server import create_app
+    except ImportError as exc:
+        raise click.ClickException(
+            f"Flask is required to run the web interface. "
+            f"Install it with: uv add flask\n{exc}"
+        ) from exc
+
+    app = create_app()
+
+    if not no_browser:
+        import threading
+        import webbrowser
+
+        threading.Timer(1.2, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+
+    click.echo(f"Logbook running at http://localhost:{port}")
+    click.echo("Press Ctrl+C to stop.")
+    app.run(host="127.0.0.1", port=port, debug=False)
+
+
 if __name__ == "__main__":
     try:
         main(standalone_mode=True)
