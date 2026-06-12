@@ -150,6 +150,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -87.088623,
+          45.723199
+        ]
+      },
+      "properties": {
+        "iata": "ESC",
+        "name": "Delta County Airport",
+        "city": "Escanaba",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -96.741152,
           43.585463
         ]
@@ -182,6 +198,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -88.130805,
+          44.483459
+        ]
+      },
+      "properties": {
+        "iata": "GRB",
+        "name": "Austin Straubel International Airport",
+        "city": "Green Bay",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -79.937262,
           36.09937
         ]
@@ -190,6 +222,22 @@
         "iata": "GSO",
         "name": "Piedmont Triad International Airport",
         "city": "Greensboro",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -92.836905,
+          47.384831
+        ]
+      },
+      "properties": {
+        "iata": "HIB",
+        "name": "Range Regional Airport",
+        "city": "Hibbing",
         "country": "US"
       }
     },
@@ -359,6 +407,56 @@
         "type": "LineString",
         "coordinates": [
           [
+            -88.130805,
+            44.483459
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "GRB",
+        "destination": "MSP",
+        "count": 2,
+        "avg_block": 1.15,
+        "min_block": 1.1,
+        "max_block": 1.2,
+        "avg_credit": 1.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -92.836905,
+            47.384831
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "HIB",
+        "destination": "MSP",
+        "count": 2,
+        "avg_block": 1.0,
+        "min_block": 0.9,
+        "max_block": 1.1,
+        "avg_credit": 1.05
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
             -96.741152,
             43.585463
           ],
@@ -396,11 +494,36 @@
       "properties": {
         "origin": "INL",
         "destination": "MSP",
-        "count": 4,
-        "avg_block": 1.125,
+        "count": 6,
+        "avg_block": 1.1333,
         "min_block": 1.0,
         "max_block": 1.3,
-        "avg_credit": 1.175
+        "avg_credit": 1.1833
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -97.176102,
+            47.949299
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "GFK",
+        "destination": "MSP",
+        "count": 6,
+        "avg_block": 1.2,
+        "min_block": 1.1,
+        "max_block": 1.6,
+        "avg_credit": 1.4333
       }
     },
     {
@@ -459,6 +582,31 @@
         "type": "LineString",
         "coordinates": [
           [
+            -98.4217987060547,
+            45.4491004943848
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ABR",
+        "destination": "MSP",
+        "count": 6,
+        "avg_block": 1.2167,
+        "min_block": 1.1,
+        "max_block": 1.4,
+        "avg_credit": 1.1833
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
             -88.519,
             44.258515
           ],
@@ -484,8 +632,8 @@
         "type": "LineString",
         "coordinates": [
           [
-            -98.4217987060547,
-            45.4491004943848
+            -94.129727,
+            46.402861
           ],
           [
             -93.221741,
@@ -494,13 +642,13 @@
         ]
       },
       "properties": {
-        "origin": "ABR",
+        "origin": "BRD",
         "destination": "MSP",
-        "count": 2,
-        "avg_block": 1.15,
-        "min_block": 1.1,
-        "max_block": 1.2,
-        "avg_credit": 1.2
+        "count": 8,
+        "avg_block": 0.85,
+        "min_block": 0.7,
+        "max_block": 1.0,
+        "avg_credit": 0.875
       }
     },
     {
@@ -546,11 +694,36 @@
       "properties": {
         "origin": "BJI",
         "destination": "MSP",
-        "count": 2,
-        "avg_block": 0.75,
+        "count": 6,
+        "avg_block": 0.9333,
         "min_block": 0.7,
-        "max_block": 0.8,
-        "avg_credit": 1.0
+        "max_block": 1.2,
+        "avg_credit": 1.0167
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -93.221741,
+            44.880081
+          ],
+          [
+            -103.056999206543,
+            44.0452995300293
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "MSP",
+        "destination": "RAP",
+        "count": 2,
+        "avg_block": 1.65,
+        "min_block": 1.6,
+        "max_block": 1.7,
+        "avg_credit": 1.65
       }
     },
     {
@@ -709,8 +882,8 @@
         "type": "LineString",
         "coordinates": [
           [
-            -94.129727,
-            46.402861
+            -86.294403,
+            39.7173
           ],
           [
             -93.221741,
@@ -719,13 +892,13 @@
         ]
       },
       "properties": {
-        "origin": "BRD",
+        "origin": "IND",
         "destination": "MSP",
-        "count": 2,
-        "avg_block": 0.85,
-        "min_block": 0.8,
-        "max_block": 0.9,
-        "avg_credit": 0.9
+        "count": 4,
+        "avg_block": 1.775,
+        "min_block": 1.6,
+        "max_block": 1.9,
+        "avg_credit": 1.8
       }
     },
     {
@@ -759,31 +932,6 @@
         "type": "LineString",
         "coordinates": [
           [
-            -97.176102,
-            47.949299
-          ],
-          [
-            -93.221741,
-            44.880081
-          ]
-        ]
-      },
-      "properties": {
-        "origin": "GFK",
-        "destination": "MSP",
-        "count": 2,
-        "avg_block": 1.1,
-        "min_block": 1.1,
-        "max_block": 1.1,
-        "avg_credit": 1.4
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
             -97.15470123,
             44.91400146
           ],
@@ -801,6 +949,31 @@
         "min_block": 1.0,
         "max_block": 1.1,
         "avg_credit": 1.05
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.088623,
+            45.723199
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ESC",
+        "destination": "MSP",
+        "count": 1,
+        "avg_block": 1.1,
+        "min_block": 1.1,
+        "max_block": 1.1,
+        "avg_credit": 1.2
       }
     },
     {
@@ -926,31 +1099,6 @@
         "min_block": 2.6,
         "max_block": 2.6,
         "avg_credit": 2.7
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            -86.294403,
-            39.7173
-          ],
-          [
-            -93.221741,
-            44.880081
-          ]
-        ]
-      },
-      "properties": {
-        "origin": "IND",
-        "destination": "MSP",
-        "count": 2,
-        "avg_block": 1.9,
-        "min_block": 1.9,
-        "max_block": 1.9,
-        "avg_credit": 1.9
       }
     },
     {
