@@ -45,3 +45,6 @@ dist/
 .coverage
 htmlcov/
 .tox/
+
+# --- Airtable backups (operational data, local restore points) ---
+backups/

@@ -282,6 +282,69 @@ def export_map(output_path: Path | None, update: bool) -> None:
         click.echo("Pushed to GitHub Pages.")
 
 
+@main.command("export-apps")
+@click.option(
+    "--output",
+    "output_dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    show_default=False,
+    help="Directory for HTML output (default: docs/apps in repo root).",
+)
+@click.option(
+    "--page",
+    "pages",
+    type=click.Choice(["swa", "ual", "faa", "summary"], case_sensitive=False),
+    multiple=True,
+    help="Limit to specific page(s). Default: all.",
+)
+def export_apps(output_dir: Path | None, pages: tuple[str, ...]) -> None:
+    """Generate airline/FAA application reference pages (SWA, UAL, FAA, Summary)."""
+    from datetime import datetime
+
+    from pyairtable import Api
+
+    from logbook_import import app_report as R
+
+    try:
+        settings = load_airtable_settings()
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    out = output_dir or (WORKSPACE_ROOT / "docs" / "apps")
+    out.mkdir(parents=True, exist_ok=True)
+
+    api = Api(settings.api_key)
+    aircraft = api.table(settings.base_id, F.TABLE_AIRCRAFT).all(fields=[F.F_AIRCRAFT_CODE])
+    ac_by_id = {r["id"]: r["fields"].get(F.F_AIRCRAFT_CODE) for r in aircraft}
+    flights = api.table(settings.base_id, F.TABLE_FLIGHTS).all()
+
+    rows = R.normalize(flights, ac_by_id)
+    missing = [r for r in rows if not r.family]
+    if missing:
+        click.echo(
+            f"WARNING: {len(missing)} flight(s) have an aircraft with no family "
+            f"mapping; they are excluded. Add them to "
+            f"app_families.AIRCRAFT_TO_FAMILY.",
+            err=True,
+        )
+
+    aggs = R.aggregate(rows)
+    generated = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    wanted = [p.lower() for p in pages] or ["swa", "ual", "faa", "summary"]
+    for name in wanted:
+        html = R.RENDERERS[name](aggs, generated)
+        path = out / f"{name}.html"
+        path.write_text(html, encoding="utf-8")
+        click.echo(f"Wrote {path}")
+
+    click.echo(
+        f"Done — {len(rows)} flights across {len(aggs)} families. "
+        f"Open the HTML files or embed them as Airtable custom blocks."
+    )
+
+
 @main.command("enrich-night")
 @click.option("--commit", is_flag=True, default=False, help="Write to Airtable (default: dry run).")
 def enrich_night(commit: bool) -> None:
