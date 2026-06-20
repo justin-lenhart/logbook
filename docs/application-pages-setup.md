@@ -52,28 +52,37 @@ military sorties 516, rotorcraft 824.6, and the per-family military SIC
 reconstruction (AH-1Z 449.8, UC-12W 469.6, TH-57 123.3, T-6 68.2). Unit tests
 live in `tests/test_app_report.py`.
 
-## ⚠️ One decision to make: SIC vs. dual-received for training time
+## The SWA converted-total residual — RESOLVED (keep generator numbers)
 
-This is the only place the generator does **not** match the old SWA worksheet,
-and it's a definitional choice, not a bug:
+The generator's SWA converted total is **~41.6 hr lower** than the old SWA
+worksheet (1623.7 vs 1665.3 on the legacy subset). Investigated 2026-06-18; the
+old sheet was wrong and the generator is correct. Do **not** re-tag anything.
 
-- The old SWA sheet counted **all non-PIC military time as SIC**, including
-  student time in the TH-57 and T-6.
-- Your Airtable import (`scripts/import_legacy.py`) recorded that student time as
-  **Dual Received** (PIC = SIC = 0), which is the strict FAA-logbook treatment.
-- It also recorded civilian C172/PA-44 training time as **PIC**, where the old
-  sheet split some of it to **SIC**.
+Background: the old sheet counted the civilian C172 and PA-44 **dual-received**
+training hours as **SIC**. By 14 CFR 61.51, single-pilot trainer dual time is
+never SIC — it is dual received, and (where the pilot was sole manipulator and
+rated) may *also* be PIC. So that ~41.6 hr should never have been SIC.
 
-The generator applies the airline convention for military legs
-(`SIC = block − PIC − instructor`), which reproduces the workbook for every
-military type. The remaining **~41.6 hr residual** in the SWA converted total
-(generator 1623.7 vs. old sheet 1665.3 on the legacy subset) is entirely the
-civilian C172/PA-44 dual time the old sheet counted as SIC.
+- **PA-44 (22.3 hr dual):** this was the pilot *earning* the AMEL rating; the
+  checkride was the final flight (9 Jun 2024, already logged as 3.1 hr PIC).
+  Pre-checkride dual correctly stays Dual Received — it cannot be sole-manipulator
+  PIC in a class not yet rated. **No change.**
+- **C172:** post-Private flights are already logged PIC (some concurrent with
+  dual, which is correct); the ~11.9 hr of 2015 primary training correctly stays
+  dual. **No change.**
 
-**Your call:** leave it as-is (the generator's numbers are arguably the more
-defensible ones), or, if you want to match the old sheet exactly, re-tag those
-civilian light-piston hours as SIC in Airtable. Either way the military
-conversion — which is the bulk of the value — is exact.
+The military legs use the airline convention `SIC = block − PIC − instructor`,
+which reproduces the workbook exactly for every military type. Net: the military
+conversion (the bulk of the value) is exact, and the civilian residual is the
+old sheet's error, not the generator's.
+
+### Known source-data typo (noted, not fixed)
+
+The Master-sheet C172 PIC cell for **2024-09-24 contains `"1,6"`** (comma instead
+of period), so `import_legacy.py`'s numeric parser silently drops it. True C172
+PIC is ~**31.9**, not 30.3 — about **1.6 PIC hr currently lost**. To fix: correct
+the cell to `1.6` in the source `.xlsx` and re-run `scripts/import_legacy.py
+--commit`, then regenerate the pages. Left as-is per the pilot's request.
 
 ## Remaining manual steps (Airtable UI — can't be scripted)
 
