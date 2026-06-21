@@ -476,11 +476,11 @@
       "properties": {
         "origin": "HIB",
         "destination": "MSP",
-        "count": 2,
-        "avg_block": 1.0,
+        "count": 4,
+        "avg_block": 0.975,
         "min_block": 0.9,
         "max_block": 1.1,
-        "avg_credit": 1.05
+        "avg_credit": 1.025
       }
     },
     {
@@ -551,11 +551,11 @@
       "properties": {
         "origin": "GFK",
         "destination": "MSP",
-        "count": 10,
-        "avg_block": 1.18,
+        "count": 18,
+        "avg_block": 1.2278,
         "min_block": 1.0,
-        "max_block": 1.6,
-        "avg_credit": 1.42
+        "max_block": 1.9,
+        "avg_credit": 1.4389
       }
     },
     {
@@ -614,6 +614,31 @@
         "type": "LineString",
         "coordinates": [
           [
+            -94.129727,
+            46.402861
+          ],
+          [
+            -93.221741,
+            44.880081
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "BRD",
+        "destination": "MSP",
+        "count": 10,
+        "avg_block": 0.85,
+        "min_block": 0.7,
+        "max_block": 1.0,
+        "avg_credit": 0.87
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
             -98.4217987060547,
             45.4491004943848
           ],
@@ -626,11 +651,11 @@
       "properties": {
         "origin": "ABR",
         "destination": "MSP",
-        "count": 8,
-        "avg_block": 1.1875,
+        "count": 10,
+        "avg_block": 1.2,
         "min_block": 1.0,
         "max_block": 1.4,
-        "avg_credit": 1.175
+        "avg_credit": 1.19
       }
     },
     {
@@ -656,31 +681,6 @@
         "min_block": 1.3,
         "max_block": 1.3,
         "avg_credit": 1.3
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            -94.129727,
-            46.402861
-          ],
-          [
-            -93.221741,
-            44.880081
-          ]
-        ]
-      },
-      "properties": {
-        "origin": "BRD",
-        "destination": "MSP",
-        "count": 8,
-        "avg_block": 0.85,
-        "min_block": 0.7,
-        "max_block": 1.0,
-        "avg_credit": 0.875
       }
     },
     {
