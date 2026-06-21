@@ -126,6 +126,7 @@ def build_import_plan(
     operator: Operator | None = None,
     airport_index: dict[str, dict] | None = None,
 ) -> ImportPlan:
+    today = date.today()
     t_key = trip_key(pairing.pairing_id, pairing.start_date)
     planned_legs_total = sum(duty.planned_leg_count for duty in pairing.duty_days)
 
@@ -152,6 +153,7 @@ def build_import_plan(
 
     for duty in pairing.duty_days:
         dp_key = duty_period_key(pairing.pairing_id, pairing.start_date, duty.duty_date)
+        is_future_duty = (mode == ImportMode.ACTUAL and duty.duty_date > today)
         duty_records.append(
             PlannedDutyPeriodRecord(
                 duty_period_key=dp_key,
@@ -162,7 +164,7 @@ def build_import_plan(
                 planned_block=duty.day_block_hours,
                 planned_credit=duty.day_credit_hours,
                 planned_legs=duty.planned_leg_count,
-                status="Planned" if mode == ImportMode.PLANNED else "Actual",
+                status="Planned" if (mode == ImportMode.PLANNED or is_future_duty) else "Actual",
             )
         )
 
@@ -179,6 +181,9 @@ def build_import_plan(
             # legs get the next-day date from the parser even though they share
             # a DutyDay with the evening legs).
             leg_date = leg.duty_date if leg.duty_date is not None else duty.duty_date
+
+            if leg_date > today:
+                continue  # flight hasn't happened yet; leave for post-trip import
 
             deadhead = is_deadhead(leg)
             pic_hours, sic_hours = _pic_sic_hours(leg.block_hours, role, deadhead)
@@ -223,6 +228,7 @@ def build_import_plan(
                     aircraft_code=leg.aircraft_type or pairing.equipment_family,
                     operation=operation,
                     airline=airline,
+                    passengers=leg.pax,
                     special_categories=special_categories,
                 )
             )

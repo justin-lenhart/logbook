@@ -1,0 +1,153 @@
+Parsing 2 files...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 1: 121807_20260611_E3436.txt
+Pairing: E3436 | 4 duty days | TAFB: 73:03
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EVENT 1 OF 8 — Thursday Jun 11
+Title:      E3436 · 1340 MSP → 2129 ABR
+Start:      2026-06-11T13:40:00
+End:        2026-06-11T21:44:00
+Calendar:   ✈️
+Location:   Minneapolis-Saint Paul International Airport
+
+Notes:
+E3436 · Day 1 of 4
+Report: 1340 | Release: 2144
+RON: Fairfield Inn & Suites, Aberdeen SD (16:17)
+
+DL4314  MSP → MQT  1425-1639  1:14
+DL4295  MQT → MSP  1714-1740  1:26
+DL4264  MSP → ABR  2010-2129  1:19
+
+EVENT 2 OF 8 — Friday Jun 12
+Title:      E3436 · 1401 ABR → 2307 GFK
+Start:      2026-06-12T14:01:00
+End:        2026-06-12T23:22:00
+Calendar:   ✈️
+Location:   Aberdeen Regional Airport
+
+Notes:
+E3436 · Day 2 of 4
+Report: 1401 | Release: 2322
+RON: Country Inn & Suites, Grand Forks ND (15:48)
+
+DL4262  ABR → MSP  1446-1601  1:15
+DL4331  MSP → GFK  1645-1809  1:24
+DL4331  GFK → MSP  1915-2043  1:28
+DL4332  MSP → GFK  2145-2307  1:22
+
+EVENT 3 OF 8 — Saturday Jun 13
+Title:      E3436 · 1510 GFK → 1930 ATY
+Start:      2026-06-13T15:10:00
+End:        2026-06-13T19:45:00
+Calendar:   ✈️
+Location:   Grand Forks International Airport
+
+Notes:
+E3436 · Day 3 of 4
+Report: 1510 | Release: 1945
+RON: Hampton Inn & Suites, Watertown SD (10:15)
+
+DL4330  GFK → MSP  1555-1721  1:26
+DL4299  MSP → ATY  1815-1930  1:15
+
+EVENT 4 OF 8 — Sunday Jun 14
+Title:      E3436 · 0600 ATY → 1428 MSP
+Start:      2026-06-14T06:00:00
+End:        2026-06-14T14:43:00
+Calendar:   ✈️
+Location:   Watertown Regional Airport
+
+Notes:
+E3436 · Day 4 of 4
+Report: 0600 | Release: 1443
+
+DL4298  ATY → MSP  0645-0758  1:13
+DL4261  MSP → XWA  1005-1200  1:55
+DL4261  XWA → MSP  1235-1428  1:53
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE 2: 121807_20260617_E3412.txt
+Pairing: E3412 | 4 duty days | TAFB: 72:15
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EVENT 5 OF 8 — Wednesday Jun 17
+Title:      E3412 · 1215 MSP → 1934 ABR
+Start:      2026-06-17T12:15:00
+End:        2026-06-17T19:49:00
+Calendar:   ✈️
+Location:   Minneapolis-Saint Paul International Airport
+
+Notes:
+E3412 · Day 1 of 4
+Report: 1215 | Release: 1949
+RON: Fairfield Inn & Suites, Aberdeen SD (18:12)
+
+DL4330  MSP → GFK  1300-1424  1:24
+DL4330  GFK → MSP  1555-1721  1:26
+DL4264  MSP → ABR  1815-1934  1:19
+
+EVENT 6 OF 8 — Thursday Jun 18
+Title:      E3412 · 1401 ABR → 2307 GFK
+Start:      2026-06-18T14:01:00
+End:        2026-06-18T23:22:00
+Calendar:   ✈️
+Location:   Aberdeen Regional Airport
+
+Notes:
+E3412 · Day 2 of 4
+Report: 1401 | Release: 2322
+RON: Country Inn & Suites, Grand Forks ND (10:43)
+
+DL4262  ABR → MSP  1446-1601  1:15
+DL4331  MSP → GFK  1645-1809  1:24
+DL4331  GFK → MSP  1915-2043  1:28
+DL4332  MSP → GFK  2145-2307  1:22
+
+EVENT 7 OF 8 — Friday Jun 19
+Title:      E3412 · 1005 GFK → 1856 BRD
+Start:      2026-06-19T10:05:00
+End:        2026-06-19T19:11:00
+Calendar:   ✈️
+Location:   Grand Forks International Airport
+
+Notes:
+E3412 · Day 3 of 4
+Report: 1005 | Release: 1911
+RON: The Lodge at Brainerd Lake (10:49)
+
+DL4329  GFK → MSP  1050-1215  1:25
+DL4236  MSP → HIB  1315-1420  1:05
+DL4236  HIB → MSP  1545-1647  1:02
+DL4301  MSP → BRD  1755-1856  1:01
+
+EVENT 8 OF 8 — Saturday Jun 20
+Title:      E3412 · 0600 BRD → 1215 MSP
+Start:      2026-06-20T06:00:00
+End:        2026-06-20T12:30:00
+Calendar:   ✈️
+Location:   Brainerd Lakes Regional Airport
+
+Notes:
+E3412 · Day 4 of 4
+Report: 0600 | Release: 1230
+
+DL4336  BRD → MSP  0645-0744  0:59
+DL4329  MSP → GFK  0850-1015  1:25
+DL4329  GFK → MSP  1050-1215  1:25
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY — 8 events total
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Date   | Event Title                     | Status        |
+|--------|--------------------------------|---------------|
+| Jun 11 | E3436 · 1340 MSP → 2129 ABR   | ✓ Would create |
+| Jun 12 | E3436 · 1401 ABR → 2307 GFK   | ✓ Would create |
+| Jun 13 | E3436 · 1510 GFK → 1930 ATY   | ✓ Would create |
+| Jun 14 | E3436 · 0600 ATY → 1428 MSP   | ✓ Would create |
+| Jun 17 | E3412 · 1215 MSP → 1934 ABR   | ✓ Would create |
+| Jun 18 | E3412 · 1401 ABR → 2307 GFK   | ✓ Would create |
+| Jun 19 | E3412 · 1005 GFK → 1856 BRD   | ✓ Would create |
+| Jun 20 | E3412 · 0600 BRD → 1215 MSP   | ✓ Would create |

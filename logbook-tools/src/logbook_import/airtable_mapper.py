@@ -67,6 +67,11 @@ def map_duty_period_fields(
 
 
 def map_flight_fields(flight: PlannedFlightRecord) -> dict[str, Any]:
+    if flight.out_time.tzinfo is None or flight.in_time.tzinfo is None:
+        raise ValueError(
+            f"Flight {flight.import_flight_key}: out_time/in_time must be UTC-aware "
+            f"(got naive datetime — airport timezone lookup likely failed)"
+        )
     fields: dict[str, Any] = {
         F.F_IMPORT_FLIGHT_KEY: flight.import_flight_key,
         F.F_FLIGHT_DATE: format_airtable_date(flight.duty_date),
@@ -79,6 +84,7 @@ def map_flight_fields(flight: PlannedFlightRecord) -> dict[str, Any]:
         F.F_FLIGHT_SIC_TIME: flight.sic_hours,
         F.F_FLIGHT_XC_TIME: 0.0 if flight.deadhead else flight.block_hours,
         F.F_FLIGHT_DEADHEAD: flight.deadhead,
+        F.F_FLIGHT_PASSENGERS: flight.passengers,
     }
     if flight.airline:
         fields[F.F_FLIGHT_AIRLINE] = flight.airline

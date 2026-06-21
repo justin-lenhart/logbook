@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "run": "without_skill",
+  "expectations": [
+    {"text": "Produces exactly one event (short overnight correctly detected)", "passed": false, "evidence": "Produces 3 events (outbound flight, layover, return flight) — overnight not collapsed to single event"},
+    {"text": "Event title matches format: 'E3180A · 2055 MSP → 0746 MSP'", "passed": false, "evidence": "Titles are 'E3180A — MSP→GRB (SkyWest 4003)', 'Layover — Lodge Kohler (GRB)', 'E3180A — GRB→MSP (SkyWest 4140)' — wrong format, wrong separator, wrong airline prefix"},
+    {"text": "Notes header says 'Overnight (2 days)' not 'Day 1 of 2'", "passed": false, "evidence": "No overnight header — events split into individual legs with per-leg notes"},
+    {"text": "Both legs appear in notes: DL4003 MSP → GRB and DL4140 GRB → MSP", "passed": false, "evidence": "Legs split into separate events rather than combined in one event's notes. Uses 'SKW4003' not 'DL4003'"},
+    {"text": "RON hotel (Lodge Kohler, Green Bay WI) included in notes", "passed": false, "evidence": "Hotel is its own separate calendar event rather than a notes field on the duty event"},
+    {"text": "Start time reflects report (2055 Jun 7), end time reflects release (0746 Jun 8)", "passed": false, "evidence": "No single event spans 2055 Jun 7 → 0746 Jun 8; events split across outbound/layover/return"}
+  ]
+}

@@ -1,0 +1,29 @@
+Parsing: 121807_20260607_E3180A.txt
+Pairing: E3180A | 2 duty days | TAFB: 10:51
+
+Overnight detection: Day 1 Release shows "07:46/08" (release on the 8th) and Day 2 has no Report line.
+→ Treating as one event spanning the full duty period.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EVENT 1 OF 1 (short overnight)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Title:      E3180A · 2055 MSP → 0746 MSP
+Start:      2026-06-07T20:55:00
+End:        2026-06-08T07:46:00
+Calendar:   ✈️
+Location:   Minneapolis-Saint Paul International Airport
+
+Notes:
+E3180A · Overnight (2 days)
+Report: 2055 | Release: 0746/08
+RON: Lodge Kohler, Green Bay WI (7:24)
+
+DL4003  MSP → GRB  2140-2251  1:11
+DL4140  GRB → MSP  0615-0731  1:16
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Date  | Event Title                    | Status        |
+|-------|-------------------------------|---------------|
+| Jun 7 | E3180A · 2055 MSP → 0746 MSP | ✓ Would create |

@@ -530,6 +530,117 @@ def enrich_night(commit: bool) -> None:
     click.echo(f"Updated {len(updates)} flight(s) with night time and landing data.")
 
 
+@main.command("backfill-passengers")
+@click.option(
+    "--source",
+    type=click.Choice(["actual", "planned"], case_sensitive=False),
+    default="actual",
+    show_default=True,
+    help="Which recorded/ subfolder to read txt exports from.",
+)
+@click.option("--commit", is_flag=True, default=False, help="Write to Airtable (default: dry run).")
+def backfill_passengers(source: str, commit: bool) -> None:
+    """Backfill the Passengers field on existing Flight records from recorded txt files.
+
+    Re-parses the archived SkedPlus exports, derives each leg's Import Flight Key the
+    same way the importer does, and updates the matching Flight record's Passengers
+    value. Idempotent: only records whose value actually differs are written.
+    """
+    try:
+        settings = load_airtable_settings()
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    source_dir = RECORDED_DIR / source.lower()
+    file_sets, discover_warnings = discover_pairing_file_sets(source_dir)
+    if not file_sets:
+        raise click.ClickException(f"No pairing file sets found in {source_dir}")
+
+    # Airport index is needed by the planner for UTC time conversion. We don't use
+    # the times here, but loading it keeps the derived Import Flight Keys identical
+    # to a real import and avoids noisy naive-time warnings.
+    airport_index = fetch_airport_index(settings.api_key, settings.base_id)
+
+    pairings = []
+    warnings: list[str] = list(discover_warnings)
+    for file_set in file_sets:
+        pairing, warns = load_pairing_export(file_set)
+        pairings.append(pairing)
+        warnings.extend(warns)
+
+    plans = build_plans_for_exports(
+        pairings, ImportMode.ACTUAL, airport_index=airport_index
+    )
+
+    # Desired Passengers value per Import Flight Key, derived from the txt exports.
+    desired: dict[str, int] = {}
+    for plan in plans:
+        for flight in plan.flights:
+            desired[flight.import_flight_key] = flight.passengers
+
+    from pyairtable import Api
+
+    api = Api(settings.api_key)
+    flights_table = api.base(settings.base_id).table(F.TABLE_FLIGHTS)
+
+    click.echo("Fetching flight records…")
+    records = flights_table.all(
+        fields=[F.F_IMPORT_FLIGHT_KEY, F.F_FLIGHT_PASSENGERS]
+    )
+    record_by_key = {
+        rec["fields"].get(F.F_IMPORT_FLIGHT_KEY): rec
+        for rec in records
+        if rec.get("fields", {}).get(F.F_IMPORT_FLIGHT_KEY)
+    }
+
+    updates: list[dict] = []
+    unmatched: list[str] = []
+    unchanged = 0
+    for key, passengers in sorted(desired.items()):
+        rec = record_by_key.get(key)
+        if rec is None:
+            unmatched.append(key)
+            continue
+        current = rec["fields"].get(F.F_FLIGHT_PASSENGERS)
+        if current == passengers:
+            unchanged += 1
+            continue
+        updates.append(
+            {
+                "id": rec["id"],
+                "fields": {F.F_FLIGHT_PASSENGERS: passengers},
+                "_key": key,
+                "_from": current,
+                "_to": passengers,
+            }
+        )
+
+    for warn in warnings:
+        click.echo(f"WARN: {warn}")
+    for key in unmatched:
+        click.echo(f"WARN: no Flight record found for Import Flight Key: {key}")
+
+    click.echo(
+        f"\n{len(desired)} leg(s) across {len(plans)} file(s): "
+        f"{len(updates)} to update, {unchanged} already correct, "
+        f"{len(unmatched)} unmatched."
+    )
+
+    if not commit:
+        for u in updates:
+            click.echo(f"  {u['_key']}  {u['_from']} → {u['_to']}")
+        click.echo(f"\nRun with --commit to write {len(updates)} record(s) to Airtable.")
+        return
+
+    if not updates:
+        click.echo("Nothing to update.")
+        return
+
+    payloads = [{"id": u["id"], "fields": u["fields"]} for u in updates]
+    flights_table.batch_update(payloads, typecast=True)
+    click.echo(f"Updated Passengers on {len(updates)} flight(s).")
+
+
 if __name__ == "__main__":
     try:
         main(standalone_mode=True)

@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "four-day-trip",
+  "prompt": "Here's my 4-day pairing file. Don't create events — output the full event details for each day as they would appear in the calendar.",
+  "assertions": [
+    {"text": "Produces exactly 4 events", "passed": null, "evidence": null},
+    {"text": "Each title uses the format 'E3405 · HHMM ORG → HHMM DEST' with → arrow", "passed": null, "evidence": null},
+    {"text": "Day 1 notes: 'Day 1 of 4', report 1215, release 2142, RON Fairfield Inn Aberdeen", "passed": null, "evidence": null},
+    {"text": "Day 4 notes: 'Day 4 of 4', no RON line (last day of trip)", "passed": null, "evidence": null},
+    {"text": "All flight numbers prefixed with DL (DL4330, DL4264, etc.)", "passed": null, "evidence": null},
+    {"text": "Times shown in HHMM format (no colons), e.g. 1215 not 12:15", "passed": null, "evidence": null}
+  ]
+}

@@ -1,0 +1,79 @@
+CALENDAR EVENTS — Pairing E3405
+Pilot: Justin Lenhart (FO) | Equipment: CRJ | Base: MSP
+Trip Block: 16:19 | Trip Credit: 18:57 | TAFB: 75:48
+
+EVENT 1
+Title: E3405 Day 1 — MSP-GFK-MSP-ABR (Duty)
+Calendar: Work
+Start: 2026-06-01 12:15 (report)
+End: 2026-06-01 21:42 (release)
+Location: Minneapolis-St. Paul Intl (MSP)
+Notes:
+- Pairing E3405, Day 1 of 4
+- Flt 1: MSP→GFK Dep 13:00 Arr 14:21 Block 1:21
+- Flt 2: GFK→MSP Dep 15:50 Arr 17:13 Block 1:23
+- Flt 3: MSP→ABR Dep 20:10 Arr 21:27 Block 1:17
+- Overnight in Aberdeen, SD (16:23 layover) — Fairfield Inn & Suites
+
+EVENT 2
+Title: Layover — Aberdeen, SD (Fairfield Inn & Suites)
+Calendar: Work
+Start: 2026-06-01 21:27 (wheels down ABR)
+End: 2026-06-02 14:05 (next report)
+Location: Fairfield Inn & Suites, Aberdeen, SD
+
+EVENT 3
+Title: E3405 Day 2 — ABR-MSP-BRD (Duty)
+Calendar: Work
+Start: 2026-06-02 14:05 (report at ABR)
+End: 2026-06-02 19:11 (release at BRD)
+Location: Aberdeen Regional Airport (ABR)
+Notes:
+- Pairing E3405, Day 2 of 4
+- Flt 4: ABR→MSP Dep 14:50 Arr 16:03 Block 1:13
+- Flt 5: MSP→BRD Dep 17:55 Arr 18:56 Block 1:01
+- Overnight in Brainerd, MN (10:49 layover) — The Lodge At Brainerd Lakes
+
+EVENT 4
+Title: Layover — Brainerd, MN (The Lodge At Brainerd Lakes)
+Calendar: Work
+Start: 2026-06-02 18:56 (wheels down BRD)
+End: 2026-06-03 06:00 (next report)
+Location: The Lodge At Brainerd Lakes, Brainerd, MN
+
+EVENT 5
+Title: E3405 Day 3 — BRD-MSP-INL-MSP-ABR (Duty)
+Calendar: Work
+Start: 2026-06-03 06:00 (report at BRD)
+End: 2026-06-03 14:27 (release at ABR)
+Location: Brainerd Lakes Regional Airport (BRD)
+Notes:
+- Pairing E3405, Day 3 of 4
+- Flt 6: BRD→MSP Dep 06:45 Arr 07:39 Block 0:54
+- Flt 7: MSP→INL Dep 09:05 Arr 10:24 Block 1:19
+- Flt 8: INL→MSP Dep 10:59 Arr 12:10 Block 1:11
+- Flt 9: MSP→ABR Dep 12:55 Arr 14:12 Block 1:17
+- Overnight in Aberdeen, SD (15:18 layover) — Fairfield Inn & Suites
+
+EVENT 6
+Title: Layover — Aberdeen, SD (Fairfield Inn & Suites)
+Calendar: Work
+Start: 2026-06-03 14:12 (wheels down ABR)
+End: 2026-06-04 05:45 (next report)
+Location: Fairfield Inn & Suites, Aberdeen, SD
+
+EVENT 7
+Title: E3405 Day 4 — ABR-MSP-BRD-MSP-BJI-MSP (Duty)
+Calendar: Work
+Start: 2026-06-04 05:45 (report at ABR)
+End: 2026-06-04 16:03 (release at MSP)
+Location: Aberdeen Regional Airport (ABR)
+Notes:
+- Pairing E3405, Day 4 of 4
+- Flt 10: ABR→MSP Dep 06:30 Arr 07:44 Block 1:14
+- Flt 11: MSP→BRD Dep 09:10 Arr 10:13 Block 1:03
+- Flt 12: BRD→MSP Dep 10:55 Arr 11:49 Block 0:54
+- Flt 13: MSP→BJI Dep 12:55 Arr 14:04 Block 1:09
+- Flt 14: BJI→MSP Dep 14:45 Arr 15:48 Block 1:03
+
+Summary: 7 events total — 4 duty-period events + 3 layover events.

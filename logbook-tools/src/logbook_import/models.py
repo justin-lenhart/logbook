@@ -145,6 +145,7 @@ class PlannedFlightRecord:
     aircraft_code: str | None
     operation: str | None
     airline: str | None
+    passengers: int = 0
     special_categories: list[str] = field(default_factory=list)
 
 

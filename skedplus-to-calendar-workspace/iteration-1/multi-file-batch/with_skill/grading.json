@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "run": "with_skill",
+  "expectations": [
+    {"text": "Produces exactly 8 events total (4 from each file)", "passed": true, "evidence": "Output shows EVENT 1 OF 8 through EVENT 8 OF 8 — exactly 8 events"},
+    {"text": "E3436 events cover Jun 11, 12, 13, 14", "passed": true, "evidence": "Events 1-4 dated Jun 11, 12, 13, 14 with pairing E3436"},
+    {"text": "E3412 events cover Jun 17, 18, 19, 20", "passed": true, "evidence": "Events 5-8 dated Jun 17, 18, 19, 20 with pairing E3412"},
+    {"text": "Jun 12 (E3436 Day 2) ends at 2307 GFK with 4 legs in notes", "passed": true, "evidence": "EVENT 2: title '...→ 2307 GFK', notes contain DL4262, DL4331, DL4331, DL4332 — 4 legs"},
+    {"text": "Jun 19 (E3412 Day 3) reports from GFK, location is Grand Forks International Airport", "passed": true, "evidence": "EVENT 7: Location: Grand Forks International Airport — correct"},
+    {"text": "Summary table present at end listing all 8 events", "passed": true, "evidence": "Summary table at end lists all 8 events with dates and titles"}
+  ]
+}

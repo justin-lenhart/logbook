@@ -1,0 +1,99 @@
+CALENDAR EVENTS — Two Pairings (E3436 + E3412)
+
+═══════════════════════════════════
+FILE 1: E3436 (Jun 11–14)
+═══════════════════════════════════
+
+EVENT 1: E3436 Day 1 Duty (MSP-MQT-MSP-ABR)
+Calendar: Work / Flying
+Start: 2026-06-11 13:40 CDT
+End: 2026-06-11 21:44 CDT
+Location: MSP
+Notes: Day 1 of 4. Flt 4314 MSP-MQT 14:25-16:39, Flt 4295 MQT-MSP 17:14-17:40, Flt 4264 MSP-ABR 20:10-21:29. RON Aberdeen.
+
+EVENT 2: Layover — Fairfield Inn, Aberdeen SD
+Calendar: Work
+Start: 2026-06-11 21:29 CDT
+End: 2026-06-12 14:01 CDT
+
+EVENT 3: E3436 Day 2 Duty (ABR-MSP-GFK-MSP-GFK)
+Calendar: Work / Flying
+Start: 2026-06-12 14:01 CDT
+End: 2026-06-12 23:22 CDT
+Location: ABR
+Notes: Day 2 of 4. 4 legs. RON Grand Forks.
+
+EVENT 4: Layover — Country Inn, Grand Forks ND
+Calendar: Work
+Start: 2026-06-12 23:07 CDT
+End: 2026-06-13 15:10 CDT
+
+EVENT 5: E3436 Day 3 Duty (GFK-MSP-ATY)
+Calendar: Work / Flying
+Start: 2026-06-13 15:10 CDT
+End: 2026-06-13 19:45 CDT
+Location: GFK
+Notes: Day 3 of 4. Flt 4330 GFK-MSP 15:55-17:21, Flt 4299 MSP-ATY 18:15-19:30. RON Watertown.
+
+EVENT 6: Layover — Hampton Inn, Watertown SD
+Calendar: Work
+Start: 2026-06-13 19:30 CDT
+End: 2026-06-14 06:00 CDT
+
+EVENT 7: E3436 Day 4 Duty (ATY-MSP-XWA-MSP)
+Calendar: Work / Flying
+Start: 2026-06-14 06:00 CDT
+End: 2026-06-14 14:43 CDT
+Location: ATY
+Notes: Day 4 of 4. Last day, no RON.
+
+═══════════════════════════════════
+FILE 2: E3412 (Jun 17–20)
+═══════════════════════════════════
+
+EVENT 8: E3412 Day 1 Duty (MSP-GFK-MSP-ABR)
+Calendar: Work / Flying
+Start: 2026-06-17 12:15 CDT
+End: 2026-06-17 19:49 CDT
+Location: MSP
+Notes: Day 1 of 4. RON Aberdeen.
+
+EVENT 9: Layover — Fairfield Inn, Aberdeen SD
+Calendar: Work
+Start: 2026-06-17 19:34 CDT
+End: 2026-06-18 14:01 CDT
+
+EVENT 10: E3412 Day 2 Duty (ABR-MSP-GFK-MSP-GFK)
+Calendar: Work / Flying
+Start: 2026-06-18 14:01 CDT
+End: 2026-06-18 23:22 CDT
+Location: ABR
+Notes: Day 2 of 4. 4 legs. RON Grand Forks.
+
+EVENT 11: Layover — Country Inn, Grand Forks ND
+Calendar: Work
+Start: 2026-06-18 23:07 CDT
+End: 2026-06-19 10:05 CDT
+
+EVENT 12: E3412 Day 3 Duty (GFK-MSP-HIB-MSP-BRD)
+Calendar: Work / Flying
+Start: 2026-06-19 10:05 CDT
+End: 2026-06-19 19:11 CDT
+Location: GFK
+Notes: Day 3 of 4. 4 legs. RON Brainerd.
+
+EVENT 13: Layover — Lodge at Brainerd Lake
+Calendar: Work
+Start: 2026-06-19 18:56 CDT
+End: 2026-06-20 06:00 CDT
+
+EVENT 14: E3412 Day 4 Duty (BRD-MSP-GFK-MSP)
+Calendar: Work / Flying
+Start: 2026-06-20 06:00 CDT
+End: 2026-06-20 12:30 CDT
+Location: BRD
+Notes: Day 4 of 4. Last day, no RON.
+
+═══════════════════════════════════
+SUMMARY: 14 events total (7 duty + 7 layover) across 2 pairings.
+═══════════════════════════════════

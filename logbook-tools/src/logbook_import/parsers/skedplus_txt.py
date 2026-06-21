@@ -39,7 +39,7 @@ def _is_airport_code(token: str) -> bool:
 
 def _parse_leg_body(leg_number: int, body: str) -> Leg:
     tokens = body.split()
-    if len(tokens) < 9:
+    if len(tokens) < 8:
         raise ValueError(f"Leg {leg_number}: not enough tokens in {body!r}")
 
     flight = tokens[0]

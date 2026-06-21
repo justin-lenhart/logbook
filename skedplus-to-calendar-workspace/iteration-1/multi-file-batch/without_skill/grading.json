@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "run": "without_skill",
+  "expectations": [
+    {"text": "Produces exactly 8 events total (4 from each file)", "passed": false, "evidence": "Produces 14 events: 7 duty events + 7 separate layover events"},
+    {"text": "E3436 events cover Jun 11, 12, 13, 14", "passed": true, "evidence": "Events 1, 3, 5, 7 cover Jun 11, 12, 13, 14 for E3436 (duty events)"},
+    {"text": "E3412 events cover Jun 17, 18, 19, 20", "passed": true, "evidence": "Events 8, 10, 12, 14 cover Jun 17, 18, 19, 20 for E3412 (duty events)"},
+    {"text": "Jun 12 (E3436 Day 2) ends at 2307 GFK with 4 legs in notes", "passed": false, "evidence": "Event 3 notes say '4 legs' but doesn't list them out; title format doesn't include end time"},
+    {"text": "Jun 19 (E3412 Day 3) reports from GFK, location is Grand Forks International Airport", "passed": false, "evidence": "Location shown as 'GFK' not full airport name 'Grand Forks International Airport'"},
+    {"text": "Summary table present at end listing all 8 events", "passed": false, "evidence": "Summary says '14 events total' — different count and lists all 14 not just 8 duty events"}
+  ]
+}

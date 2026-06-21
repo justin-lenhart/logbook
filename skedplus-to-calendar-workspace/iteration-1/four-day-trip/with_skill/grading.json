@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "run": "with_skill",
+  "expectations": [
+    {"text": "Produces exactly 4 events", "passed": true, "evidence": "Output shows EVENT 1 OF 4 through EVENT 4 OF 4 — exactly 4 events"},
+    {"text": "Each title uses the format 'E3405 · HHMM ORG → HHMM DEST' with → arrow", "passed": true, "evidence": "All 4 titles use 'E3405 · HHMM ORG → HHMM DEST' with · and → correctly"},
+    {"text": "Day 1 notes: 'Day 1 of 4', report 1215, release 2142, RON Fairfield Inn Aberdeen", "passed": true, "evidence": "'E3405 · Day 1 of 4', 'Report: 1215 | Release: 2142', 'RON: Fairfield Inn & Suites, Aberdeen SD (16:23)' all present"},
+    {"text": "Day 4 notes: 'Day 4 of 4', no RON line (last day of trip)", "passed": true, "evidence": "Event 4 notes show 'E3405 · Day 4 of 4' and 'Report: 0545 | Release: 1603' with no RON line"},
+    {"text": "All flight numbers prefixed with DL (DL4330, DL4264, etc.)", "passed": true, "evidence": "All flight numbers use DL prefix: DL4330, DL4264, DL4262, DL4301, DL4336, DL4245, DL4262, DL4238, DL4273, DL4283"},
+    {"text": "Times shown in HHMM format (no colons), e.g. 1215 not 12:15", "passed": true, "evidence": "All times in notes use HHMM format: 1300-1421, 1550-1713, 2010-2127, etc."}
+  ]
+}

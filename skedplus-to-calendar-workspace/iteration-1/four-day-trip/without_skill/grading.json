@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "run": "without_skill",
+  "expectations": [
+    {"text": "Produces exactly 4 events", "passed": false, "evidence": "Produces 7 events: 4 duty-period events + 3 separate layover events"},
+    {"text": "Each title uses the format 'E3405 · HHMM ORG → HHMM DEST' with → arrow", "passed": false, "evidence": "Titles use 'E3405 Day 1 — MSP-GFK-MSP-ABR (Duty)' format — different separator, different structure, no HHMM times"},
+    {"text": "Day 1 notes: 'Day 1 of 4', report 1215, release 2142, RON Fairfield Inn Aberdeen", "passed": false, "evidence": "'Day 1 of 4' present but report/release shown with colons ('12:15') not HHMM format, hotel info in a separate layover event not notes"},
+    {"text": "Day 4 notes: 'Day 4 of 4', no RON line (last day of trip)", "passed": true, "evidence": "Day 4 notes: 'Day 4 of 4' and 'Trip ends at MSP (home base). No layover.' — correctly omits RON"},
+    {"text": "All flight numbers prefixed with DL (DL4330, DL4264, etc.)", "passed": false, "evidence": "Flight numbers shown without prefix as 'Flt 1: MSP→GFK' — no DL prefix"},
+    {"text": "Times shown in HHMM format (no colons), e.g. 1215 not 12:15", "passed": false, "evidence": "Times shown with colons: 'Dep 13:00 Arr 14:21', '12:15' etc."}
+  ]
+}

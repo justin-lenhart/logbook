@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "overnight-pairing",
+  "prompt": "Here's my skedplus file for an overnight trip. Don't create events — just output the full event details (title, start, end, notes) for each event you would create, formatted exactly as they would appear in the calendar.",
+  "assertions": [
+    {"text": "Produces exactly one event (short overnight correctly detected)", "passed": null, "evidence": null},
+    {"text": "Event title matches format: 'E3180A · 2055 MSP → 0746 MSP'", "passed": null, "evidence": null},
+    {"text": "Notes header says 'Overnight (2 days)' not 'Day 1 of 2'", "passed": null, "evidence": null},
+    {"text": "Both legs appear in notes: DL4003 MSP → GRB and DL4140 GRB → MSP", "passed": null, "evidence": null},
+    {"text": "RON hotel (Lodge Kohler, Green Bay WI) included in notes", "passed": null, "evidence": null},
+    {"text": "Start time reflects report (2055 Jun 7), end time reflects release (0746 Jun 8)", "passed": null, "evidence": null}
+  ]
+}

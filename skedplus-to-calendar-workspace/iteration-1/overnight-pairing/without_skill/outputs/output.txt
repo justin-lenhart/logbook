@@ -1,0 +1,70 @@
+SOURCE FILE: 121807_20260607_E3180A.txt
+Pairing: E3180A | Employee: Justin Lenhart (121807) | Base: MSP | Aircraft: CRJ | Seat: FO
+
+EVENT 1 OF 3
+
+Title: E3180A — MSP→GRB (SkyWest 4003)
+Start: Sunday, June 7, 2026 at 8:55 PM (20:55) CDT
+End: Sunday, June 7, 2026 at 10:51 PM (22:51) CDT
+Calendar: Flying
+Location: MSP → GRB
+
+Notes:
+Pairing: E3180A
+Report: 20:55 MSP
+
+Flight 1: SKW4003
+  MSP → GRB
+  Dep: 21:40  Arr: 22:51
+  Block: 1:11  Credit: 1:06
+  Pax: 0 (ferry/repositioning)
+
+Crew:
+  CA: Jeff Beaudry (059658)
+  FO: Justin Lenhart (121807)
+  FA: Terry Keehl Krei (051971)
+  FF: Tony Cole (090882)
+
+Hotel: Lodge Kohler (Green Bay / Kohler, WI)
+Layover: 7:24
+
+---
+
+EVENT 2 OF 3
+
+Title: Layover — Lodge Kohler (GRB)
+Start: Sunday, June 7, 2026 at 10:51 PM (22:51) CDT
+End: Monday, June 8, 2026 at 6:15 AM (06:15) CDT
+Calendar: Flying
+Location: Lodge Kohler, Kohler, WI
+
+Notes:
+Pairing: E3180A
+Layover: 7:24
+Hotel: Lodge Kohler
+
+---
+
+EVENT 3 OF 3
+
+Title: E3180A — GRB→MSP (SkyWest 4140)
+Start: Monday, June 8, 2026 at 6:15 AM (06:15) CDT
+End: Monday, June 8, 2026 at 7:46 AM (07:46) CDT
+Calendar: Flying
+Location: GRB → MSP
+
+Notes:
+Pairing: E3180A
+Release: 07:46 MSP
+
+Flight 2: SKW4140
+  GRB → MSP
+  Dep: 06:15  Arr: 07:31
+  Block: 1:16  Credit: 1:14
+
+Pairing Totals:
+  Block: 2:27  Credit: 5:26  TAFB: 10:51
+
+---
+
+Summary: 3 events total — 1 outbound flight event, 1 layover event, 1 return flight event.

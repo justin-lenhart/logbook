@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "run": "with_skill",
+  "expectations": [
+    {"text": "Produces exactly one event (short overnight correctly detected)", "passed": true, "evidence": "Output shows 'EVENT 1 OF 1 (short overnight)' — single event correctly identified"},
+    {"text": "Event title matches format: 'E3180A · 2055 MSP → 0746 MSP'", "passed": true, "evidence": "Title: 'E3180A · 2055 MSP → 0746 MSP' — exact match"},
+    {"text": "Notes header says 'Overnight (2 days)' not 'Day 1 of 2'", "passed": true, "evidence": "Notes: 'E3180A · Overnight (2 days)' — correct"},
+    {"text": "Both legs appear in notes: DL4003 MSP → GRB and DL4140 GRB → MSP", "passed": true, "evidence": "DL4003  MSP → GRB  2140-2251  1:11 and DL4140  GRB → MSP  0615-0731  1:16 both present"},
+    {"text": "RON hotel (Lodge Kohler, Green Bay WI) included in notes", "passed": true, "evidence": "RON: Lodge Kohler, Green Bay WI (7:24) present in notes"},
+    {"text": "Start time reflects report (2055 Jun 7), end time reflects release (0746 Jun 8)", "passed": true, "evidence": "Start: 2026-06-07T20:55:00, End: 2026-06-08T07:46:00 — correct"}
+  ]
+}

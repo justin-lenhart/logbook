@@ -1,0 +1,13 @@
+{
+  "eval_id": 3,
+  "eval_name": "multi-file-batch",
+  "prompt": "I've got two trips to add to my calendar — a 4-day and a 4-day. Here are the skedplus files. Don't create events, just show me a preview of all events you would create for both trips.",
+  "assertions": [
+    {"text": "Produces exactly 8 events total (4 from each file)", "passed": null, "evidence": null},
+    {"text": "E3436 events cover Jun 11, 12, 13, 14", "passed": null, "evidence": null},
+    {"text": "E3412 events cover Jun 17, 18, 19, 20", "passed": null, "evidence": null},
+    {"text": "Jun 12 (E3436 Day 2) ends at 2307 GFK with 4 legs in notes", "passed": null, "evidence": null},
+    {"text": "Jun 19 (E3412 Day 3) reports from GFK, location is Grand Forks International Airport", "passed": null, "evidence": null},
+    {"text": "Summary table present at end listing all 8 events", "passed": null, "evidence": null}
+  ]
+}

@@ -1,0 +1,88 @@
+Parsing: 121807_20260601_E3405.txt
+Pairing: E3405 | 4 duty days | TAFB: 75:48
+
+No overnight detection trigger (all days have explicit Report times).
+→ Creating one event per duty day (4 total).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EVENT 1 OF 4 — Monday Jun 1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Title:      E3405 · 1215 MSP → 2127 ABR
+Start:      2026-06-01T12:15:00
+End:        2026-06-01T21:42:00
+Calendar:   ✈️
+Location:   Minneapolis-Saint Paul International Airport
+
+Notes:
+E3405 · Day 1 of 4
+Report: 1215 | Release: 2142
+RON: Fairfield Inn & Suites, Aberdeen SD (16:23)
+
+DL4330  MSP → GFK  1300-1421  1:21
+DL4330  GFK → MSP  1550-1713  1:23
+DL4264  MSP → ABR  2010-2127  1:17
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EVENT 2 OF 4 — Tuesday Jun 2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Title:      E3405 · 1405 ABR → 1856 BRD
+Start:      2026-06-02T14:05:00
+End:        2026-06-02T19:11:00
+Calendar:   ✈️
+Location:   Aberdeen Regional Airport
+
+Notes:
+E3405 · Day 2 of 4
+Report: 1405 | Release: 1911
+RON: The Lodge at Brainerd Lake (10:49)
+
+DL4262  ABR → MSP  1450-1603  1:13
+DL4301  MSP → BRD  1755-1856  1:01
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EVENT 3 OF 4 — Wednesday Jun 3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Title:      E3405 · 0600 BRD → 1412 ABR
+Start:      2026-06-03T06:00:00
+End:        2026-06-03T14:27:00
+Calendar:   ✈️
+Location:   Brainerd Lakes Regional Airport
+
+Notes:
+E3405 · Day 3 of 4
+Report: 0600 | Release: 1427
+RON: Fairfield Inn & Suites, Aberdeen SD (15:18)
+
+DL4336  BRD → MSP  0645-0739  0:54
+DL4245  MSP → INL  0905-1024  1:19
+DL4245  INL → MSP  1059-1210  1:11
+DL4262  MSP → ABR  1255-1412  1:17
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EVENT 4 OF 4 — Thursday Jun 4
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Title:      E3405 · 0545 ABR → 1548 MSP
+Start:      2026-06-04T05:45:00
+End:        2026-06-04T16:03:00
+Calendar:   ✈️
+Location:   Aberdeen Regional Airport
+
+Notes:
+E3405 · Day 4 of 4
+Report: 0545 | Release: 1603
+
+DL4238  ABR → MSP  0630-0744  1:14
+DL4273  MSP → BRD  0910-1013  1:03
+DL4273  BRD → MSP  1055-1149  0:54
+DL4283  MSP → BJI  1255-1404  1:09
+DL4283  BJI → MSP  1445-1548  1:03
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Date  | Event Title                    | Status        |
+|-------|-------------------------------|---------------|
+| Jun 1 | E3405 · 1215 MSP → 2127 ABR  | ✓ Would create |
+| Jun 2 | E3405 · 1405 ABR → 1856 BRD  | ✓ Would create |
+| Jun 3 | E3405 · 0600 BRD → 1412 ABR  | ✓ Would create |
+| Jun 4 | E3405 · 0545 ABR → 1548 MSP  | ✓ Would create |
