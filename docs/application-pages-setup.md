@@ -21,9 +21,28 @@ block. Nothing is written to Airtable — the generator is read-only.
 
 ```bash
 cd logbook-tools
-.venv/bin/python -m logbook_import.cli export-apps          # all four pages
+.venv/bin/python -m logbook_import.cli export-apps           # regenerate all four pages
 .venv/bin/python -m logbook_import.cli export-apps --page swa --page faa
+.venv/bin/python -m logbook_import.cli export-apps --update  # regenerate + commit + push (publish)
 ```
+
+### Keeping the pages current after imports
+
+The pages are pre-rendered HTML, so they go stale after new flights are imported
+until regenerated and pushed. Two ways to refresh — mirroring the map's
+`--update-map`:
+
+```bash
+# Standalone publish:
+logbook-import export-apps --update
+
+# Or fold it into an import (parallel to --update-map):
+logbook-import import-actual --role sic --commit --update-apps   # apps only
+logbook-import import-actual --role sic --commit --update-all    # map AND apps
+```
+
+The custom app picks up the new numbers on next load (GitHub Pages redeploys in
+~1 min) — no `block release` needed unless the extension's own code changes.
 
 Output: `docs/apps/{swa,ual,faa,summary}.html`. Open them directly in a browser,
 or embed (see below).

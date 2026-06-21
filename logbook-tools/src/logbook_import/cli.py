@@ -76,15 +76,39 @@ def import_planned(
     default=False,
     help="After a successful --commit, regenerate map_data.geojson and push to GitHub.",
 )
+@click.option(
+    "--update-apps",
+    "update_apps",
+    is_flag=True,
+    default=False,
+    help="After a successful --commit, regenerate the app reference pages and push to GitHub.",
+)
+@click.option(
+    "--update-all",
+    "update_all",
+    is_flag=True,
+    default=False,
+    help="Shorthand for --update-map and --update-apps together.",
+)
 def import_actual(
     role: str,
     operator: str | None,
     dry_run: bool,
     commit: bool,
     update_map: bool,
+    update_apps: bool,
+    update_all: bool,
 ) -> None:
     """Import actual flown legs as Flight rows."""
-    _run_import(ImportMode.ACTUAL, role, operator, dry_run, commit, update_map=update_map)
+    _run_import(
+        ImportMode.ACTUAL,
+        role,
+        operator,
+        dry_run,
+        commit,
+        update_map=update_map or update_all,
+        update_apps=update_apps or update_all,
+    )
 
 
 def _run_import(
@@ -94,6 +118,7 @@ def _run_import(
     dry_run: bool,
     commit: bool,
     update_map: bool = False,
+    update_apps: bool = False,
 ) -> None:
     if dry_run and commit:
         raise click.ClickException("Use only one of --dry-run or --commit")
@@ -181,6 +206,10 @@ def _run_import(
     assert airport_index is not None
     _update_map(settings, airport_index, push=update_map)
 
+    if update_apps:
+        click.echo("\nApp reference pages:")
+        _update_apps(settings, push=True)
+
 
 def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
     """Show map stats and optionally write + commit + push map_data.geojson."""
@@ -217,6 +246,63 @@ def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
         click.echo("  Map data unchanged — skipping commit.")
     subprocess.run(["git", "-C", repo, "push", "--set-upstream", "origin", "HEAD"], check=True)
     click.echo(f"  Wrote {len(resolved)} airports, {len(route_stats)} routes → pushed to GitHub Pages.")
+
+
+ALL_APP_PAGES = ["swa", "ual", "faa", "summary"]
+
+
+def _render_app_pages(settings: object, out_dir: Path, wanted: list[str]) -> tuple[int, int]:
+    """Generate the application reference HTML pages. Returns (n_flights, n_families)."""
+    from datetime import datetime
+
+    from pyairtable import Api
+
+    from logbook_import import app_report as R
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    api = Api(settings.api_key)  # type: ignore[attr-defined]
+    aircraft = api.table(settings.base_id, F.TABLE_AIRCRAFT).all(fields=[F.F_AIRCRAFT_CODE])  # type: ignore[attr-defined]
+    ac_by_id = {r["id"]: r["fields"].get(F.F_AIRCRAFT_CODE) for r in aircraft}
+    flights = api.table(settings.base_id, F.TABLE_FLIGHTS).all()  # type: ignore[attr-defined]
+
+    rows = R.normalize(flights, ac_by_id)
+    missing = [r for r in rows if not r.family]
+    if missing:
+        click.echo(
+            f"  WARNING: {len(missing)} flight(s) have an aircraft with no family "
+            f"mapping; excluded. Add them to app_families.AIRCRAFT_TO_FAMILY.",
+            err=True,
+        )
+
+    aggs = R.aggregate(rows)
+    generated = datetime.now().strftime("%Y-%m-%d %H:%M")
+    for name in wanted:
+        (out_dir / f"{name}.html").write_text(R.RENDERERS[name](aggs, generated), encoding="utf-8")
+    return len(rows), len(aggs)
+
+
+def _update_apps(settings: object, *, push: bool) -> None:
+    """Regenerate the application reference pages and optionally commit + push."""
+    out = WORKSPACE_ROOT / "docs" / "apps"
+    n_flights, n_families = _render_app_pages(settings, out, ALL_APP_PAGES)
+    click.echo(f"  {n_flights} flights · {n_families} families → {len(ALL_APP_PAGES)} pages")
+    if not push:
+        click.echo("  (run with --update-apps to commit and push to GitHub Pages)")
+        return
+
+    repo = str(WORKSPACE_ROOT)
+    today = date.today().strftime("%Y-%m-%d")
+    subprocess.run(["git", "-C", repo, "add", "docs/apps"], check=True)
+    diff = subprocess.run(["git", "-C", repo, "diff", "--cached", "--quiet"])
+    if diff.returncode != 0:
+        subprocess.run(
+            ["git", "-C", repo, "commit", "-m", f"Update app reference pages ({today})"],
+            check=True,
+        )
+    else:
+        click.echo("  App pages unchanged — skipping commit.")
+    subprocess.run(["git", "-C", repo, "push", "--set-upstream", "origin", "HEAD"], check=True)
+    click.echo("  App reference pages pushed to GitHub Pages.")
 
 
 @main.command("export-map")
@@ -298,51 +384,46 @@ def export_map(output_path: Path | None, update: bool) -> None:
     multiple=True,
     help="Limit to specific page(s). Default: all.",
 )
-def export_apps(output_dir: Path | None, pages: tuple[str, ...]) -> None:
+@click.option(
+    "--update",
+    "update",
+    is_flag=True,
+    default=False,
+    help="After writing, commit and push docs/apps to GitHub Pages.",
+)
+def export_apps(output_dir: Path | None, pages: tuple[str, ...], update: bool) -> None:
     """Generate airline/FAA application reference pages (SWA, UAL, FAA, Summary)."""
-    from datetime import datetime
-
-    from pyairtable import Api
-
-    from logbook_import import app_report as R
-
     try:
         settings = load_airtable_settings()
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
     out = output_dir or (WORKSPACE_ROOT / "docs" / "apps")
-    out.mkdir(parents=True, exist_ok=True)
+    wanted = [p.lower() for p in pages] or ALL_APP_PAGES
 
-    api = Api(settings.api_key)
-    aircraft = api.table(settings.base_id, F.TABLE_AIRCRAFT).all(fields=[F.F_AIRCRAFT_CODE])
-    ac_by_id = {r["id"]: r["fields"].get(F.F_AIRCRAFT_CODE) for r in aircraft}
-    flights = api.table(settings.base_id, F.TABLE_FLIGHTS).all()
-
-    rows = R.normalize(flights, ac_by_id)
-    missing = [r for r in rows if not r.family]
-    if missing:
-        click.echo(
-            f"WARNING: {len(missing)} flight(s) have an aircraft with no family "
-            f"mapping; they are excluded. Add them to "
-            f"app_families.AIRCRAFT_TO_FAMILY.",
-            err=True,
-        )
-
-    aggs = R.aggregate(rows)
-    generated = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    wanted = [p.lower() for p in pages] or ["swa", "ual", "faa", "summary"]
+    n_flights, n_families = _render_app_pages(settings, out, wanted)
     for name in wanted:
-        html = R.RENDERERS[name](aggs, generated)
-        path = out / f"{name}.html"
-        path.write_text(html, encoding="utf-8")
-        click.echo(f"Wrote {path}")
-
+        click.echo(f"Wrote {out / f'{name}.html'}")
     click.echo(
-        f"Done — {len(rows)} flights across {len(aggs)} families. "
+        f"Done — {n_flights} flights across {n_families} families. "
         f"Open the HTML files or embed them as Airtable custom blocks."
     )
+
+    if update:
+        repo = str(WORKSPACE_ROOT)
+        today = date.today().strftime("%Y-%m-%d")
+        subprocess.run(["git", "-C", repo, "add", "docs/apps"], check=True)
+        diff = subprocess.run(["git", "-C", repo, "diff", "--cached", "--quiet"])
+        if diff.returncode != 0:
+            subprocess.run(
+                ["git", "-C", repo, "commit", "-m", f"Update app reference pages ({today})"],
+                check=True,
+            )
+            click.echo("App pages committed.")
+        else:
+            click.echo("App pages unchanged — skipping commit.")
+        subprocess.run(["git", "-C", repo, "push", "--set-upstream", "origin", "HEAD"], check=True)
+        click.echo("Pushed to GitHub Pages.")
 
 
 @main.command("enrich-night")
