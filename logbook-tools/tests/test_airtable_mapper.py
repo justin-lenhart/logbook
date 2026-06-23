@@ -9,6 +9,7 @@ from logbook_import.airtable_mapper import (
 )
 from logbook_import.models import (
     ImportBatchRecord,
+    ImportMode,
     PlannedDutyPeriodRecord,
     PlannedFlightRecord,
     PlannedTripRecord,
@@ -37,6 +38,29 @@ def test_map_trip_fields() -> None:
 
     with_equipment = map_trip_fields(trip, include_equipment_family=True)
     assert with_equipment[F.F_TRIP_EQUIPMENT_FAMILY] == "CRJ"
+
+
+def test_map_trip_fields_tafb() -> None:
+    trip = PlannedTripRecord(
+        trip_key="E3405|2026-06-01",
+        pairing_id="E3405",
+        start_date=date(2026, 6, 1),
+        end_date=date(2026, 6, 4),
+        base="MSP",
+        equipment_family="CRJ",
+        planned_block=16.3,
+        planned_credit=18.95,
+        planned_duty_periods=4,
+        planned_legs=14,
+        tafb_hours=75.8,
+    )
+    # Planned import writes TAFB.
+    assert map_trip_fields(trip)[F.F_TRIP_TAFB] == 75.8
+    # Actual import preserves the originally-scheduled value (no planned writes).
+    assert F.F_TRIP_TAFB not in map_trip_fields(trip, mode=ImportMode.ACTUAL)
+    # Missing/zero TAFB (e.g. actuals-only trip) is not written.
+    trip.tafb_hours = 0.0
+    assert F.F_TRIP_TAFB not in map_trip_fields(trip)
 
 
 def test_map_flight_fields() -> None:

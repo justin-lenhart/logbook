@@ -20,6 +20,7 @@ F_TRIP_PLANNED_BLOCK = "Planned Block"
 F_TRIP_PLANNED_CREDIT = "Planned Credit"
 F_TRIP_PLANNED_LEGS = "Planned Legs"
 F_TRIP_PLANNED_DUTY_PERIODS = "Planned Duty Periods"
+F_TRIP_TAFB = "TAFB"                       # decimal hours, from TXT header on planned import
 F_TRIP_ACTUAL_BLOCK = "Actual Block"       # rollup from linked Flights
 F_TRIP_ACTUAL_CREDIT = "Actual Credit"     # rollup from linked Flights
 F_TRIP_ACTUAL_LEGS = "Actual Legs"         # rollup from linked Flights

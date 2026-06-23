@@ -141,6 +141,7 @@ def build_import_plan(
         planned_credit=pairing.credit_hours,
         planned_duty_periods=len(pairing.duty_days),
         planned_legs=planned_legs_total,
+        tafb_hours=pairing.tafb_hours,
         status="Planned" if mode == ImportMode.PLANNED else "Actual",
     )
 

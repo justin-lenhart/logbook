@@ -42,6 +42,8 @@ def map_trip_fields(
         fields[F.F_TRIP_PLANNED_CREDIT] = trip.planned_credit
         fields[F.F_TRIP_PLANNED_LEGS] = trip.planned_legs
         fields[F.F_TRIP_PLANNED_DUTY_PERIODS] = trip.planned_duty_periods
+        if trip.tafb_hours:
+            fields[F.F_TRIP_TAFB] = round(trip.tafb_hours, 2)
     if include_equipment_family:
         fields[F.F_TRIP_EQUIPMENT_FAMILY] = trip.equipment_family
     return fields

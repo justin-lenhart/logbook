@@ -100,6 +100,7 @@ class PlannedTripRecord:
     planned_credit: float
     planned_duty_periods: int
     planned_legs: int
+    tafb_hours: float = 0.0
     status: str = "Planned"
 
 
