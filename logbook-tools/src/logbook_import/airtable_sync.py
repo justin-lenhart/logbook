@@ -128,6 +128,18 @@ class AirtableImporter:
         trip_result, trip_ids = _upsert_records(trips_table, trip_payloads, F.F_TRIP_KEY)
         trip_counts = _count_upsert(trip_result)
 
+        # An actual import that *creates* (rather than updates) its trip means no
+        # planned trip matched — so Planned Block/Credit stay empty. This is the
+        # E3436D case: a trip picked up after the start-of-month planned import.
+        # Surface it instead of letting the planned fields silently go blank.
+        if plan.mode == ImportMode.ACTUAL and trip_counts.created:
+            for trip in plan.trips:
+                warnings.append(
+                    f"No planned trip matched {trip.trip_key} ({plan.pairing_id}); "
+                    f"created a new Actual trip with empty Planned Block/Credit. "
+                    f"Backfill from the crew pay report if this trip was flown."
+                )
+
         duty_table = self._base.table(F.TABLE_DUTY_PERIODS)
         duty_payloads = []
         for duty in plan.duty_periods:

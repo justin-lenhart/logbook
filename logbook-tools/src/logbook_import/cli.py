@@ -48,7 +48,9 @@ def _import_options(func):  # type: ignore[no-untyped-def]
     func = click.option(
         "--operator",
         type=click.Choice(["skw"], case_sensitive=False),
-        default=None,
+        default="skw",
+        show_default=True,
+        help="Carrier the flying was performed for; sets Operation (Part 121) and Airline.",
     )(func)
     func = click.option("--dry-run", is_flag=True, default=False)(func)
     func = click.option("--commit", is_flag=True, default=False)(func)

@@ -29,7 +29,8 @@ def test_actual_import_e3058e(e3058e_txt, e3058e_csv) -> None:
     )
     assert len(plan.flights) == 10
     first = plan.flights[0]
-    assert first.import_flight_key == "E3058E|2026-05-09|4266|MSP|INL|1252"
+    # Import Flight Key collapses the E3058E revision suffix to its base (E3058).
+    assert first.import_flight_key == "E3058|2026-05-09|4266|MSP|INL|1252"
     assert first.sic_hours == first.block_hours
     assert first.pic_hours == 0.0
     assert first.operation == "Part 121"
