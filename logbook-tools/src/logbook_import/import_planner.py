@@ -119,6 +119,17 @@ def _pic_sic_hours(
     return 0.0, 0.0
 
 
+def _flight_position(role: CrewRole | None, deadhead: bool) -> str:
+    # Deadhead legs are flown as a passenger — no logged position.
+    if deadhead:
+        return ""
+    if role == CrewRole.PIC:
+        return "PIC"
+    if role == CrewRole.SIC:
+        return "SIC"
+    return ""
+
+
 def build_import_plan(
     pairing: PairingExport,
     mode: ImportMode,
@@ -188,6 +199,7 @@ def build_import_plan(
 
             deadhead = is_deadhead(leg)
             pic_hours, sic_hours = _pic_sic_hours(leg.block_hours, role, deadhead)
+            flight_position = _flight_position(role, deadhead)
             flight_num = normalize_flight_number(leg.flight)
             if_key = import_flight_key(
                 pairing.pairing_id,
@@ -225,6 +237,7 @@ def build_import_plan(
                     credit_hours=leg.credit_hours,
                     pic_hours=pic_hours,
                     sic_hours=sic_hours,
+                    flight_position=flight_position,
                     deadhead=deadhead,
                     aircraft_code=leg.aircraft_type or pairing.equipment_family,
                     operation=operation,

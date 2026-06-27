@@ -43,7 +43,9 @@ def _import_options(func):  # type: ignore[no-untyped-def]
     func = click.option(
         "--role",
         type=click.Choice(["pic", "sic"], case_sensitive=False),
-        required=True,
+        default="sic",
+        show_default=True,
+        help="Crew position flown; sets PIC/SIC time and Flight Position. Defaults to SIC.",
     )(func)
     func = click.option(
         "--operator",

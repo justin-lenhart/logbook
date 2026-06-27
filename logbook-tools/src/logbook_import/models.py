@@ -142,6 +142,7 @@ class PlannedFlightRecord:
     credit_hours: float
     pic_hours: float
     sic_hours: float
+    flight_position: str
     deadhead: bool
     aircraft_code: str | None
     operation: str | None

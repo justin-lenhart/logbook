@@ -88,6 +88,8 @@ def map_flight_fields(flight: PlannedFlightRecord) -> dict[str, Any]:
         F.F_FLIGHT_DEADHEAD: flight.deadhead,
         F.F_FLIGHT_PASSENGERS: flight.passengers,
     }
+    if flight.flight_position:
+        fields[F.F_FLIGHT_POSITION] = flight.flight_position
     if flight.airline:
         fields[F.F_FLIGHT_AIRLINE] = flight.airline
     if flight.tail_number:

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from logbook_import import airtable_fields as F
 from logbook_import.airtable_mapper import (
@@ -73,12 +73,13 @@ def test_map_flight_fields() -> None:
         tail_number="N713EV",
         origin="MSP",
         destination="INL",
-        out_time=datetime(2026, 5, 9, 12, 52),
-        in_time=datetime(2026, 5, 9, 14, 10),
+        out_time=datetime(2026, 5, 9, 12, 52, tzinfo=timezone.utc),
+        in_time=datetime(2026, 5, 9, 14, 10, tzinfo=timezone.utc),
         block_hours=1.3,
         credit_hours=1.3,
         pic_hours=0.0,
         sic_hours=1.3,
+        flight_position="SIC",
         deadhead=False,
         aircraft_code="CR5",
         operation="Part 121",
@@ -88,6 +89,11 @@ def test_map_flight_fields() -> None:
     assert fields[F.F_IMPORT_FLIGHT_KEY] == "E3058E|2026-05-09|4266|MSP|INL|1252"
     assert fields[F.F_FLIGHT_OPERATION] == "Part 121"
     assert fields[F.F_FLIGHT_DEADHEAD] is False
+    assert fields[F.F_FLIGHT_POSITION] == "SIC"
+
+    # Blank position (e.g. deadhead) is omitted entirely.
+    flight.flight_position = ""
+    assert F.F_FLIGHT_POSITION not in map_flight_fields(flight)
 
 
 def test_map_duty_and_batch_fields() -> None:

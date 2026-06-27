@@ -33,6 +33,7 @@ def test_actual_import_e3058e(e3058e_txt, e3058e_csv) -> None:
     assert first.import_flight_key == "E3058|2026-05-09|4266|MSP|INL|1252"
     assert first.sic_hours == first.block_hours
     assert first.pic_hours == 0.0
+    assert first.flight_position == "SIC"
     assert first.operation == "Part 121"
     assert first.airline == "SKW"
     assert first.aircraft_code == "CR5"
@@ -54,6 +55,7 @@ def test_actual_import_e7748_includes_deadhead(e7748_txt, e7748_csv) -> None:
     assert deadheads[0].flight_number == "1303"
     assert deadheads[0].pic_hours == 0.0
     assert deadheads[0].sic_hours == 0.0
+    assert deadheads[0].flight_position == ""
 
 
 def test_planned_import_e7748(e7748_txt, e7748_csv) -> None:
