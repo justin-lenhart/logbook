@@ -102,6 +102,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -80.228104,
+          39.2966
+        ]
+      },
+      "properties": {
+        "iata": "CKB",
+        "name": "North Central West Virginia Airport",
+        "city": "Bridgeport",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -97.038002,
           32.896801
         ]
@@ -158,6 +174,22 @@
         "iata": "ESC",
         "name": "Delta County Airport",
         "city": "Escanaba",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -96.815804,
+          46.9207
+        ]
+      },
+      "properties": {
+        "iata": "FAR",
+        "name": "Hector International Airport",
+        "city": "Fargo",
         "country": "US"
       }
     },
@@ -246,6 +278,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -77.455803,
+          38.9445
+        ]
+      },
+      "properties": {
+        "iata": "IAD",
+        "name": "Washington Dulles International Airport",
+        "city": "Dulles",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -88.114557,
           45.81911
         ]
@@ -294,6 +342,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -78.8339004516602,
+          40.3161010742188
+        ]
+      },
+      "properties": {
+        "iata": "JST",
+        "name": "John Murtha Johnstown Cambria County Airport",
+        "city": "Johnstown",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -87.395884,
           46.351498
         ]
@@ -318,6 +382,22 @@
         "iata": "MSP",
         "name": "Minneapolis\u2013Saint Paul International Airport / Wold\u2013Chamberlain Field",
         "city": "Minneapolis",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.9048,
+          41.9786
+        ]
+      },
+      "properties": {
+        "iata": "ORD",
+        "name": "Chicago O'Hare International Airport",
+        "city": "Chicago",
         "country": "US"
       }
     },
@@ -431,6 +511,56 @@
         "name": "Toronto Pearson International Airport",
         "city": "Toronto",
         "country": "CA"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -78.8339004516602,
+            40.3161010742188
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "JST",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 1.75,
+        "min_block": 1.6,
+        "max_block": 1.9,
+        "avg_credit": 1.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -80.228104,
+            39.2966
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "CKB",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 1.5,
+        "min_block": 1.4,
+        "max_block": 1.6,
+        "avg_credit": 1.75
       }
     },
     {
@@ -556,6 +686,31 @@
         "min_block": 1.0,
         "max_block": 1.9,
         "avg_credit": 1.4389
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -80.228104,
+            39.2966
+          ],
+          [
+            -77.455803,
+            38.9445
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "CKB",
+        "destination": "IAD",
+        "count": 2,
+        "avg_block": 0.95,
+        "min_block": 0.8,
+        "max_block": 1.1,
+        "avg_credit": 1.1
       }
     },
     {
@@ -1081,6 +1236,31 @@
         "min_block": 0.8,
         "max_block": 0.8,
         "avg_credit": 0.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -96.815804,
+            46.9207
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "FAR",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 2.2,
+        "min_block": 2.1,
+        "max_block": 2.3,
+        "avg_credit": 2.2
       }
     },
     {
