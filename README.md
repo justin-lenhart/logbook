@@ -19,6 +19,10 @@ you fly (actual).
    Files must be named `<seq>_<YYYYMMDD>_<PairingID>.txt` — e.g. `01_20260601_E3405.txt`.
    A matching `.csv` is optional.
 
+> **Even easier:** on the server, dropping the files into `inbox/planned/` or
+> `inbox/actual/` imports them **automatically** — no terminal at all. See
+> [Automatic imports](#automatic-imports-server).
+
 **2. Open a terminal, activate the tool:**
 
 ```sh
@@ -112,7 +116,10 @@ state. Nothing is written. Eyeball it against your trip report, then re-run with
 
 ```
 logbook/
-├── inbox/                 # ← you drop SkedPlus exports here
+├── inbox/                 # ← you drop SkedPlus exports here (manual runs scan the top level)
+│   ├── planned/           #   auto-import watch folder — schedule-drop exports
+│   ├── actual/            #   auto-import watch folder — flown-trip exports
+│   └── failed/            #   auto-import quarantine (bad files + the import log)
 └── recorded/
     ├── planned/           # import-planned moves files here
     └── actual/            # import-actual moves files here
@@ -121,6 +128,42 @@ logbook/
 File naming convention: `<seq>_<YYYYMMDD>_<PairingID>.<txt|csv>`
 (e.g. `01_20260601_E3405.txt`). Anything not matching that pattern is ignored with a
 warning, so it's safe to have other junk in `inbox/`.
+
+### Automatic imports (server)
+
+On the home server (mintbox) the two subfolders are watched by systemd path
+units: drop a txt/csv export pair into **`inbox/planned/`** or **`inbox/actual/`**
+and the matching import runs by itself with `--commit` — no terminal needed.
+With Syncthing sharing the `inbox/` folder to your Mac, the daily habit becomes
+*drag the files into the right folder, walk away*. Processed files disappear
+into `recorded/<mode>/` as usual; anything that fails lands in
+`inbox/failed/<timestamp>-<mode>/` together with `import-log.txt`, which syncs
+back to the Mac so you'll see it.
+
+The pieces, all in this repo:
+
+| Piece | Where |
+|---|---|
+| Watcher wrapper (settle delay, pair-wait, quarantine) | `scripts/process-inbox.sh` |
+| systemd path + service units (×2 modes) | `deploy/systemd/` |
+| Backend/credentials the auto-import uses | `logbook-tools/.env` (`LOGBOOK_BACKEND`, `GRIST_*`) |
+
+Install (once, needs sudo):
+
+```sh
+sudo cp deploy/systemd/logbook-import-*.{path,service} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now logbook-import-planned.path logbook-import-actual.path
+```
+
+Watch a run / debug: `journalctl -u logbook-import-actual.service -f`.
+Auto-imports run with the default flags (`--role sic --operator skw`) and do
+**not** push the map to GitHub Pages — run `logbook-import export-map --update`
+(or an import with `--update-map`) when you want the public map refreshed.
+
+> **Migration note:** while the Grist migration is in progress the auto-importer
+> writes to the *duplicate* Grist doc (`GRIST_DOC` in `logbook-tools/.env`), not
+> to Airtable and not to the live doc. At cutover it flips to the live doc.
 
 ### Publishing (map & app pages)
 
@@ -219,9 +262,14 @@ user-facing today; it's the roadmap for a future `compliance-check` command.
 ```
 logbook/
 ├── inbox/                  # drop SkedPlus exports here (git-ignored)
+│   ├── planned/            #   watched — auto-imports planned trips
+│   ├── actual/             #   watched — auto-imports flown trips
+│   └── failed/             #   quarantine for failed auto-imports
 ├── recorded/               # processed exports land here (git-ignored)
 │   ├── planned/
 │   └── actual/
+├── deploy/systemd/         # path/service units for the auto-importer
+├── scripts/                # process-inbox.sh (watcher), update-map.sh
 ├── docs/                   # GitHub Pages site (the map + app pages)
 │   ├── index.html          # Leaflet map
 │   ├── map_data.geojson    # generated — do not edit
@@ -230,7 +278,8 @@ logbook/
 └── logbook-tools/          # the CLI
     ├── src/logbook_import/ # source
     ├── scripts/            # one-off / maintenance scripts
-    └── .env                # your Airtable credentials (git-ignored)
+    └── .env                # backend credentials (git-ignored):
+                            #   LOGBOOK_BACKEND=grist|airtable + GRIST_*/AIRTABLE_*
 ```
 
 Operational data (`inbox/`, `recorded/`, `backups/`, `misc/`, `.env`) is git-ignored —

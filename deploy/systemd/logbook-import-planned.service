@@ -1,0 +1,15 @@
+[Unit]
+Description=Auto-import planned SkedPlus pairings into the logbook
+# Started by logbook-import-planned.path when inbox/planned is non-empty.
+# Safety: if something loops, stop retriggering rather than spinning.
+StartLimitIntervalSec=10min
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+User=mint
+Group=mint
+WorkingDirectory=/home/mint/Developer/logbook
+ExecStart=/home/mint/Developer/logbook/scripts/process-inbox.sh planned
+Nice=10
+TimeoutStartSec=15min

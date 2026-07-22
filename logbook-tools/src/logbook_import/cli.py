@@ -42,6 +42,13 @@ def main() -> None:
 
 def _import_options(func):  # type: ignore[no-untyped-def]
     func = click.option(
+        "--inbox",
+        "inbox",
+        type=click.Path(exists=True, file_okay=False, path_type=Path),
+        default=None,
+        help="Directory to scan for SkedPlus exports (default: repo inbox/).",
+    )(func)
+    func = click.option(
         "--role",
         type=click.Choice(["pic", "sic"], case_sensitive=False),
         default="sic",
@@ -67,9 +74,10 @@ def import_planned(
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    inbox: Path | None,
 ) -> None:
     """Import planned pairing data (no Flight rows)."""
-    _run_import(ImportMode.PLANNED, role, operator, dry_run, commit)
+    _run_import(ImportMode.PLANNED, role, operator, dry_run, commit, inbox=inbox)
 
 
 @main.command("import-actual")
@@ -100,6 +108,7 @@ def import_actual(
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    inbox: Path | None,
     update_map: bool,
     update_apps: bool,
     update_all: bool,
@@ -111,6 +120,7 @@ def import_actual(
         operator,
         dry_run,
         commit,
+        inbox=inbox,
         update_map=update_map or update_all,
         update_apps=update_apps or update_all,
     )
@@ -122,6 +132,7 @@ def _run_import(
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    inbox: Path | None = None,
     update_map: bool = False,
     update_apps: bool = False,
 ) -> None:
@@ -133,9 +144,11 @@ def _run_import(
     crew_role = CrewRole(role.lower())
     op = Operator(operator.lower()) if operator else None
 
-    file_sets, inbox_warnings = discover_pairing_file_sets()
+    file_sets, inbox_warnings = discover_pairing_file_sets(inbox)
     if not file_sets:
-        raise click.ClickException("No valid pairing file sets found in inbox/")
+        raise click.ClickException(
+            f"No valid pairing file sets found in {inbox or 'inbox/'}"
+        )
 
     pairings = []
     plan_warnings: list[str] = []
