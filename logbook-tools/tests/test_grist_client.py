@@ -85,3 +85,19 @@ def test_upsert_empty_payloads_no_calls() -> None:
     result = client.upsert_by_key("Trips", [], "Trip_Key")
     assert result.created == 0 and result.updated == 0
     assert client.calls == []
+
+
+def test_update_records_groups_by_field_set() -> None:
+    client = FakeClient(existing={})
+    client.update_records(
+        "Flights",
+        [
+            (1, {"A": 1, "B": 2}),
+            (2, {"A": 3}),          # different field set -> separate PATCH
+            (3, {"B": 5, "A": 4}),  # same set as row 1 (order-insensitive)
+        ],
+    )
+    patches = [c for c in client.calls if c[0] == "PATCH"]
+    assert len(patches) == 2
+    sizes = sorted(len(p[2]["records"]) for p in patches)
+    assert sizes == [1, 2]

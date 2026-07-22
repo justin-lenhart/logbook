@@ -18,6 +18,7 @@ from logbook_import.airport_map import (
 )
 from logbook_import.airtable_settings import load_airtable_settings
 from logbook_import.airtable_sync import AirtableImporter, format_commit_summary
+from logbook_import.backend import active_backend
 from logbook_import.config import RECORDED_DIR, WORKSPACE_ROOT, discover_pairing_file_sets, move_processed_files
 from logbook_import.dry_run import format_run_summary
 from logbook_import.import_planner import build_plans_for_exports
@@ -143,16 +144,26 @@ def _run_import(
         pairings.append(pairing)
         plan_warnings.extend(warnings)
 
+    backend = active_backend()
+
     # The planner needs the airport index up front to convert SkedPlus local
-    # times to UTC.  Try to load it now; if Airtable isn't reachable (e.g. no
+    # times to UTC.  Try to load it now; if the backend isn't reachable (e.g. no
     # creds during dry-run), fall back to naive datetimes with a loud warning.
     try:
-        settings = load_airtable_settings()
-        airport_index = fetch_airport_index(settings.api_key, settings.base_id)
+        if backend == "grist":
+            from logbook_import.grist_airports import fetch_airport_index as _grist_airports
+            from logbook_import.grist_client import GristClient
+            from logbook_import.grist_settings import load_grist_settings
+
+            settings = load_grist_settings()
+            airport_index = _grist_airports(GristClient(settings))
+        else:
+            settings = load_airtable_settings()
+            airport_index = fetch_airport_index(settings.api_key, settings.base_id)
     except (ValueError, Exception) as exc:
         if not dry_run:
             raise click.ClickException(
-                f"Cannot load Airtable airport index (needed for UTC conversion): {exc}"
+                f"Cannot load {backend} airport index (needed for UTC conversion): {exc}"
             ) from exc
         settings = None
         airport_index = None
@@ -170,7 +181,7 @@ def _run_import(
 
     if dry_run:
         click.echo(format_run_summary(plans, all_warnings))
-        if airport_index is not None:
+        if airport_index is not None and backend == "airtable":
             click.echo("\nMap data (current state — import not committed):")
             _update_map(settings, airport_index, push=False)
         return
@@ -189,13 +200,25 @@ def _run_import(
             )
 
     assert settings is not None  # we already raised above if not dry_run
-    importer = AirtableImporter(
-        settings,
-        include_equipment_family=True,
-        airport_index=airport_index,
-    )
+    if backend == "grist":
+        from logbook_import.grist_sync import GristImporter
+        from logbook_import.grist_sync import format_commit_summary as _grist_summary
+
+        importer: AirtableImporter | GristImporter = GristImporter(
+            settings,
+            include_equipment_family=True,
+            airport_index=airport_index,
+        )
+        summarize = _grist_summary
+    else:
+        importer = AirtableImporter(
+            settings,
+            include_equipment_family=True,
+            airport_index=airport_index,
+        )
+        summarize = format_commit_summary
     results = [importer.sync_plan(plan) for plan in plans]
-    summary = format_commit_summary(results)
+    summary = summarize(results)
     if all_warnings:
         warning_lines = "\n".join(f"WARN: {w}" for w in all_warnings)
         summary = f"{warning_lines}\n\n{summary}"
@@ -205,6 +228,15 @@ def _run_import(
     moved = move_processed_files(plans, dest_dir)
     if moved:
         click.echo(f"\nMoved {len(moved)} file(s) to {dest_dir.relative_to(RECORDED_DIR.parent)}/")
+
+    if backend == "grist":
+        # export-map / export-apps still read Airtable; ported in Gate 3.
+        if update_map or update_apps:
+            click.echo(
+                "\nNOTE: --update-map/--update-apps are not yet ported to the "
+                "Grist backend (Gate 3); skipped."
+            )
+        return
 
     click.echo("\nMap data:")
     assert airport_index is not None

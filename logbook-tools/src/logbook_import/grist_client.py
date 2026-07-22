@@ -92,11 +92,19 @@ class GristClient:
     ) -> None:
         if not updates:
             return
-        self._request(
-            "PATCH",
-            self._doc_path(f"/tables/{table}/records"),
-            {"records": [{"id": rid, "fields": f} for rid, f in updates]},
-        )
+        # Grist requires every record in one PATCH to share the same field set.
+        # Payloads legitimately differ (e.g. deadhead flights omit tail/aircraft),
+        # so group by field-key-set and send one PATCH per group — never
+        # null-fill, which would clear real values.
+        groups: dict[frozenset[str], list[tuple[int, dict[str, Any]]]] = {}
+        for rid, fields in updates:
+            groups.setdefault(frozenset(fields), []).append((rid, fields))
+        for group in groups.values():
+            self._request(
+                "PATCH",
+                self._doc_path(f"/tables/{table}/records"),
+                {"records": [{"id": rid, "fields": f} for rid, f in group]},
+            )
 
     def sql(self, query: str, args: list[Any] | None = None) -> list[dict[str, Any]]:
         body: dict[str, Any] = {"sql": query}
