@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Regenerate the published map GeoJSON from current Airtable data and push it.
+# Regenerate the published map GeoJSON from the active logbook backend
+# (LOGBOOK_BACKEND in logbook-tools/.env: grist or airtable) and push it.
 # No prompts — intended to be run after every batch of new imports.
 #
 # Requires:
 #   - this directory is the root of the logbook git repo
 #   - logbook-tools/.venv exists with the project installed
-#   - Airtable credentials available in env (or .env loaded by the CLI)
+#   - backend credentials available in env (or logbook-tools/.env loaded by the CLI)
 #   - a configured `origin` remote with push access
 #
 # Exits 0 cleanly even if no data has changed.
@@ -18,7 +19,7 @@ cd "$REPO_ROOT"
 OUTPUT="docs/map_data.geojson"
 mkdir -p "$(dirname "$OUTPUT")"
 
-echo "→ Querying Airtable for flight + airport data (takes ~30s)…"
+echo "→ Querying the logbook backend for flight + airport data…"
 ./logbook-tools/.venv/bin/python -m logbook_import.cli export-map --output "$OUTPUT"
 
 if ! git diff --quiet -- "$OUTPUT"; then

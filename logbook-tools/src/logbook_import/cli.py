@@ -181,7 +181,7 @@ def _run_import(
 
     if dry_run:
         click.echo(format_run_summary(plans, all_warnings))
-        if airport_index is not None and backend == "airtable":
+        if airport_index is not None:
             click.echo("\nMap data (current state — import not committed):")
             _update_map(settings, airport_index, push=False)
         return
@@ -229,27 +229,30 @@ def _run_import(
     if moved:
         click.echo(f"\nMoved {len(moved)} file(s) to {dest_dir.relative_to(RECORDED_DIR.parent)}/")
 
-    if backend == "grist":
-        # export-map / export-apps still read Airtable; ported in Gate 3.
-        if update_map or update_apps:
-            click.echo(
-                "\nNOTE: --update-map/--update-apps are not yet ported to the "
-                "Grist backend (Gate 3); skipped."
-            )
-        return
-
     click.echo("\nMap data:")
     assert airport_index is not None
     _update_map(settings, airport_index, push=update_map)
 
     if update_apps:
-        click.echo("\nApp reference pages:")
-        _update_apps(settings, push=True)
+        if backend == "grist":
+            # export-apps (app_report.py) still reads Airtable; not yet ported.
+            click.echo(
+                "\nNOTE: --update-apps is not yet ported to the Grist backend; skipped."
+            )
+        else:
+            click.echo("\nApp reference pages:")
+            _update_apps(settings, push=True)
 
 
 def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
     """Show map stats and optionally write + commit + push map_data.geojson."""
-    flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)  # type: ignore[attr-defined]
+    if active_backend() == "grist":
+        from logbook_import.grist_client import GristClient
+        from logbook_import.grist_map import fetch_flight_records as _g_flights
+
+        flight_records = _g_flights(GristClient(settings))  # type: ignore[arg-type]
+    else:
+        flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)  # type: ignore[attr-defined]
     if not flight_records:
         click.echo("  No qualifying flights found.")
         return
@@ -359,15 +362,29 @@ def _update_apps(settings: object, *, push: bool) -> None:
 )
 def export_map(output_path: Path | None, update: bool) -> None:
     """Export airport points and route lines as GeoJSON."""
+    backend = active_backend()
     try:
-        settings = load_airtable_settings()
+        if backend == "grist":
+            from logbook_import.grist_airports import fetch_airport_index as _g_airports
+            from logbook_import.grist_client import GristClient
+            from logbook_import.grist_map import fetch_flight_records as _g_flights
+            from logbook_import.grist_settings import load_grist_settings
+
+            g_settings = load_grist_settings()
+            client = GristClient(g_settings)
+        else:
+            settings = load_airtable_settings()
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
     resolved_output = output_path or (WORKSPACE_ROOT / "docs" / "map_data.geojson")
 
-    airport_index = fetch_airport_index(settings.api_key, settings.base_id)
-    flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)
+    if backend == "grist":
+        airport_index = _g_airports(client)
+        flight_records = _g_flights(client)
+    else:
+        airport_index = fetch_airport_index(settings.api_key, settings.base_id)
+        flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)
     if not flight_records:
         raise click.ClickException("No qualifying flights found in Flights table")
 
