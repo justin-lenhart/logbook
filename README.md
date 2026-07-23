@@ -161,9 +161,9 @@ Auto-imports run with the default flags (`--role sic --operator skw`) and do
 **not** push the map to GitHub Pages — run `logbook-import export-map --update`
 (or an import with `--update-map`) when you want the public map refreshed.
 
-> **Migration note:** while the Grist migration is in progress the auto-importer
-> writes to the *duplicate* Grist doc (`GRIST_DOC` in `logbook-tools/.env`), not
-> to Airtable and not to the live doc. At cutover it flips to the live doc.
+> **Backend:** the importer writes to the live Grist doc (`GRIST_DOC` in
+> `logbook-tools/.env`) — cutover from Airtable happened 2026-07-23. Airtable
+> remains only as a frozen last-resort backup of pre-cutover data.
 
 ### Publishing (map & app pages)
 
