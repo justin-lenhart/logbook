@@ -1,12 +1,14 @@
 # Logbook
 
-A personal Part 121 logbook. It imports your **SkedPlus** trip exports into Airtable
-(your real logbook), and keeps a public **flight map** and a set of **application
-reference pages** up to date.
+A personal Part 121 logbook. It imports your **SkedPlus** trip exports into a
+self-hosted **Grist** doc (your real logbook, on the home server), and keeps a
+public **flight map** up to date. (It began life on Airtable; cutover to Grist
+happened 2026-07-23 — Airtable survives only as a frozen pre-cutover backup.)
 
-The whole thing is built around one habit: **drop your SkedPlus files in a folder,
-run one command.** That's it. Everything below the Quick Start is reference material
-you can ignore on a normal day.
+The whole thing is built around one habit: **drag your SkedPlus files into a
+folder. That's it.** The synced folder auto-imports on the server — no terminal.
+Everything below the Quick Start is reference material you can ignore on a
+normal day.
 
 ---
 
@@ -15,39 +17,33 @@ you can ignore on a normal day.
 You do this twice a month: once when the schedule drops (planned), and again after
 you fly (actual).
 
-**1. Drop your SkedPlus export files into the `inbox/` folder** (repo root).
-   Files must be named `<seq>_<YYYYMMDD>_<PairingID>.txt` — e.g. `01_20260601_E3405.txt`.
-   A matching `.csv` is optional.
+**Drag the SkedPlus export pair (txt + csv) into the synced inbox folder on your
+Mac** (Syncthing shares it with the server):
 
-> **Even easier:** on the server, dropping the files into `inbox/planned/` or
-> `inbox/actual/` imports them **automatically** — no terminal at all. See
-> [Automatic imports](#automatic-imports-server).
+- schedule just dropped → the **`planned/`** subfolder
+- trips flown → the **`actual/`** subfolder
 
-**2. Open a terminal, activate the tool:**
+Files must be named `<seq>_<YYYYMMDD>_<PairingID>.txt` — e.g. `01_20260601_E3405.txt`
+(SkedPlus names them this way already). Within ~30 seconds the files vanish
+(= imported into Grist) and land in `recorded/` on the server. If an import fails,
+the files reappear in the **`failed/`** subfolder with an `import-log.txt`
+explaining why. See [Automatic imports](#automatic-imports-server) for how it works.
 
-```sh
-cd logbook/logbook-tools
-source .venv/bin/activate
-```
-
-**3. Run the one command you need:**
+**Manual fallback** (server terminal — same engine the watcher uses):
 
 ```sh
-# After you've FLOWN the trips — writes flights + refreshes the map & app pages
-logbook-import import-actual --role sic --operator skw --commit --update-all
-```
+cd logbook/logbook-tools && source .venv/bin/activate
 
-```sh
+# After you've FLOWN the trips (files at inbox/ top level)
+logbook-import import-actual --role sic --operator skw --commit
+
 # When the schedule DROPS — writes planned trips (no flights yet)
 logbook-import import-planned --role sic --operator skw --commit
 ```
 
-That's the whole job. Files are moved out of `inbox/` into `recorded/` automatically
-once they import. Done.
-
-> **Tip:** Drop `--commit` from any command to do a **dry run** first — it prints
-> exactly what *would* be imported without touching Airtable. Worth a glance if a
-> trip looks unusual.
+> **Tip:** Drop `--commit` from any manual command to do a **dry run** first — it
+> prints exactly what *would* be imported without writing to the logbook. Worth a
+> glance if a trip looks unusual.
 
 ---
 
@@ -56,11 +52,12 @@ once they import. Done.
 1. **Import planned trips** — when your monthly schedule drops, load the pairings as
    planned trips (planned block/credit, no flight rows yet).
 2. **Import actual trips** — after you fly, load the flown legs as real flight rows.
-3. **Publish** — refresh the [flight map](https://justin-lenhart.github.io/logbook/)
-   and the airline/FAA [application reference pages](https://justin-lenhart.github.io/logbook/apps/summary.html).
+3. **Publish** — refresh the [flight map](https://justin-lenhart.github.io/logbook/).
 
-Airtable is where you *view and analyze* everything. This tool only does the import
-and publish steps — it never asks you questions and has no reporting mode.
+You *view and analyze* everything in the Grist doc (`http://100.78.241.102:8484`,
+Tailscale-only) and its embedded Metabase dashboards (see the `logbook-visualize`
+repo). This tool only does the import and publish steps — it never asks you
+questions and has no reporting mode.
 
 ---
 
@@ -77,28 +74,35 @@ source .venv/bin/activate
 pip install -e ".[dev]"        # first time only
 ```
 
-Create `logbook-tools/.env` with your Airtable credentials (needed for `--commit`):
+Create `logbook-tools/.env` with the backend credentials (needed for `--commit`):
 
 ```sh
-AIRTABLE_API_KEY=pat...your token...
-AIRTABLE_BASE_ID=app...your base id...
+LOGBOOK_BACKEND=grist
+GRIST_URL=http://100.78.241.102:8484
+GRIST_API_KEY=...your key...
+GRIST_DOC=...the live doc id...
 ```
 
-See `.env.example` for the template. **After setup, you only ever need
+See `.env.example` for the template. (`LOGBOOK_BACKEND=airtable` +
+`AIRTABLE_API_KEY`/`AIRTABLE_BASE_ID` still selects the legacy backend — only
+useful against the frozen pre-cutover base.) **After setup, you only ever need
 `source .venv/bin/activate` once per terminal session.**
 
-### The normal workflow
+### The normal workflow (manual runs)
+
+Day to day you don't run these — the [auto-importer](#automatic-imports-server)
+does. For manual runs on the server:
 
 | When | Command |
 |------|---------|
 | Schedule drops | `logbook-import import-planned --role sic --operator skw --commit` |
-| After you fly | `logbook-import import-actual --role sic --operator skw --commit --update-all` |
+| After you fly | `logbook-import import-actual --role sic --operator skw --commit --update-map` |
 
-- `--role` is **required** (`sic` or `pic`).
+- `--role` defaults to `sic` (`pic` when that day comes).
 - `--operator` defaults to `skw`, so it's optional — shown above for clarity.
-- `--commit` writes to Airtable. **Without it, every command is a safe dry run.**
-- `--update-all` (actual only) refreshes the map *and* the app pages and pushes them
-  to GitHub Pages. See [Publishing](#publishing-map--app-pages) for the finer-grained flags.
+- `--commit` writes to the logbook. **Without it, every command is a safe dry run.**
+- `--update-map` (actual only) refreshes the public flight map and pushes it to
+  GitHub Pages. See [Publishing](#publishing-map--app-pages) for the finer-grained flags.
 
 ### Dry run first (optional)
 
@@ -134,8 +138,8 @@ warning, so it's safe to have other junk in `inbox/`.
 On the home server (mintbox) the two subfolders are watched by systemd path
 units: drop a txt/csv export pair into **`inbox/planned/`** or **`inbox/actual/`**
 and the matching import runs by itself with `--commit` — no terminal needed.
-With Syncthing sharing the `inbox/` folder to your Mac, the daily habit becomes
-*drag the files into the right folder, walk away*. Processed files disappear
+Syncthing shares `inbox/` with the Mac (folder id `logbook-inbox`), so the daily
+habit is *drag the files into the right folder, walk away*. Processed files disappear
 into `recorded/<mode>/` as usual; anything that fails lands in
 `inbox/failed/<timestamp>-<mode>/` together with `import-log.txt`, which syncs
 back to the Mac so you'll see it.
@@ -167,21 +171,20 @@ Auto-imports run with the default flags (`--role sic --operator skw`) and do
 
 ### Publishing (map & app pages)
 
-`--update-all` on an actual import is the shorthand most days. The pieces, if you
-ever need them individually:
-
 | Flag (on `import-actual`) | What it does |
 |---|---|
 | `--update-map` | Regenerate the flight map and push to GitHub Pages |
-| `--update-apps` | Regenerate the airline/FAA app reference pages and push |
+| `--update-apps` | *(legacy, Airtable-only — skipped under Grist)* regenerate the app reference pages |
 | `--update-all`  | Both of the above |
 
 You can also publish **without** importing anything:
 
 ```sh
 logbook-import export-map --update      # refresh just the map
-logbook-import export-apps --update     # refresh just the app pages
 ```
+
+(`export-apps` still reads Airtable and has not been ported — the Metabase
+**Application Reference** dashboard in `logbook-visualize` replaced it.)
 
 GitHub Pages redeploys ~1 minute after the push. The map fetches its data with
 `no-cache`, so a page reload picks up the new flights.
@@ -192,12 +195,12 @@ Everything else the CLI can do. You will rarely touch these.
 
 | Command | Purpose |
 |---|---|
-| `import-actual` | Import flown legs as Flight rows *(your main command)* |
+| `import-actual` | Import flown legs as Flight rows *(what the auto-importer runs)* |
 | `import-planned` | Import the schedule as planned Trips/Duty Periods |
 | `export-map` | Regenerate `docs/map_data.geojson` (add `--update` to push) |
-| `export-apps` | Regenerate `docs/apps/*.html` (`--page` to limit; `--update` to push) |
-| `enrich-night` | Fill Night Time / Day & Night Landing on existing flights (`--commit`) |
-| `backfill-passengers` | Re-derive the Passengers field from archived exports (`--commit`) |
+| `export-apps` | *(legacy, Airtable-only)* regenerate `docs/apps/*.html` |
+| `enrich-night` | *(legacy, Airtable-only)* backfill night data — Grist imports enrich inline |
+| `backfill-passengers` | *(legacy, Airtable-only)* re-derive Passengers from archived exports |
 
 Run any command with `--help` for its flags.
 
@@ -209,10 +212,9 @@ Run any command with `--help` for its flags.
 - It's a static Leaflet page served from `docs/`. `docs/map_data.geojson` is
   **generated — never hand-edit it.** Refresh it with `--update-map` (during an
   import) or `export-map --update`.
-- The map is embedded inside the Airtable base as a custom block. That block lives in
-  the separate **[`logbook-map`](https://github.com/justin-lenhart/logbook)** repo —
-  it's just a thin iframe wrapper around the page above. You only touch that repo if
-  you're changing the embed itself; day-to-day map updates happen here via the CLI.
+- The map is embedded in the Grist doc as its **Flight Map** page (a Custom-URL
+  widget pointing at the page above). Day-to-day map updates happen here via the
+  CLI — the embed just re-renders whatever is published.
 
 ---
 
@@ -251,13 +253,14 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
   modeled, so for any trip containing those, **actual credit reads low** — treat
   planned credit as the source of truth there. (See efficiency metrics doc below.)
 - **Night time & landings** follow FAA currency rules (1 hr after sunset → 1 hr before
-  sunrise) and are assigned by **pairing**, not by calendar day. Run `enrich-night`
-  to backfill any flights missing this data.
+  sunrise) and are assigned by **pairing**, not by calendar day. Grist imports
+  compute this inline on every flight; the standalone `enrich-night` backfill is
+  Airtable-legacy.
 
-### Efficiency metrics (viewed in Airtable, not here)
+### Efficiency metrics (viewed in Grist/Metabase, not here)
 
-There are no efficiency *commands* — the metrics live as formula fields and views in
-Airtable. The ones worth watching to judge a trip:
+There are no efficiency *commands* — the metrics live as formula columns and
+dashboards in the Grist doc and Metabase. The ones worth watching to judge a trip:
 
 - **Credit : Block ratio** — how favorable the rig is (anything > 1.0 is paid more
   than flown).
