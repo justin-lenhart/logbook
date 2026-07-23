@@ -83,6 +83,10 @@ echo "=== logbook auto-import: mode=$MODE $(date -Is) ==="
 "$PYTHON" -m logbook_import.cli "import-$MODE" --commit --inbox "$WATCH_DIR" 2>&1 | tee "$LOG"
 status=${PIPESTATUS[0]}
 
+# macOS AppleDouble sidecars (._foo) ride along with files copied from a Mac —
+# pure metadata junk, delete rather than quarantine.
+find "$WATCH_DIR" -maxdepth 1 -type f -name '._*' -delete
+
 # Quarantine anything still sitting in the watched folder (failed import,
 # unrecognised files, or a lone csv the importer skipped). The folder must end
 # up empty or the path unit re-triggers forever.
