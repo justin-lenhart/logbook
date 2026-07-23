@@ -220,6 +220,26 @@ Run any command with `--help` for its flags.
 
 Day-to-day you don't need any of this. It's here so the context isn't lost.
 
+### Grist doc pages (the live logbook UI)
+
+The Grist `Logbook` doc (`http://100.78.241.102:8484`, Tailscale-only) carries these
+pages (2026-07-23):
+
+| Page | What it shows |
+|------|---------------|
+| Airports … Bugs_Features | Raw table views (one per table) |
+| **Hours Dashboard** | Native Grist pivots: Category/Class × Position/Engine + career totals (kept for side-by-side comparison with Metabase; user may retire) |
+| **Analytics** | Native Grist charts: block/credit by month, planned-v-actual, TAFB, trip pie, TCI (same retire-candidate status) |
+| **Flights Logbook / Trips Log** | Curated grids, newest first |
+| **Flight Map** | Custom-URL widget embedding the public Leaflet map |
+| **Analytics (Metabase)** | Embedded Metabase **Daily Ops** dashboard (career + monthly tiles, trends, pivots) via its public link |
+| **Application Reference** | Embedded Metabase **Application Reference** dashboard (per-aircraft totals, FAA 8710 matrix, class hours, currency recency) |
+| **Trip Details** | Master-detail: pick a trip (newest-first grid) → trip card + its flights + its duty periods, linked by cursor |
+
+The two Metabase embeds render the live dashboards from the `logbook-visualize`
+stack (read-only 15-min sync of this doc); appearance edits made in Metabase
+auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
+
 ### How credit & times are handled
 
 - **Times are converted to UTC on import.** SkedPlus reports local time at each
