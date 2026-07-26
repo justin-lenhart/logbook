@@ -4,9 +4,26 @@ High-level milestones live in Things 3 → 🪵 Logbook Workflow 📋.
 This file is the source of truth for implementation-level tasks.
 Keep completed items — this is a historical record, not a scratchpad.
 
+> **2026-07-23 — Grist cutover.** The datastore is now the self-hosted Grist doc;
+> Airtable is a frozen backup. Any task below that says "Airtable schema /
+> interface / rollup" is **superseded** — that class of work now happens in
+> Grist (formula columns, pages) or Metabase (`logbook-visualize` repo), and
+> much of it (planned-vs-actual rollups, TAFB/efficiency metrics, application
+> reference / 8710 matrix) has already been built there. Cross-repo status
+> lives in the server's `homelab/TODO.md`.
+
 ---
 
 ## ✅ Completed
+
+### Grist migration + automated import (2026-07, worked from the homelab repo)
+- [x] Grist backend for the importer (`grist_*` modules, `LOGBOOK_BACKEND` switch,
+      upserts by stable keys, inline night enrichment, `/sql`-based export-map)
+- [x] Auto-import deployment: `inbox/planned|actual` watch folders, systemd path
+      units, `scripts/process-inbox.sh`, failures → `inbox/failed/` with logs
+- [x] Syncthing Mac ↔ server share of `inbox/` (drag-and-drop imports)
+- [x] Cutover 2026-07-23: live doc is canonical; first real trip (O1243A)
+      imported through the full pipeline and verified
 
 - [x] Python package structure (`src/logbook_import/`, `pyproject.toml`, `.venv`)
 - [x] SkedPlus `.txt` parser
@@ -276,11 +293,9 @@ Tasks (pending option choice):
       `F_AIRPORT_UTC_OFFSET` constants in `airtable_fields.py` — referenced nowhere
 - [ ] Fix pre-existing `test_build_geojson_structure` assertion (`== 4` should be `== 3`
       for "2 points + 1 line"). Failure predates this work.
-- [ ] Add inbox fixture files (or refactor tests) so `test_build_import_batch_from_pairing`,
-      `test_discover_inbox_pairings`, `test_skedplus_*`, `test_import_planner_*`, and
-      `test_merge_attaches_aircraft_type` pass in clean checkouts. All currently require
-      pairing files in `/Users/justinlenhart/Developer/logbook/inbox/` that don't exist
-      in dev environment.
+- [x] ~~Add inbox fixture files (or refactor tests)~~ — DONE 2026-07-22: fixtures
+      point at `recorded/actual/` and skip cleanly when the local files are absent;
+      `test_discover_inbox_pairings` is self-contained via tmp_path.
 - [ ] Confirm/correct takeoff credit rule (see Night Enrichment completed section above)
 
 ---

@@ -18,6 +18,7 @@ from logbook_import.airport_map import (
 )
 from logbook_import.airtable_settings import load_airtable_settings
 from logbook_import.airtable_sync import AirtableImporter, format_commit_summary
+from logbook_import.backend import active_backend
 from logbook_import.config import RECORDED_DIR, WORKSPACE_ROOT, discover_pairing_file_sets, move_processed_files
 from logbook_import.dry_run import format_run_summary
 from logbook_import.import_planner import build_plans_for_exports
@@ -40,6 +41,13 @@ def main() -> None:
 
 
 def _import_options(func):  # type: ignore[no-untyped-def]
+    func = click.option(
+        "--inbox",
+        "inbox",
+        type=click.Path(exists=True, file_okay=False, path_type=Path),
+        default=None,
+        help="Directory to scan for SkedPlus exports (default: repo inbox/).",
+    )(func)
     func = click.option(
         "--role",
         type=click.Choice(["pic", "sic"], case_sensitive=False),
@@ -66,9 +74,10 @@ def import_planned(
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    inbox: Path | None,
 ) -> None:
     """Import planned pairing data (no Flight rows)."""
-    _run_import(ImportMode.PLANNED, role, operator, dry_run, commit)
+    _run_import(ImportMode.PLANNED, role, operator, dry_run, commit, inbox=inbox)
 
 
 @main.command("import-actual")
@@ -99,6 +108,7 @@ def import_actual(
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    inbox: Path | None,
     update_map: bool,
     update_apps: bool,
     update_all: bool,
@@ -110,6 +120,7 @@ def import_actual(
         operator,
         dry_run,
         commit,
+        inbox=inbox,
         update_map=update_map or update_all,
         update_apps=update_apps or update_all,
     )
@@ -121,6 +132,7 @@ def _run_import(
     operator: str | None,
     dry_run: bool,
     commit: bool,
+    inbox: Path | None = None,
     update_map: bool = False,
     update_apps: bool = False,
 ) -> None:
@@ -132,9 +144,11 @@ def _run_import(
     crew_role = CrewRole(role.lower())
     op = Operator(operator.lower()) if operator else None
 
-    file_sets, inbox_warnings = discover_pairing_file_sets()
+    file_sets, inbox_warnings = discover_pairing_file_sets(inbox)
     if not file_sets:
-        raise click.ClickException("No valid pairing file sets found in inbox/")
+        raise click.ClickException(
+            f"No valid pairing file sets found in {inbox or 'inbox/'}"
+        )
 
     pairings = []
     plan_warnings: list[str] = []
@@ -143,16 +157,26 @@ def _run_import(
         pairings.append(pairing)
         plan_warnings.extend(warnings)
 
+    backend = active_backend()
+
     # The planner needs the airport index up front to convert SkedPlus local
-    # times to UTC.  Try to load it now; if Airtable isn't reachable (e.g. no
+    # times to UTC.  Try to load it now; if the backend isn't reachable (e.g. no
     # creds during dry-run), fall back to naive datetimes with a loud warning.
     try:
-        settings = load_airtable_settings()
-        airport_index = fetch_airport_index(settings.api_key, settings.base_id)
+        if backend == "grist":
+            from logbook_import.grist_airports import fetch_airport_index as _grist_airports
+            from logbook_import.grist_client import GristClient
+            from logbook_import.grist_settings import load_grist_settings
+
+            settings = load_grist_settings()
+            airport_index = _grist_airports(GristClient(settings))
+        else:
+            settings = load_airtable_settings()
+            airport_index = fetch_airport_index(settings.api_key, settings.base_id)
     except (ValueError, Exception) as exc:
         if not dry_run:
             raise click.ClickException(
-                f"Cannot load Airtable airport index (needed for UTC conversion): {exc}"
+                f"Cannot load {backend} airport index (needed for UTC conversion): {exc}"
             ) from exc
         settings = None
         airport_index = None
@@ -189,13 +213,25 @@ def _run_import(
             )
 
     assert settings is not None  # we already raised above if not dry_run
-    importer = AirtableImporter(
-        settings,
-        include_equipment_family=True,
-        airport_index=airport_index,
-    )
+    if backend == "grist":
+        from logbook_import.grist_sync import GristImporter
+        from logbook_import.grist_sync import format_commit_summary as _grist_summary
+
+        importer: AirtableImporter | GristImporter = GristImporter(
+            settings,
+            include_equipment_family=True,
+            airport_index=airport_index,
+        )
+        summarize = _grist_summary
+    else:
+        importer = AirtableImporter(
+            settings,
+            include_equipment_family=True,
+            airport_index=airport_index,
+        )
+        summarize = format_commit_summary
     results = [importer.sync_plan(plan) for plan in plans]
-    summary = format_commit_summary(results)
+    summary = summarize(results)
     if all_warnings:
         warning_lines = "\n".join(f"WARN: {w}" for w in all_warnings)
         summary = f"{warning_lines}\n\n{summary}"
@@ -211,13 +247,25 @@ def _run_import(
     _update_map(settings, airport_index, push=update_map)
 
     if update_apps:
-        click.echo("\nApp reference pages:")
-        _update_apps(settings, push=True)
+        if backend == "grist":
+            # export-apps (app_report.py) still reads Airtable; not yet ported.
+            click.echo(
+                "\nNOTE: --update-apps is not yet ported to the Grist backend; skipped."
+            )
+        else:
+            click.echo("\nApp reference pages:")
+            _update_apps(settings, push=True)
 
 
 def _update_map(settings: object, airport_index: dict, *, push: bool) -> None:
     """Show map stats and optionally write + commit + push map_data.geojson."""
-    flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)  # type: ignore[attr-defined]
+    if active_backend() == "grist":
+        from logbook_import.grist_client import GristClient
+        from logbook_import.grist_map import fetch_flight_records as _g_flights
+
+        flight_records = _g_flights(GristClient(settings))  # type: ignore[arg-type]
+    else:
+        flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)  # type: ignore[attr-defined]
     if not flight_records:
         click.echo("  No qualifying flights found.")
         return
@@ -327,15 +375,29 @@ def _update_apps(settings: object, *, push: bool) -> None:
 )
 def export_map(output_path: Path | None, update: bool) -> None:
     """Export airport points and route lines as GeoJSON."""
+    backend = active_backend()
     try:
-        settings = load_airtable_settings()
+        if backend == "grist":
+            from logbook_import.grist_airports import fetch_airport_index as _g_airports
+            from logbook_import.grist_client import GristClient
+            from logbook_import.grist_map import fetch_flight_records as _g_flights
+            from logbook_import.grist_settings import load_grist_settings
+
+            g_settings = load_grist_settings()
+            client = GristClient(g_settings)
+        else:
+            settings = load_airtable_settings()
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
     resolved_output = output_path or (WORKSPACE_ROOT / "docs" / "map_data.geojson")
 
-    airport_index = fetch_airport_index(settings.api_key, settings.base_id)
-    flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)
+    if backend == "grist":
+        airport_index = _g_airports(client)
+        flight_records = _g_flights(client)
+    else:
+        airport_index = fetch_airport_index(settings.api_key, settings.base_id)
+        flight_records = fetch_flight_records(settings.api_key, settings.base_id, airport_index)
     if not flight_records:
         raise click.ClickException("No qualifying flights found in Flights table")
 

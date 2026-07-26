@@ -3,8 +3,16 @@ from unittest.mock import MagicMock
 from logbook_import.config import discover_pairing_file_sets, move_processed_files
 
 
-def test_discover_inbox_pairings() -> None:
-    sets, warnings = discover_pairing_file_sets()
+def test_discover_inbox_pairings(tmp_path) -> None:
+    for name in (
+        "121807_20260509_E3058E.txt",
+        "121807_20260509_E3058E.csv",
+        "121807_20260508_E7748.txt",
+        "121807_20260508_E7748.csv",
+    ):
+        (tmp_path / name).write_text("data")
+
+    sets, warnings = discover_pairing_file_sets(tmp_path)
     pairing_ids = {s.pairing_id for s in sets}
     assert pairing_ids == {"E3058E", "E7748"}
     assert all(s.txt_path is not None for s in sets)

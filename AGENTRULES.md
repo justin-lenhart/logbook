@@ -1,11 +1,22 @@
 # Logbook Project — Agent Rules / Passdown
 
+> **STATUS 2026-07-23 — read this first.** The operational datastore is now a
+> **self-hosted Grist doc** on the home server (`http://100.78.241.102:8484`,
+> Tailscale-only; docId in the server's `homelab/migration/grist-doc.txt`).
+> Airtable is a **frozen pre-cutover backup** — do not write to it, do not build
+> on it. Imports are **fully automated**: Syncthing syncs `inbox/` from the
+> user's Mac; systemd path units on the server run the importer on drop (see
+> README "Automatic imports"). The importer supports both backends via
+> `LOGBOOK_BACKEND` in `logbook-tools/.env`; `grist` is the live default.
+> References to Airtable below are historical context — mentally substitute
+> Grist unless the text is explicitly about the legacy backend.
+
 ## Project Purpose
 
 This project is building a pilot logbook + reporting system centered around:
 
 - SkyWest / SkedPlus import automation
-- Airtable as the operational datastore
+- Grist (self-hosted) as the operational datastore — Airtable before 2026-07-23
 - Python-based import + reporting tooling
 - FAA / airline-app compatible totals and reporting
 - Planned vs actual trip tracking
@@ -100,15 +111,17 @@ Cursor Agent should:
 
 # Current Project Architecture
 
-## Airtable Tables
+## Grist Tables
 
-Current Airtable tables:
+Current Grist tables (table ids):
 
 - Flights
 - Trips
-- Duty Periods
+- Duty_Periods
 - Aircraft
-- Import Batch
+- Import_Batch
+- Airports
+- Bugs_Features
 
 ---
 
@@ -228,23 +241,20 @@ Current parser behavior:
 
 ---
 
-## NOT yet implemented
+## Also implemented (2026-05 → 2026-07)
 
-Still missing:
+- write path with idempotent upserts by stable keys; `--commit` validated in
+  production on both backends
+- file archival (`inbox/` → `recorded/<mode>/` on commit)
+- UTC conversion of all times at import (airport lat/lon → IANA tz)
+- inline night time / landings enrichment on actual imports
+- **Grist backend** (`grist_*.py` modules mirroring the `airtable_*` ones),
+  selected by `LOGBOOK_BACKEND` — live since the 2026-07-23 cutover
+- **auto-import deployment**: `scripts/process-inbox.sh` + systemd path units
+  watching `inbox/planned` and `inbox/actual`; failures quarantined to
+  `inbox/failed/` with logs; Syncthing carries files from the Mac
 
-- Airtable write path
-- Airtable upserts
-- --commit implementation
-- file archival/moves
-- production Airtable sync
-
-Current importer intentionally performs:
-
-```text
-NO Airtable writes
-```
-
-Dry-run only.
+Dry-run remains the default for manual runs (`--commit` is explicit).
 
 ---
 
@@ -444,13 +454,16 @@ The human should not have to discover zombie branches by accident.
 
 # Safety Rules
 
-Until Airtable write path is fully validated:
+Standing rules (the write path is validated, these still apply):
 
-- prefer dry-run
+- prefer dry-run for anything unusual
 - avoid destructive operations
 - never silently delete records
-- avoid automatic schema changes
+- avoid automatic schema changes — Grist column additions are USER decisions
 - avoid implicit overwrites
+- never write Grist formula columns (they are computed; writes fail or corrupt)
+- never re-import pre-Jul-2026 source files (historical keys are un-normalized —
+  re-import would duplicate rows)
 
 Importer behavior should be:
 

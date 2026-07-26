@@ -1,0 +1,15 @@
+[Unit]
+Description=Auto-import actual (flown) SkedPlus pairings into the logbook
+# Started by logbook-import-actual.path when inbox/actual is non-empty.
+# Safety: if something loops, stop retriggering rather than spinning.
+StartLimitIntervalSec=10min
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+User=mint
+Group=mint
+WorkingDirectory=/home/mint/Developer/logbook
+ExecStart=/home/mint/Developer/logbook/scripts/process-inbox.sh actual
+Nice=10
+TimeoutStartSec=15min

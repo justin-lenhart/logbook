@@ -48,3 +48,6 @@ htmlcov/
 
 # --- Airtable backups (operational data, local restore points) ---
 backups/
+
+# macOS AppleDouble metadata
+._*
