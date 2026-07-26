@@ -118,6 +118,38 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -81.593201,
+          38.3731
+        ]
+      },
+      "properties": {
+        "iata": "CRW",
+        "name": "Yeager Airport",
+        "city": "Charleston",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -104.673792,
+          39.860027
+        ]
+      },
+      "properties": {
+        "iata": "DEN",
+        "name": "Denver International Airport",
+        "city": "Denver",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -97.038002,
           32.896801
         ]
@@ -126,6 +158,22 @@
         "iata": "DFW",
         "name": "Dallas Fort Worth International Airport",
         "city": "Dallas-Fort Worth",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -92.198746,
+          46.841873
+        ]
+      },
+      "properties": {
+        "iata": "DLH",
+        "name": "Duluth International Airport",
+        "city": "Duluth",
         "country": "US"
       }
     },
@@ -158,6 +206,38 @@
         "iata": "DTW",
         "name": "Detroit Metropolitan Wayne County Airport",
         "city": "Detroit",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.006798,
+          40.727001
+        ]
+      },
+      "properties": {
+        "iata": "EAR",
+        "name": "Kearney Regional Airport",
+        "city": "Kearney",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -91.4842987060547,
+          44.8657989501953
+        ]
+      },
+      "properties": {
+        "iata": "EAU",
+        "name": "Chippewa Valley Regional Airport",
+        "city": "Eau Claire",
         "country": "US"
       }
     },
@@ -358,6 +438,70 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -86.939363,
+          40.412875
+        ]
+      },
+      "properties": {
+        "iata": "LAF",
+        "name": "Purdue University Airport",
+        "city": "West Lafayette",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -76.2960968017578,
+          40.1217002868652
+        ]
+      },
+      "properties": {
+        "iata": "LNS",
+        "name": "Lancaster Airport",
+        "city": "Lancaster",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.200401,
+          37.326698
+        ]
+      },
+      "properties": {
+        "iata": "LYH",
+        "name": "Lynchburg Regional Airport - Preston Glenn Field",
+        "city": "Lynchburg",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.917598,
+          39.643305
+        ]
+      },
+      "properties": {
+        "iata": "MGW",
+        "name": "Morgantown Municipal Airport Walter L. (Bill) Hart Field",
+        "city": "Morgantown",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -87.395884,
           46.351498
         ]
@@ -438,6 +582,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -89.4674987792969,
+          45.6311988830566
+        ]
+      },
+      "properties": {
+        "iata": "RHI",
+        "name": "Rhinelander Oneida County Airport",
+        "city": "Rhinelander",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -121.929188,
           37.362452
         ]
@@ -446,6 +606,38 @@
         "iata": "SJC",
         "name": "Norman Y. Mineta San Jose International Airport",
         "city": "San Jose",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.6521987915039,
+          38.7910003662109
+        ]
+      },
+      "properties": {
+        "iata": "SLN",
+        "name": "Salina Municipal Airport",
+        "city": "Salina",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -96.382237,
+          42.397605
+        ]
+      },
+      "properties": {
+        "iata": "SUX",
+        "name": "Sioux Gateway Airport / Brigadier General Bud Day Field",
+        "city": "Sioux City",
         "country": "US"
       }
     },
@@ -1256,11 +1448,11 @@
       "properties": {
         "origin": "FAR",
         "destination": "ORD",
-        "count": 2,
-        "avg_block": 2.2,
+        "count": 4,
+        "avg_block": 2.3,
         "min_block": 2.1,
-        "max_block": 2.3,
-        "avg_credit": 2.2
+        "max_block": 2.5,
+        "avg_credit": 2.3
       }
     },
     {
@@ -1386,6 +1578,431 @@
         "min_block": 1.1,
         "max_block": 1.1,
         "avg_credit": 1.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -88.130805,
+            44.483459
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "GRB",
+        "destination": "ORD",
+        "count": 4,
+        "avg_block": 1.525,
+        "min_block": 1.4,
+        "max_block": 1.9,
+        "avg_credit": 1.525
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -92.198746,
+            46.841873
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DLH",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 2.2,
+        "min_block": 1.9,
+        "max_block": 2.5,
+        "avg_credit": 2.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -91.4842987060547,
+            44.8657989501953
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "EAU",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 1.45,
+        "min_block": 1.4,
+        "max_block": 1.5,
+        "avg_credit": 1.45
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -76.2960968017578,
+            40.1217002868652
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "LNS",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 2.15,
+        "min_block": 1.8,
+        "max_block": 2.5,
+        "avg_credit": 2.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.9048,
+            41.9786
+          ],
+          [
+            -89.4674987792969,
+            45.6311988830566
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ORD",
+        "destination": "RHI",
+        "count": 2,
+        "avg_block": 1.45,
+        "min_block": 1.4,
+        "max_block": 1.5,
+        "avg_credit": 1.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.9048,
+            41.9786
+          ],
+          [
+            -96.382237,
+            42.397605
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ORD",
+        "destination": "SUX",
+        "count": 1,
+        "avg_block": 1.9,
+        "min_block": 1.9,
+        "max_block": 1.9,
+        "avg_credit": 1.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -104.673792,
+            39.860027
+          ],
+          [
+            -96.382237,
+            42.397605
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DEN",
+        "destination": "SUX",
+        "count": 1,
+        "avg_block": 2.7,
+        "min_block": 2.7,
+        "max_block": 2.7,
+        "avg_credit": 2.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -104.673792,
+            39.860027
+          ],
+          [
+            -99.006798,
+            40.727001
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DEN",
+        "destination": "EAR",
+        "count": 1,
+        "avg_block": 1.9,
+        "min_block": 1.9,
+        "max_block": 1.9,
+        "avg_credit": 1.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -99.006798,
+            40.727001
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "EAR",
+        "destination": "ORD",
+        "count": 1,
+        "avg_block": 3.3,
+        "min_block": 3.3,
+        "max_block": 3.3,
+        "avg_credit": 3.3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -79.200401,
+            37.326698
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "LYH",
+        "destination": "ORD",
+        "count": 1,
+        "avg_block": 2.0,
+        "min_block": 2.0,
+        "max_block": 2.0,
+        "avg_credit": 2.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -77.455803,
+            38.9445
+          ],
+          [
+            -79.200401,
+            37.326698
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "IAD",
+        "destination": "LYH",
+        "count": 1,
+        "avg_block": 1.2,
+        "min_block": 1.2,
+        "max_block": 1.2,
+        "avg_credit": 1.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -77.455803,
+            38.9445
+          ],
+          [
+            -79.917598,
+            39.643305
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "IAD",
+        "destination": "MGW",
+        "count": 1,
+        "avg_block": 1.0,
+        "min_block": 1.0,
+        "max_block": 1.0,
+        "avg_credit": 1.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -79.917598,
+            39.643305
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "MGW",
+        "destination": "ORD",
+        "count": 1,
+        "avg_block": 2.3,
+        "min_block": 2.3,
+        "max_block": 2.3,
+        "avg_credit": 2.3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.9048,
+            41.9786
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ORD",
+        "destination": "ORD",
+        "count": 1,
+        "avg_block": 0.6,
+        "min_block": 0.6,
+        "max_block": 0.6,
+        "avg_credit": 0.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.9048,
+            41.9786
+          ],
+          [
+            -97.6521987915039,
+            38.7910003662109
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ORD",
+        "destination": "SLN",
+        "count": 2,
+        "avg_block": 1.95,
+        "min_block": 1.9,
+        "max_block": 2.0,
+        "avg_credit": 1.95
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -86.939363,
+            40.412875
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "LAF",
+        "destination": "ORD",
+        "count": 1,
+        "avg_block": 1.1,
+        "min_block": 1.1,
+        "max_block": 1.1,
+        "avg_credit": 1.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -81.593201,
+            38.3731
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "CRW",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 2.05,
+        "min_block": 1.9,
+        "max_block": 2.2,
+        "avg_credit": 2.05
       }
     }
   ]
