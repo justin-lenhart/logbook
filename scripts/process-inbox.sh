@@ -79,8 +79,13 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 LOG="$(mktemp)"
 trap 'rm -f "$LOG"' EXIT
 
+# Actual imports also regenerate + publish the public flight map (GitHub Pages).
+# Planned imports write no flown legs, so the map can't change — skip the push.
+EXTRA_ARGS=()
+[ "$MODE" = actual ] && EXTRA_ARGS+=(--update-map)
+
 echo "=== logbook auto-import: mode=$MODE $(date -Is) ==="
-"$PYTHON" -m logbook_import.cli "import-$MODE" --commit --inbox "$WATCH_DIR" 2>&1 | tee "$LOG"
+"$PYTHON" -m logbook_import.cli "import-$MODE" --commit --inbox "$WATCH_DIR" "${EXTRA_ARGS[@]}" 2>&1 | tee "$LOG"
 status=${PIPESTATUS[0]}
 
 # macOS AppleDouble sidecars (._foo) ride along with files copied from a Mac —
@@ -100,7 +105,14 @@ if [ -n "${leftovers[0]}" ]; then
 fi
 
 if [ "$status" -ne 0 ]; then
-    echo "Import FAILED (exit $status) — files moved to inbox/failed/$STAMP-$MODE/" >&2
+    if [ -d "$FAILED_ROOT/$STAMP-$MODE" ]; then
+        echo "Import FAILED (exit $status) — files moved to inbox/failed/$STAMP-$MODE/" >&2
+    else
+        # Watch dir emptied = every pairing committed; a post-import step
+        # (map regen/publish) failed. Data is in Grist — rerun the map with:
+        #   logbook-import export-map --update
+        echo "Import COMMITTED but a post-import step failed (exit $status) — likely the map publish. Run 'export-map --update' manually." >&2
+    fi
     exit "$status"
 fi
 

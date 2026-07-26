@@ -161,9 +161,11 @@ sudo systemctl enable --now logbook-import-planned.path logbook-import-actual.pa
 ```
 
 Watch a run / debug: `journalctl -u logbook-import-actual.service -f`.
-Auto-imports run with the default flags (`--role sic --operator skw`) and do
-**not** push the map to GitHub Pages — run `logbook-import export-map --update`
-(or an import with `--update-map`) when you want the public map refreshed.
+Auto-imports run with the default flags (`--role sic --operator skw`).
+**Actual** imports also regenerate the public flight map and push it to GitHub
+Pages automatically (planned imports skip this — no flown legs, nothing to map).
+If the map push ever fails after a successful import, the journal says so —
+recover with `logbook-import export-map --update`.
 
 > **Backend:** the importer writes to the live Grist doc (`GRIST_DOC` in
 > `logbook-tools/.env`) — cutover from Airtable happened 2026-07-23. Airtable
@@ -210,8 +212,12 @@ Run any command with `--help` for its flags.
 
 - Live map: **https://justin-lenhart.github.io/logbook/**
 - It's a static Leaflet page served from `docs/`. `docs/map_data.geojson` is
-  **generated — never hand-edit it.** Refresh it with `--update-map` (during an
-  import) or `export-map --update`.
+  **generated — never hand-edit it.** The auto-importer refreshes it on every
+  actual import; manual refresh is `--update-map` (during an import) or
+  `export-map --update`.
+- **Deadhead legs never appear on the map — by design.** Only flown legs
+  (PIC or SIC time > 0, not deadhead) qualify; a route you've only deadheaded
+  is correctly absent.
 - The map is embedded in the Grist doc as its **Flight Map** page (a Custom-URL
   widget pointing at the page above). Day-to-day map updates happen here via the
   CLI — the embed just re-renders whatever is published.
