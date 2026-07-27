@@ -1,7 +1,15 @@
 # Metrics Plan: Efficiency & Variance
 ## Logbook Project — Planning Document
 
-*Status: Planning only. No code or Airtable changes have been made.*
+*Status: **IMPLEMENTED 2026-07-27** on Grist + Metabase (dashboard "Trip
+Efficiency & Duty Legality", logbook-visualize repo). The Airtable blockers
+below are moot: `Trips.TAFB` exists and is populated by the importer, and
+Grist materializes `Trip_Credit_Index`. Shipped as verified Metabase cards:
+credit per TAFB-day, block per TAFB-day, TCI, credit:block ratio,
+days-between-trips, planned-vs-actual block/credit variance (trips with a
+plan only), monthly efficiency trend, and a per-trip scorecard table with
+date/trip filters. The RDY/SDuty credit-undercount caveat (§1) still applies
+to actual-credit metrics.*
 
 ---
 

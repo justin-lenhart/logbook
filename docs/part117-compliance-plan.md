@@ -1,8 +1,54 @@
 # Part 117 Compliance Analytics — Planning Document
 ## Logbook Project
 
-*Status: Research and planning only. No code changes, no Airtable writes.*
-*Written: 2026-05-25.*
+*Status: **IMPLEMENTED 2026-07-27** as the Metabase dashboard "Trip Efficiency
+& Duty Legality" (logbook-visualize repo, `scripts/provision_duty_legality.py`;
+25 cards, 25/25 verified against live Grist REST). This doc remains the
+regulatory reference; implementation notes below.*
+*Written: 2026-05-25. Revalidated against eCFR (current through 2026-07-23)
+on 2026-07-27.*
+
+## 0. Implementation status (2026-07-27)
+
+**Platform change:** built on Grist + Metabase, not Airtable (the migration
+happened in between). Every "PYTHON REQUIRED" rolling-window metric in this
+doc became plain SQL in Metabase native cards — no compliance-check CLI was
+needed. Phases 1–2 of the roadmap are effectively DONE; Phase 3 (Table B/A
+exact lookups) remains BLOCKED on local report time.
+
+**Revalidation vs current CFR (web-verified 2026-07-27, eCFR through
+2026-07-23):**
+- **No substantive Part 117 amendments** since this doc was written — all
+  numbers herein stand. (One pending NPRM, 91 FR 2026-07-06, would add a
+  §117.31 preemption clause — no numeric limit changes; comments close
+  2026-09-04.)
+- **Citation correction:** Table B (unaugmented FDP limits) is **§117.13**,
+  not §117.17 as §2.3 below states — §117.17 is the *augmented* flightcrew
+  table (Table C). Table values in §2.3 are otherwise verbatim-correct.
+- **"12 block hours" user assumption REFUTED:** there is no 12-hour
+  unaugmented flight-time provision anywhere in Part 117. Table A
+  (§117.11(a)(1)) caps unaugmented flight time at **9 h** (0500–1959 report)
+  or **8 h** otherwise. The "12" is most likely Table B *FDP* (duty, not
+  block) values of 12 h at several report bands, or a CBA figure, or the
+  legacy §121.503 cargo rule.
+
+**What was implemented (all UTC-based):** FDP length (report→release,
+conservative proxy; report→last-block-in also shown), block per duty vs
+Table A floor/ceiling (8/9 h), FDP vs Table B floor/ceiling (9/14 h),
+within-trip rest gaps vs the §117.25(e) 10-h minimum, and all four §117.23
+cumulative windows (100 h/672 h + 1,000 h/365 d flight time; 60 h/168 h +
+190 h/672 h FDP) as of-now progress cards plus rolling-by-day trend lines.
+Deadhead legs are excluded from flight-time sums (per §117.3 deadhead is
+never flight time; they carry 0 block in this logbook anyway).
+
+**Still blocked — exact Table A/B lookups:** `Airports.UTC_Offset` exists
+but is 0.0 for all 20,576 rows, so local acclimated report time cannot be
+derived. Until the user decides on a fix (populate offsets for the ~40
+airports actually flown, or derive from lat/lon via timezonefinder — a
+schema/data decision the user must approve), the dashboard shows
+floor–ceiling utilization ranges instead of exact limits. Not modeled:
+WOCL, split duty, reserve, acclimatization, FDP extensions, CBA limits,
+§117.25(b) 30-h weekly rest check.
 
 ---
 
