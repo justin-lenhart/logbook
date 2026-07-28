@@ -242,9 +242,10 @@ pages (2026-07-23):
 | **Flight Map** | Custom-URL widget embedding the public Leaflet map |
 | **Analytics (Metabase)** | Embedded Metabase **Daily Ops** dashboard (career + monthly tiles, trends, pivots) via its public link |
 | **Application Reference** | Embedded Metabase **Application Reference** dashboard (per-aircraft totals, FAA 8710 matrix, class hours, currency recency) |
+| **Trip Efficiency & Duty Legality** | Embedded Metabase **Trip Efficiency & Duty Legality** dashboard (Part 117 utilization awareness, TAFB efficiency, variance — personal analytics, NOT a compliance system) |
 | **Trip Details** | Master-detail: pick a trip (newest-first grid) → trip card + its flights + its duty periods, linked by cursor |
 
-The two Metabase embeds render the live dashboards from the `logbook-visualize`
+The three Metabase embeds render the live dashboards from the `logbook-visualize`
 stack (read-only 15-min sync of this doc); appearance edits made in Metabase
 auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
 
@@ -277,12 +278,17 @@ The full design (formulas, which need the new `Trips.TAFB` field) is in
 [`docs/metrics-plan-efficiency-variance.md`](docs/metrics-plan-efficiency-variance.md).
 TAFB import is implemented — `import-planned` writes `Trips.TAFB` from the SkedPlus header.
 
-### Part 117 compliance (planned, not yet in the tool)
+### Part 117 awareness (Metabase dashboard; no CLI command)
 
-There is **no compliance command yet.** The research and implementation plan —
-rolling 100h/28-day block, 60h/7-day FDP, rest checks, etc. — is written up in
-[`docs/part117-compliance-plan.md`](docs/part117-compliance-plan.md). Nothing there is
-user-facing today; it's the roadmap for a future `compliance-check` command.
+The rolling-limit and FDP analytics now ship as the Metabase **Trip Efficiency &
+Duty Legality** dashboard in the `logbook-visualize` stack — **personal analytics,
+NOT a compliance system** (the company's system is the sole legality authority).
+There is **no `compliance-check` CLI command.** The regulatory reference and
+implementation notes — rolling 100h/672h block, §117.23 cumulative windows, rest
+checks, etc. — are in [`docs/part117-compliance-plan.md`](docs/part117-compliance-plan.md).
+The one piece still blocked is the *exact* Table A/B per-duty limits, which need a
+derived local report time (`Airports.UTC_Offset` is all zeros — see that doc); the
+dashboard shows floor–ceiling utilization ranges instead.
 
 ---
 

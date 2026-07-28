@@ -103,6 +103,15 @@ were off by the airport's UTC offset. Caused incorrect night/landing classificat
 
 ## 🟡 Up Next
 
+> **✅ DELIVERED (2026-07, Grist/Metabase).** The three milestones below (Planned
+> vs Actual Metrics, Trip Efficiency, Pilot Application Metrics) were built on the
+> Grist backend and the Metabase dashboards (`logbook-visualize`), not the Airtable
+> schema/interface they were originally scoped against — see the 2026-07-23 cutover
+> banner at the top of this file and `homelab/TODO.md`. Actual/variance rollups,
+> `Trips.TAFB` + credit/block-per-TAFB-day efficiency, and the FAA 8710 / application
+> reference tables are all live and verified. The Airtable-framed checkboxes are kept
+> below as the original design record.
+
 ### Milestone: Planned vs Actual Metrics (Task #1)
 *Compare scheduled trip data against what was actually flown. Foundation for understanding schedule reliability and credit vs block variance.*
 
@@ -224,12 +233,21 @@ Candidate approaches (pick after answering the questions):
 
 ## 🔵 Later
 
-### Legacy Logbook Import
-*~1500 hours pre-SkyWest across multiple aircraft types. Goal: one summary row per aircraft
-type in the Flights table (not individual legs). `Legacy Summary` checkbox already exists
-on the Flights schema.*
+### Legacy Logbook Import — ✅ DONE 2026-07-27
 
-Source data: `misc/LEN2J-AnytimeLogbook2025.12.01.xlsx`
+> **Completed, but NOT as scoped below.** Rather than "one summary row per aircraft
+> type," the import replaced the 12 `Legacy_Summary` aggregate rows with **560
+> per-flight `HIST-*` rows (2015–2025)** in the live Grist doc. Career block/PIC/SIC/
+> dual = 1506.3 / 348.4 / 1052.3 / 105.6 (exact); all per-aircraft rollups preserved;
+> Metabase + 8710 + flight map verified unaffected. Details + column mapping:
+> [`docs/historical-logbook-import.md`](docs/historical-logbook-import.md). The
+> original summary-row design (Options A/B/C) is kept below as historical context.
+
+*~1500 hours pre-SkyWest across multiple aircraft types. Original goal (superseded):
+one summary row per aircraft type in the Flights table (not individual legs).
+`Legacy Summary` checkbox already exists on the Flights schema.*
+
+Source data: `LEN2J-AnytimeLogbook2025.12.01.xlsx` (external workbook; never copied into the repo)
 
 Three implementation options (decided in conversation 2026-05-23 — pick one before starting):
 

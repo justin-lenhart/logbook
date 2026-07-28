@@ -1,7 +1,13 @@
 # logbook-tools
 
-The `logbook-import` CLI: imports SkedPlus pairing exports into Airtable and maintains
-the Leaflet flight map + application reference pages.
+The `logbook-import` CLI: imports SkedPlus pairing exports into the datastore and
+maintains the Leaflet flight map + (legacy) application reference pages.
+
+> **2026-07-23 — Grist cutover.** The default backend is now the self-hosted Grist
+> doc (`LOGBOOK_BACKEND=grist`); Airtable is a frozen backup. `import-actual` /
+> `import-planned` write Grist. The `export-apps` / `enrich-night` /
+> `backfill-passengers` commands remain Airtable-only legacy (the app-reference
+> pages were replaced by the Metabase Application Reference dashboard).
 
 **For day-to-day operator usage, read the [repo README](../README.md).** This file is
 the developer/CLI reference.
@@ -16,22 +22,23 @@ pip install -e ".[dev]"        # first time only
 ```
 
 `logbook-import` is the entry point (`pyproject.toml` → `logbook_import.cli:main`).
-Requires Python ≥ 3.11 and a `.env` with `AIRTABLE_API_KEY` / `AIRTABLE_BASE_ID`
-(see `.env.example`).
+Requires Python ≥ 3.11 and a `.env` selecting the backend: `LOGBOOK_BACKEND=grist`
+with `GRIST_URL` / `GRIST_API_KEY` / `GRIST_DOC` (the live default), or the legacy
+`AIRTABLE_API_KEY` / `AIRTABLE_BASE_ID` (see `.env.example`).
 
 ## Commands
 
-All import commands default to a **dry run**; pass `--commit` to write to Airtable.
-`--dry-run` and `--commit` are mutually exclusive.
+All import commands default to a **dry run**; pass `--commit` to write to the active
+backend (Grist by default). `--dry-run` and `--commit` are mutually exclusive.
 
 | Command | Key flags | Notes |
 |---|---|---|
 | `import-actual` | `--role {pic\|sic}` (req), `--operator skw`, `--commit`, `--update-map`, `--update-apps`, `--update-all` | Flown legs → Flight rows. `--update-all` = map + apps. |
 | `import-planned` | `--role {pic\|sic}` (req), `--operator skw`, `--commit` | Trip + Duty Period rows, no flights. |
 | `export-map` | `--output PATH`, `--update` | Regenerate `docs/map_data.geojson`; `--update` commits + pushes. |
-| `export-apps` | `--output DIR`, `--page {swa\|ual\|faa\|summary}`, `--update` | Regenerate `docs/apps/*.html`; `--page` repeatable. |
-| `enrich-night` | `--commit` | Backfill Night Time, Day/Night Landing on existing flights. |
-| `backfill-passengers` | `--source {actual\|planned}`, `--commit` | Re-derive Passengers from archived exports. |
+| `export-apps` | `--output DIR`, `--page {swa\|ual\|faa\|summary}`, `--update` | _(legacy, Airtable-only)_ Regenerate `docs/apps/*.html`; superseded by the Metabase Application Reference dashboard. |
+| `enrich-night` | `--commit` | _(legacy, Airtable-only)_ Backfill Night Time, Day/Night Landing on existing flights. Grist imports compute night inline. |
+| `backfill-passengers` | `--source {actual\|planned}`, `--commit` | _(legacy, Airtable-only)_ Re-derive Passengers from archived exports. |
 
 Run any command with `--help` for full details.
 

@@ -22,9 +22,10 @@ exact lookups) remains BLOCKED on local report time.
   numbers herein stand. (One pending NPRM, 91 FR 2026-07-06, would add a
   §117.31 preemption clause — no numeric limit changes; comments close
   2026-09-04.)
-- **Citation correction:** Table B (unaugmented FDP limits) is **§117.13**,
-  not §117.17 as §2.3 below states — §117.17 is the *augmented* flightcrew
-  table (Table C). Table values in §2.3 are otherwise verbatim-correct.
+- **Citation correction (applied):** Table B (unaugmented FDP limits) is
+  **§117.13**, not §117.17 — §117.17 is the *augmented* flightcrew table
+  (Table C). Body §2.3 citations have been corrected inline accordingly;
+  table values in §2.3 are otherwise verbatim-correct.
 - **"12 block hours" user assumption REFUTED:** there is no 12-hour
   unaugmented flight-time provision anywhere in Part 117. Table A
   (§117.11(a)(1)) caps unaugmented flight time at **9 h** (0500–1959 report)
@@ -112,7 +113,7 @@ Applies to unaugmented (minimum crew) operations only. This is the per-FDP block
 
 The user's operation is single-crew (Captain + FO), so this table applies. For the CRJ flying primarily daytime schedules (0500-1959 report times), the practical limit is **9 block hours per FDP**.
 
-#### Table B — Maximum FDP Duration Per FDP (§117.17)
+#### Table B — Maximum FDP Duration Per FDP (§117.13)
 This is the FDP length limit (report time to aircraft parked). It depends on: (1) scheduled start time (in local acclimated time) and (2) number of scheduled flight segments.
 
 | Scheduled Start (Acclimated) | 1 Seg | 2 Seg | 3 Seg | 4 Seg | 5 Seg | 6 Seg | 7+ Seg |
@@ -201,7 +202,7 @@ Each metric below includes: regulatory basis, exact limit, data availability in 
 
 ### Metric 1: FDP Length (Duty Period Duration)
 
-**Regulatory basis:** §117.17 establishes the maximum FDP. The FDP itself (its raw duration) is not separately reported — you compute it to compare against the applicable Table B limit.
+**Regulatory basis:** §117.13 establishes the maximum FDP (unaugmented). The FDP itself (its raw duration) is not separately reported — you compute it to compare against the applicable Table B limit.
 
 **Definition:** Duration from Report Time to Release Time on a Duty Period record. Per §117.3, FDP ends when the aircraft is parked after the last flight. For logbook purposes, Release Time (as recorded in SkedPlus exports and stored in Duty Periods) approximates the FDP end — it typically reflects actual gate-in time for the last leg.
 
@@ -355,7 +356,7 @@ The compliance-check command computes FDP duration per Duty Period (Release - Re
 
 ### Metric 9: Table B FDP Exceedance Flag
 
-**Regulatory basis:** §117.17 Table B — was the FDP longer than the regulatory maximum for its start time and leg count?
+**Regulatory basis:** §117.13 Table B — was the FDP longer than the regulatory maximum for its start time and leg count?
 
 **Definition:** For each Duty Period: was `FDP Duration > Table B limit` for (local report time, scheduled leg count)?
 
@@ -413,9 +414,9 @@ These are derived analytics, not direct compliance checks. For a given date rang
 
 **Definition:** Time Away From Base — from first Report Time of the first Duty Period in a trip to the Release Time of the last Duty Period. This is the TAFB metric used for pilot pay purposes under most CBAs.
 
-**Data availability:** NEAR-COMPLETE. TAFB is already parsed from the SkedPlus TXT header (`TAFB: HH:MM`) and available in the `PairingExport.tafb_hours` field. However, per the TODO.md, the planned importer does not yet write TAFB to a `Trips.TAFB` field in Airtable. This is a known gap from the efficiency metrics work.
+**Data availability:** COMPLETE. TAFB is parsed from the SkedPlus TXT header (`TAFB: HH:MM`) into `PairingExport.tafb_hours`, and `import-planned` now writes it to the `Trips.TAFB` field in Grist. The efficiency metrics that depend on it are live in the Metabase Trip Efficiency & Duty Legality dashboard.
 
-**Implementation path:** Airtable formula (once TAFB is written as a field). The efficiency metrics plan already calls for `Trips.TAFB` to be added.
+**Implementation path:** Done — `Trips.TAFB` is populated on planned import; per-trip and per-TAFB-day efficiency metrics render in Metabase.
 
 **Operational value:** MEDIUM for Part 117 purposes directly. TAFB is more relevant for pay computation and efficiency metrics (as analyzed in `metrics-plan-efficiency-variance.md`). It is not a Part 117 compliance metric per se, but it is related to overall duty exposure.
 
@@ -762,7 +763,7 @@ If the user provides the contractual limits, they can be added to the compliance
 
 **Question:** How far back does Airtable flight data currently go? The 365-day cumulative limit (Metric 8) requires a full year of block time data. If the logbook only goes back to early 2026, the 365-day total will be underestimated until a full year of data is in the system.
 
-**Consideration:** Once the legacy logbook import is completed (see TODO.md — "Legacy Logbook Import" milestone), the 365-day window can be computed correctly using the summary Flight records.
+**Consideration:** The legacy logbook import is complete (2026-07-27) — but it landed as **560 per-flight `HIST-*` rows (2015–2025)**, not summary records (see `docs/historical-logbook-import.md`). The 365-day window is still limited by real elapsed data, but each historical flight now carries its own date, so any rolling window computes correctly across the legacy span.
 
 ---
 

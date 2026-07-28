@@ -380,9 +380,14 @@ Perfect but overengineered
 
 ---
 
-# Legacy Flight Data Strategy
+# Legacy Flight Data Strategy — SUPERSEDED (done 2026-07-27)
 
-Legacy flight data will eventually be imported as:
+> **This summary-row plan was NOT the approach taken.** The legacy import landed as
+> **560 per-flight `HIST-*` rows (2015–2025)** in the live Grist doc, replacing the
+> 12 `Legacy_Summary` aggregates — reconstructed individual flights, not summary rows.
+> See `docs/historical-logbook-import.md`. The original design is preserved below.
+
+The original (superseded) plan was to import legacy flight data as:
 
 ```text
 Summary-style Flight rows

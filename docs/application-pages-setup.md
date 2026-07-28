@@ -1,5 +1,14 @@
 # Airline / FAA Application Reference Pages
 
+> **SUPERSEDED (2026-07) — historical reference.** This `export-apps` → static-HTML
+> → Airtable-embed pipeline has been replaced by the Metabase **Application Reference**
+> dashboard (`logbook-visualize`): per-aircraft totals, the FAA 8710 matrix, class
+> PIC/SIC hours, and currency recency, all verified live against Grist. `export-apps`
+> remains in the CLI as Airtable-only legacy. The known page cells that Grist can't yet
+> derive (military sortie counts, ×0.3 conversions, type-rated flags, SWA buckets,
+> milestone targets) are catalogued in the `logbook-visualize` README "GAPS" section.
+> The Airtable-based workflow below is kept for provenance.
+
 Generated pages that present your logbook in the structure airline and FAA
 applications ask for, so you can copy-paste your pilot-hours sections.
 
