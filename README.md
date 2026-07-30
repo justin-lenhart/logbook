@@ -23,9 +23,11 @@ Mac** (Syncthing shares it with the server):
 - schedule just dropped → the **`planned/`** subfolder
 - trips flown → the **`actual/`** subfolder
 
-Files must be named `<seq>_<YYYYMMDD>_<PairingID>.txt` — e.g. `01_20260601_E3405.txt`
-(SkedPlus names them this way already). Within ~30 seconds the files vanish
-(= imported into Grist) and land in `recorded/` on the server. If an import fails,
+Files are named `<prefix>_<YYYYMMDD>_<PairingID>.<txt|csv>` — e.g.
+`121807_20260601_E3405.txt` (SkedPlus names them this way already; `<prefix>` is your
+employee number). The `.txt` carries the data and is required; the `.csv` is optional.
+Within a minute or two the files vanish (= imported into Grist) and land in `recorded/`
+on the server. If an import fails,
 the files reappear in the **`failed/`** subfolder with an `import-log.txt`
 explaining why. See [Automatic imports](#automatic-imports-server) for how it works.
 
@@ -69,9 +71,9 @@ The tool is a Python CLI. You only set it up once.
 
 ```sh
 cd logbook/logbook-tools
-python3 -m venv .venv          # first time only
-source .venv/bin/activate
-pip install -e ".[dev]"        # first time only
+uv sync                        # first time only (uv-managed; builds .venv from uv.lock)
+source .venv/bin/activate      # activate for the session
+# no-uv fallback: python3 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
 ```
 
 Create `logbook-tools/.env` with the backend credentials (needed for `--commit`):
@@ -129,8 +131,9 @@ logbook/
     └── actual/            # import-actual moves files here
 ```
 
-File naming convention: `<seq>_<YYYYMMDD>_<PairingID>.<txt|csv>`
-(e.g. `01_20260601_E3405.txt`). Anything not matching that pattern is ignored with a
+File naming convention: `<prefix>_<YYYYMMDD>_<PairingID>.<txt|csv>`
+(e.g. `121807_20260601_E3405.txt`; `<prefix>` is your employee number). The `.txt` is
+required; a lone `.csv` is skipped. Anything not matching that pattern is ignored with a
 warning, so it's safe to have other junk in `inbox/`.
 
 ### Automatic imports (server)
@@ -231,7 +234,7 @@ Day-to-day you don't need any of this. It's here so the context isn't lost.
 ### Grist doc pages (the live logbook UI)
 
 The Grist `Logbook` doc (`http://100.78.241.102:8484`, Tailscale-only) carries these
-pages (2026-07-23):
+pages:
 
 | Page | What it shows |
 |------|---------------|
