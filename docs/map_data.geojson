@@ -454,6 +454,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -98.416603,
+          34.567699
+        ]
+      },
+      "properties": {
+        "iata": "LAW",
+        "name": "Lawton Fort Sill Regional Airport",
+        "city": "Lawton",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -76.2960968017578,
           40.1217002868652
         ]
@@ -558,6 +574,22 @@
         "iata": "PHX",
         "name": "Phoenix Sky Harbor International Airport",
         "city": "Phoenix",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -111.722445,
+          40.218894
+        ]
+      },
+      "properties": {
+        "iata": "PVU",
+        "name": "Provo Municipal Airport",
+        "city": "Provo",
         "country": "US"
       }
     },
@@ -2003,6 +2035,56 @@
         "min_block": 1.9,
         "max_block": 2.2,
         "avg_credit": 2.05
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -97.038002,
+            32.896801
+          ],
+          [
+            -98.416603,
+            34.567699
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DFW",
+        "destination": "LAW",
+        "count": 1,
+        "avg_block": 1.0,
+        "min_block": 1.0,
+        "max_block": 1.0,
+        "avg_credit": 1.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -97.038002,
+            32.896801
+          ],
+          [
+            -111.722445,
+            40.218894
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DFW",
+        "destination": "PVU",
+        "count": 2,
+        "avg_block": 2.95,
+        "min_block": 2.8,
+        "max_block": 3.1,
+        "avg_credit": 2.95
       }
     }
   ]
