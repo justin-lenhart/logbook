@@ -23,7 +23,7 @@ from logbook_import.models import (
     PlannedFlightRecord,
     PlannedTripRecord,
 )
-from logbook_import.time_utils import combine_date_time
+from logbook_import.time_utils import combine_date_time, combine_report_release
 
 
 def _to_utc(
@@ -166,13 +166,16 @@ def build_import_plan(
     for duty in pairing.duty_days:
         dp_key = duty_period_key(pairing.pairing_id, pairing.start_date, duty.duty_date)
         is_future_duty = (mode == ImportMode.ACTUAL and duty.duty_date > today)
+        report_at, release_at = combine_report_release(
+            duty.duty_date, duty.report_time, duty.release_time
+        )
         duty_records.append(
             PlannedDutyPeriodRecord(
                 duty_period_key=dp_key,
                 trip_key=t_key,
                 duty_date=duty.duty_date,
-                report_at=combine_date_time(duty.duty_date, duty.report_time),
-                release_at=combine_date_time(duty.duty_date, duty.release_time),
+                report_at=report_at,
+                release_at=release_at,
                 planned_block=duty.day_block_hours,
                 planned_credit=duty.day_credit_hours,
                 planned_legs=duty.planned_leg_count,

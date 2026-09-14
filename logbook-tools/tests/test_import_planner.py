@@ -1,12 +1,36 @@
+from datetime import date, time
+
 from logbook_import.config import PairingFileSet
 from logbook_import.import_planner import build_import_plan
-from logbook_import.models import CrewRole, ImportMode, Operator
+from logbook_import.models import CrewRole, DutyDay, ImportMode, Operator, PairingExport
 from logbook_import.parsers.merge import load_pairing_export
 
 
 def _load(txt, csv):
     pairing, _ = load_pairing_export(PairingFileSet("X", txt_path=txt, csv_path=csv))
     return pairing
+
+
+def test_overnight_release_rolls_to_next_day() -> None:
+    # Modeled on the O1262A sheet: Report 15:14 / Release 00:02 the next morning.
+    pairing = PairingExport(
+        employee_id="121807",
+        employee_name="Test Pilot",
+        base="MSP",
+        equipment_family="CR7",
+        role="FO",
+        pairing_id="O1262A",
+        start_date=date(2026, 7, 2),
+        block_hours=0.0,
+        credit_hours=0.0,
+        tafb_hours=0.0,
+        duty_days=[DutyDay(date(2026, 7, 2), time(15, 14), time(0, 2))],
+    )
+    plan = build_import_plan(pairing, ImportMode.PLANNED)
+    dp = plan.duty_periods[0]
+    assert dp.report_at.date() == date(2026, 7, 2)
+    assert dp.release_at.date() == date(2026, 7, 3)
+    assert dp.release_at > dp.report_at
 
 
 def test_planned_import_has_no_flights(e3058e_txt, e3058e_csv) -> None:

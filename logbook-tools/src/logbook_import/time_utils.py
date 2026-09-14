@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 DURATION_RE = re.compile(r"^(\d+):(\d{2})$")
 DATE_MDY_RE = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
@@ -49,6 +49,24 @@ def departure_hhmm_key(departure: time) -> str:
 
 def combine_date_time(d: date, t: time) -> datetime:
     return datetime(d.year, d.month, d.day, t.hour, t.minute)
+
+
+def combine_report_release(
+    duty_date: date, report_time: time, release_time: time
+) -> tuple[datetime, datetime]:
+    """Report and release datetimes for one duty period.
+
+    SkedPlus prints a single duty date with two clock times, so a release after
+    local midnight (e.g. Report 15:14 / Release 00:02) would otherwise land on
+    the same day and read earlier than report. A duty period is never longer
+    than 24h, so when the release clock is at or before report, it belongs to
+    the next calendar day — roll it forward one day.
+    """
+    report_at = combine_date_time(duty_date, report_time)
+    release_at = combine_date_time(duty_date, release_time)
+    if release_at <= report_at:
+        release_at += timedelta(days=1)
+    return report_at, release_at
 
 
 def iso_date(d: date) -> str:

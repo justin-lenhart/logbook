@@ -36,6 +36,16 @@ def test_duty_period_key() -> None:
     )
 
 
+def test_duty_period_key_collapses_revision() -> None:
+    # Planned (E3405) and later actual (E3405A) must produce the SAME duty-period
+    # key so the actual import upserts the planned rows instead of creating
+    # orphaned duplicates. Regression guard for the E3405 status-desync bug.
+    for duty_date in (date(2026, 6, 1), date(2026, 6, 2), date(2026, 6, 3)):
+        assert duty_period_key("E3405", date(2026, 6, 1), duty_date) == duty_period_key(
+            "E3405A", date(2026, 6, 1), duty_date
+        )
+
+
 def test_import_flight_key_example() -> None:
     assert (
         import_flight_key(
