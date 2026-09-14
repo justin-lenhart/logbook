@@ -84,9 +84,35 @@ def test_map_trip_fields_planned_only_writes() -> None:
         F.F_TRIP_PLANNED_CREDIT,
         F.F_TRIP_PLANNED_LEGS,
         F.F_TRIP_PLANNED_DUTY_PERIODS,
-        F.F_TRIP_TAFB,
     ):
         assert key not in actual
+
+
+def test_map_trip_fields_tafb_written_by_both_modes() -> None:
+    # TAFB has no planned/actual split: the last import wins.
+    planned = map_trip_fields(_trip(tafb_hours=72.9), mode=ImportMode.PLANNED)
+    actual = map_trip_fields(_trip(tafb_hours=72.2), mode=ImportMode.ACTUAL)
+    assert planned[F.F_TRIP_TAFB] == 72.9
+    assert actual[F.F_TRIP_TAFB] == 72.2
+    # No header TAFB parsed -> leave the column alone.
+    assert F.F_TRIP_TAFB not in map_trip_fields(_trip(tafb_hours=0.0), mode=ImportMode.ACTUAL)
+
+
+def test_map_duty_period_fields_utc_aware_epoch() -> None:
+    # O1251 day 3: report EAU 13:50 CDT (18:50Z), release LNS 19:58 EDT (23:58Z).
+    duty = PlannedDutyPeriodRecord(
+        duty_period_key="O1251|2026-07-22|2026-07-24",
+        trip_key="O1251|2026-07-22",
+        duty_date=date(2026, 7, 24),
+        report_at=datetime(2026, 7, 24, 18, 50, tzinfo=timezone.utc),
+        release_at=datetime(2026, 7, 24, 23, 58, tzinfo=timezone.utc),
+        planned_block=3.3,
+        planned_credit=4.2,
+        planned_legs=2,
+    )
+    fields = map_duty_period_fields(duty, mode=ImportMode.ACTUAL)
+    assert fields[F.F_DUTY_REPORT_TIME] == 1784919000
+    assert fields[F.F_DUTY_RELEASE_TIME] - fields[F.F_DUTY_REPORT_TIME] == 5 * 3600 + 8 * 60
 
 
 # --- duty periods ----------------------------------------------------------

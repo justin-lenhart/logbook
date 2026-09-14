@@ -14,6 +14,7 @@ from logbook_import.keys import (
 from logbook_import.leg_classifier import is_deadhead, is_loggable_flight
 from logbook_import.models import (
     CrewRole,
+    DutyDay,
     ImportBatchRecord,
     ImportMode,
     ImportPlan,
@@ -72,6 +73,99 @@ def _to_utc(
         in_utc = in_utc + timedelta(days=1)
 
     return out_utc, in_utc, warnings
+
+
+# SkyWest labels the CRJ-200 "CRJ" (CSV A/C Type and txt header). The Grist
+# Aircraft table keys it as "CR2". Only Flights' aircraft code is translated;
+# Trips.Equipment_Family keeps SkyWest's label.
+AIRCRAFT_CODE_ALIASES = {"CRJ": "CR2"}
+
+
+def normalize_aircraft_code(code: str | None) -> str | None:
+    if not code:
+        return code
+    code = code.strip().upper()
+    return AIRCRAFT_CODE_ALIASES.get(code, code)
+
+
+# Allowed gap between the duty length computed from report/release and the
+# "Duty: H:MM" SkedPlus prints on the Day Total line (parser rounds to 0.1 h).
+DUTY_HOURS_TOLERANCE = 0.1
+
+
+def duty_report_release_utc(
+    duty: DutyDay,
+    airport_index: dict[str, dict] | None,
+) -> tuple[datetime, datetime, list[str]]:
+    """
+    Report/release datetimes for one duty period, as UTC-aware datetimes.
+
+    SkedPlus prints the report clock in the report airport's local time and the
+    release clock in the release airport's local time.  Report zone = first
+    schedule line's origin; release zone = last schedule line's destination.
+    Placeholder lines (CXL/FDP/REF/RDY...) are included on purpose: they sit at
+    the crew's station (origin == destination) and often carry the exact
+    report/release clock, so they identify the right airport.
+
+    The after-midnight rollover is applied AFTER converting to UTC: if release
+    UTC <= report UTC, release is the next day (a duty period is < 24 h).
+
+    Falls back to naive ``combine_report_release`` (the pre-timezone behavior)
+    with a warning when a zone is missing.  Also warns when the computed duty
+    length disagrees with the parser's ``DutyDay.duty_hours`` by more than
+    ``DUTY_HOURS_TOLERANCE``.
+    """
+    warnings: list[str] = []
+    if not duty.legs:
+        warnings.append(
+            "No schedule lines in duty day; report/release zones unknown, "
+            "times left naive (incorrect)"
+        )
+        report_at, release_at = combine_report_release(
+            duty.duty_date, duty.report_time, duty.release_time
+        )
+        return report_at, release_at, warnings
+
+    report_iata = duty.legs[0].origin
+    release_iata = duty.legs[-1].destination
+    report_ap = (airport_index or {}).get(report_iata.upper())
+    release_ap = (airport_index or {}).get(release_iata.upper())
+
+    missing = None
+    if not report_ap or not report_ap.get("tz"):
+        missing = f"No timezone for report airport {report_iata}; times left naive (incorrect)"
+    elif not release_ap or not release_ap.get("tz"):
+        missing = f"No timezone for release airport {release_iata}; times left naive (incorrect)"
+    if missing:
+        warnings.append(missing)
+        report_at, release_at = combine_report_release(
+            duty.duty_date, duty.report_time, duty.release_time
+        )
+        return report_at, release_at, warnings
+
+    report_utc = (
+        combine_date_time(duty.duty_date, duty.report_time)
+        .replace(tzinfo=ZoneInfo(report_ap["tz"]))
+        .astimezone(timezone.utc)
+    )
+    release_utc = (
+        combine_date_time(duty.duty_date, duty.release_time)
+        .replace(tzinfo=ZoneInfo(release_ap["tz"]))
+        .astimezone(timezone.utc)
+    )
+    if release_utc <= report_utc:
+        release_utc += timedelta(days=1)
+
+    if duty.duty_hours:
+        computed = (release_utc - report_utc).total_seconds() / 3600.0
+        if abs(computed - duty.duty_hours) > DUTY_HOURS_TOLERANCE:
+            warnings.append(
+                f"Computed duty {computed:.2f} h ({report_iata} report -> "
+                f"{release_iata} release) differs from SkedPlus Duty "
+                f"{duty.duty_hours} h"
+            )
+
+    return report_utc, release_utc, warnings
 
 
 def _operation_for_operator(operator: Operator | None) -> str | None:
@@ -166,9 +260,9 @@ def build_import_plan(
     for duty in pairing.duty_days:
         dp_key = duty_period_key(pairing.pairing_id, pairing.start_date, duty.duty_date)
         is_future_duty = (mode == ImportMode.ACTUAL and duty.duty_date > today)
-        report_at, release_at = combine_report_release(
-            duty.duty_date, duty.report_time, duty.release_time
-        )
+        report_at, release_at, duty_warns = duty_report_release_utc(duty, airport_index)
+        for w in duty_warns:
+            tz_warnings.append(f"{dp_key}: {w}")
         duty_records.append(
             PlannedDutyPeriodRecord(
                 duty_period_key=dp_key,
@@ -224,6 +318,18 @@ def build_import_plan(
             for w in warns:
                 tz_warnings.append(f"{if_key}: {w}")
 
+            # CSV A/C Type is the real subtype. The txt header "equipment
+            # family" is NOT a subtype (MSP headers say CRJ/CR7 while the CSV
+            # shows CR5/CR9), so the fallback is a guess — surface it.
+            if leg.aircraft_type:
+                aircraft_code = normalize_aircraft_code(leg.aircraft_type)
+            else:
+                aircraft_code = normalize_aircraft_code(pairing.equipment_family)
+                tz_warnings.append(
+                    f"{if_key}: no CSV aircraft type; using txt header equipment "
+                    f"{pairing.equipment_family!r} -> {aircraft_code!r} (may be the wrong subtype)"
+                )
+
             flight_records.append(
                 PlannedFlightRecord(
                     import_flight_key=if_key,
@@ -242,7 +348,7 @@ def build_import_plan(
                     sic_hours=sic_hours,
                     flight_position=flight_position,
                     deadhead=deadhead,
-                    aircraft_code=leg.aircraft_type or pairing.equipment_family,
+                    aircraft_code=aircraft_code,
                     operation=operation,
                     airline=airline,
                     passengers=leg.pax,

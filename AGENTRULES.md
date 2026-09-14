@@ -190,7 +190,7 @@ Examples:
 
 | Aircraft | FAA Type |
 | -------- | -------- |
-| CRJ      | CL65     |
+| CR2      | CL65     |
 | CR5      | CL65     |
 | CR7      | CL65     |
 | CR9      | CL65     |
@@ -201,6 +201,10 @@ This allows:
 - direct SkedPlus import mapping
 - FAA type aggregation
 - subtype reporting
+
+SkyWest exports label the CRJ-200 `CRJ`; the importer maps it to `CR2` for the
+Flight's Aircraft link. `Trips.Equipment_Family` keeps SkyWest's header label
+(`CRJ`, `CR7`), which is NOT a reliable subtype — the CSV `A/C Type` is.
 
 Tail numbers belong ONLY on Flights.
 
@@ -234,7 +238,8 @@ Current parser behavior:
 
 - txt files are primary source
 - csv files enrich aircraft/type info
-- RDY/NMD recognized as non-flight duty events
+- RDY/NMD/CXL/FDP/REF recognized as non-flight duty events; any non-numeric
+  code with 0:00 block and origin == destination is a placeholder (not a Flight)
 - deadheads recognized
 - stable Import Flight Key generation exists
 - dry-run mode functional
@@ -320,7 +325,9 @@ These are NOT loggable flights:
 
 - RDY
 - NMD
-- similar duty/admin schedule lines
+- CXL, FDP, REF
+- similar duty/admin schedule lines — any non-numeric code with 0:00 block and
+  origin == destination (numeric flights stay loggable, e.g. an ORD-ORD air return)
 
 These:
 

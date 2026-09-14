@@ -256,8 +256,17 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
 
 - **Times are converted to UTC on import.** SkedPlus reports local time at each
   airport; the importer looks up each airport's location and converts every
-  out/in/report/release time to UTC before writing. This is why the Airports table
-  must contain every airport you fly (with lat/lon).
+  out/in/report/release time to UTC before writing. Duty **report** uses the zone of
+  the day's first schedule line origin; **release** uses the zone of the last line's
+  destination (SkedPlus prints each in its own airport's local time). The importer
+  warns when the resulting duty length differs from the sheet's `Duty:` by > 0.1 h.
+  This is why the Airports table must contain every airport you fly (with lat/lon).
+- **Placeholder schedule lines** (`CXL`, `FDP`, `REF`, `RDY`, `NMD`, … and any
+  non-numeric code with 0:00 block and origin == destination) never become Flight
+  rows. Numeric flights always do, even same-station air returns.
+- **Aircraft code**: the Flight's Aircraft link comes from the CSV `A/C Type`
+  (falling back to the txt header equipment, with a warning). SkyWest's `CRJ`
+  (CRJ-200) is stored as `CR2`; `Trips.Equipment_Family` keeps SkyWest's label.
 - **Credit** is parsed straight from the SkedPlus export as the sum of leg credits.
   Note the **known gap**: split-duty (SDuty) and reposition (RDY/NMD) credit are *not*
   modeled, so for any trip containing those, **actual credit reads low** — treat
@@ -279,7 +288,8 @@ dashboards in the Grist doc and Metabase. The ones worth watching to judge a tri
 
 The full design (formulas, which need the new `Trips.TAFB` field) is in
 [`docs/metrics-plan-efficiency-variance.md`](docs/metrics-plan-efficiency-variance.md).
-TAFB import is implemented — `import-planned` writes `Trips.TAFB` from the SkedPlus header.
+TAFB import is implemented — both `import-planned` and `import-actual` write `Trips.TAFB`
+from the SkedPlus header, so the most recent import wins.
 
 ### Part 117 awareness (Metabase dashboard; no CLI command)
 

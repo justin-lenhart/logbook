@@ -15,6 +15,10 @@ DUTY_EVENT_CODES = frozenset(
         "TRN",
         "VAC",
         "SICK",
+        # Zero-time placeholders SkedPlus prints at a station (origin == dest):
+        "CXL",  # cancelled leg
+        "FDP",  # FDP end marker
+        "REF",  # reference / report marker
     }
 )
 
@@ -41,11 +45,27 @@ def is_deadhead(leg: Leg) -> bool:
     return False
 
 
+def is_placeholder(leg: Leg) -> bool:
+    """Non-numeric code with 0:00 block that starts and ends at the same station
+    (CXL, FDP, REF, LCO, SHO, RSV...). Numeric flights are never placeholders —
+    e.g. flight 5108 ORD-ORD 0:38 is a real air return."""
+    if NUMERIC_FLIGHT_RE.match(leg.flight.strip()):
+        return False
+    return (
+        leg.block_hours == 0.0
+        and leg.origin.strip().upper() == leg.destination.strip().upper()
+    )
+
+
 def is_loggable_flight(leg: Leg) -> bool:
     """Legs that may become Flight rows on actual import (includes deadheads)."""
-    return not is_duty_event(leg)
+    return not is_duty_event(leg) and not is_placeholder(leg)
 
 
 def counts_toward_planned_legs(leg: Leg) -> bool:
-    """All schedule lines from txt export, including RDY/NMD/deadhead."""
+    """All schedule lines from txt export, including RDY/NMD/deadhead.
+
+    NOTE: currently unused — ``DutyDay.planned_leg_count`` is ``len(legs)``, which
+    also counts placeholder lines (CXL/FDP/REF).
+    """
     return True
