@@ -42,16 +42,20 @@ def map_trip_fields(
     trip: PlannedTripRecord,
     *,
     mode: ImportMode = ImportMode.PLANNED,
-    include_equipment_family: bool = False,
+    include_base: bool = False,
 ) -> dict[str, Any]:
+    """Trip cells. ``include_base`` is set only when the sync layer creates the
+    trip row: Base is never overwritten on re-import. Trips.Equipment_Family is
+    not written (the txt header is not trip data)."""
     fields: dict[str, Any] = {
         F.F_TRIP_KEY: trip.trip_key,
         F.F_TRIP_PAIRING_ID: trip.pairing_id,
         F.F_TRIP_STATUS: trip.status,
         F.F_TRIP_START_DATE: format_grist_date(trip.start_date),
         F.F_TRIP_END_DATE: format_grist_date(trip.end_date),
-        F.F_TRIP_BASE: trip.base,
     }
+    if include_base and trip.base:
+        fields[F.F_TRIP_BASE] = trip.base
     # Only write planned fields on planned import — preserves the original scheduled
     # values when the same trip is later imported as actual (upsert won't clear them).
     if mode == ImportMode.PLANNED:
@@ -63,8 +67,9 @@ def map_trip_fields(
     # from the file header, so the most recent import wins.
     if trip.tafb_hours:
         fields[F.F_TRIP_TAFB] = round(trip.tafb_hours, 2)
-    if include_equipment_family:
-        fields[F.F_TRIP_EQUIPMENT_FAMILY] = trip.equipment_family
+    # Flown credit = header "Credit:" of the actual export (R7).
+    if mode == ImportMode.ACTUAL and trip.actual_credit is not None:
+        fields[F.F_TRIP_ACTUAL_CREDIT] = trip.actual_credit
     return fields
 
 
@@ -84,6 +89,9 @@ def map_duty_period_fields(
         fields[F.F_DUTY_PLANNED_BLOCK] = duty.planned_block
         fields[F.F_DUTY_PLANNED_CREDIT] = duty.planned_credit
         fields[F.F_DUTY_PLANNED_LEGS] = duty.planned_legs
+    # Flown credit = the duty day's "Day Total" credit (R7).
+    if mode == ImportMode.ACTUAL and duty.actual_credit is not None:
+        fields[F.F_DUTY_ACTUAL_CREDIT] = duty.actual_credit
     return fields
 
 

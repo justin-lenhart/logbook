@@ -66,10 +66,19 @@ def test_map_trip_fields() -> None:
     assert fields[F.F_TRIP_PAIRING_ID] == "E3058E"
     assert fields[F.F_TRIP_START_DATE] == format_grist_date(date(2026, 5, 9))
     assert fields[F.F_TRIP_END_DATE] == format_grist_date(date(2026, 5, 12))
-    assert F.F_TRIP_EQUIPMENT_FAMILY not in fields
+    # The txt header equipment is not trip data: never written.
+    assert "Equipment_Family" not in fields
+    # Base only when the sync layer creates the trip row.
+    assert F.F_TRIP_BASE not in fields
+    assert map_trip_fields(_trip(), include_base=True)[F.F_TRIP_BASE] == "MSP"
+    assert F.F_TRIP_BASE not in map_trip_fields(_trip(base=""), include_base=True)
 
-    with_equipment = map_trip_fields(_trip(), include_equipment_family=True)
-    assert with_equipment[F.F_TRIP_EQUIPMENT_FAMILY] == "CRJ"
+
+def test_map_trip_fields_actual_credit_only_on_actual() -> None:
+    trip = _trip(actual_credit=18.3)
+    assert map_trip_fields(trip, mode=ImportMode.ACTUAL)[F.F_TRIP_ACTUAL_CREDIT] == 18.3
+    assert F.F_TRIP_ACTUAL_CREDIT not in map_trip_fields(trip, mode=ImportMode.PLANNED)
+    assert F.F_TRIP_ACTUAL_CREDIT not in map_trip_fields(_trip(), mode=ImportMode.ACTUAL)
 
 
 def test_map_trip_fields_planned_only_writes() -> None:
@@ -137,6 +146,24 @@ def test_map_duty_period_fields() -> None:
     # Actual mode: no planned writes.
     actual = map_duty_period_fields(duty, mode=ImportMode.ACTUAL)
     assert F.F_DUTY_PLANNED_BLOCK not in actual
+    assert F.F_DUTY_ACTUAL_CREDIT not in actual   # no Day Total credit set
+
+
+def test_map_duty_period_fields_actual_credit() -> None:
+    duty = PlannedDutyPeriodRecord(
+        duty_period_key="O1251|2026-07-22|2026-07-23",
+        trip_key="O1251|2026-07-22",
+        duty_date=date(2026, 7, 23),
+        report_at=datetime(2026, 7, 23, 22, 40, tzinfo=timezone.utc),
+        release_at=datetime(2026, 7, 24, 4, 25, tzinfo=timezone.utc),
+        planned_block=4.0,
+        planned_credit=4.2,
+        planned_legs=2,
+        status="Actual",
+        actual_credit=4.2,
+    )
+    assert map_duty_period_fields(duty, mode=ImportMode.ACTUAL)[F.F_DUTY_ACTUAL_CREDIT] == 4.2
+    assert F.F_DUTY_ACTUAL_CREDIT not in map_duty_period_fields(duty, mode=ImportMode.PLANNED)
 
 
 # --- flights ---------------------------------------------------------------

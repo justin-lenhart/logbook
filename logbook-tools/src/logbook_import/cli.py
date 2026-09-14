@@ -219,7 +219,6 @@ def _run_import(
 
         importer: AirtableImporter | GristImporter = GristImporter(
             settings,
-            include_equipment_family=True,
             airport_index=airport_index,
         )
         summarize = _grist_summary

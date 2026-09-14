@@ -66,16 +66,18 @@ def format_run_summary(
 
         for trip in plan.trips:
             lines.append(
-                f"  TRIP [{trip.status}] {trip.trip_key} "
+                f"  TRIP [{trip.status}] {trip.trip_key} base={trip.base or '-'} "
                 f"block={trip.planned_block} credit={trip.planned_credit} "
-                f"duty_days={trip.planned_duty_periods} legs={trip.planned_legs}"
+                f"duty_days={trip.planned_duty_periods} legs={trip.planned_legs} "
+                f"tafb={trip.tafb_hours} actual_credit={trip.actual_credit}"
             )
 
         for duty in plan.duty_periods:
             lines.append(
                 f"  DUTY [{duty.status}] {duty.duty_period_key} "
                 f"date={duty.duty_date} block={duty.planned_block} "
-                f"credit={duty.planned_credit} legs={duty.planned_legs}"
+                f"credit={duty.planned_credit} legs={duty.planned_legs} "
+                f"actual_credit={duty.actual_credit}"
             )
 
         for flight in plan.flights:

@@ -263,14 +263,24 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
   This is why the Airports table must contain every airport you fly (with lat/lon).
 - **Placeholder schedule lines** (`CXL`, `FDP`, `REF`, `RDY`, `NMD`, … and any
   non-numeric code with 0:00 block and origin == destination) never become Flight
-  rows. Numeric flights always do, even same-station air returns.
-- **Aircraft code**: the Flight's Aircraft link comes from the CSV `A/C Type`
-  (falling back to the txt header equipment, with a warning). SkyWest's `CRJ`
-  (CRJ-200) is stored as `CR2`; `Trips.Equipment_Family` keeps SkyWest's label.
-- **Credit** is parsed straight from the SkedPlus export as the sum of leg credits.
-  Note the **known gap**: split-duty (SDuty) and reposition (RDY/NMD) credit are *not*
-  modeled, so for any trip containing those, **actual credit reads low** — treat
-  planned credit as the source of truth there. (See efficiency metrics doc below.)
+  rows and do not count in `Planned_Legs`. Numeric flights always become Flight
+  rows, even same-station air returns.
+- **Pairing suffix**: `E3436D`, `E3436A` and `E3436` are the same pairing. The suffix
+  is removed from every key and from `Trips.Trip_Number_Pairing_ID`.
+- **Header line** (`ORD CRJ FO`) is not trip data. `Trips.Base` = origin of the first
+  schedule line, written only when the trip row is created. `Trips.Equipment_Family`
+  is not written.
+- **Aircraft code**: the Flight's Aircraft link comes only from the CSV `A/C Type`.
+  No aircraft on a line → blank link and a warning. SkyWest's `CRJ` (CRJ-200) is
+  stored as `CR2`.
+- **Flight hours** come only from the Flights table; Duty_Periods is for Part 117
+  analysis.
+- **Flown credit** (actual import): `Duty_Periods.Actual_Credit` = the Day Total
+  credit; `Trips.Actual_Credit` = the header `Credit:`. The importer warns when a Day
+  Total is less than max(sum of leg credit, 4:12) and imports the Day Total anyway.
+  `Actual_Block` stays a formula (sum of Flights).
+- **Cancelled days**: on an actual import, a flown duty day with no flight lines gets
+  Status `Cancelled`.
 - **Night time & landings** follow FAA currency rules (1 hr after sunset → 1 hr before
   sunrise) and are assigned by **pairing**, not by calendar day. Grist imports
   compute this inline on every flight; the standalone `enrich-night` backfill is

@@ -9,6 +9,7 @@ from logbook_import.keys import (
     duty_period_key,
     import_flight_key,
     normalize_flight_number,
+    normalize_pairing_id,
     trip_key,
 )
 from logbook_import.leg_classifier import is_deadhead, is_loggable_flight
@@ -75,9 +76,8 @@ def _to_utc(
     return out_utc, in_utc, warnings
 
 
-# SkyWest labels the CRJ-200 "CRJ" (CSV A/C Type and txt header). The Grist
-# Aircraft table keys it as "CR2". Only Flights' aircraft code is translated;
-# Trips.Equipment_Family keeps SkyWest's label.
+# SkyWest labels the CRJ-200 "CRJ" in the CSV A/C Type. The Grist Aircraft
+# table keys it as "CR2".
 AIRCRAFT_CODE_ALIASES = {"CRJ": "CR2"}
 
 
@@ -173,6 +173,32 @@ def duty_report_release_utc(
     return report_utc, release_utc, warnings
 
 
+# Minimum credit per duty day (4:12) used by the credit check (R8).
+MIN_DAY_CREDIT_MINUTES = 4 * 60 + 12
+
+
+def day_credit_check(duty: DutyDay) -> str | None:
+    """Warn when the Day Total credit is less than max(sum of leg credit, 4:12).
+
+    Compared in exact minutes (the hour values are rounded to 0.1). Returns the
+    warning text, or None when the Day Total is at or above the expected value.
+    The Day Total is imported either way.
+    """
+    leg_minutes = sum(leg.credit_minutes for leg in duty.legs)
+    expected = max(leg_minutes, MIN_DAY_CREDIT_MINUTES)
+    if duty.day_credit_minutes >= expected:
+        return None
+    return (
+        f"Day Total credit {_hmm(duty.day_credit_minutes)} is less than expected "
+        f"{_hmm(expected)} (leg credit sum {_hmm(leg_minutes)}, minimum "
+        f"{_hmm(MIN_DAY_CREDIT_MINUTES)}); imported the Day Total value"
+    )
+
+
+def _hmm(minutes: int) -> str:
+    return f"{minutes // 60}:{minutes % 60:02d}"
+
+
 def _operation_for_operator(operator: Operator | None) -> str | None:
     if operator == Operator.SKW:
         return "Part 121"
@@ -194,7 +220,10 @@ def build_import_batch(
     mode: ImportMode,
 ) -> ImportBatchRecord:
     status_label = _import_type_label(mode)
-    batch_name = f"{pairing.pairing_id}|{pairing.start_date.isoformat()}|{status_label}"
+    batch_name = (
+        f"{normalize_pairing_id(pairing.pairing_id)}|"
+        f"{pairing.start_date.isoformat()}|{status_label}"
+    )
     source_filename = Path(pairing.source_txt).name if pairing.source_txt else ""
     return ImportBatchRecord(
         batch_name=batch_name,
@@ -242,10 +271,11 @@ def build_import_plan(
 
     trip = PlannedTripRecord(
         trip_key=t_key,
-        pairing_id=pairing.pairing_id,
+        pairing_id=normalize_pairing_id(pairing.pairing_id),
         start_date=pairing.start_date,
         end_date=pairing.end_date,
-        base=pairing.base,
+        # Base = origin of the first schedule line, never the txt header (R3/R4).
+        base=pairing.first_origin,
         equipment_family=pairing.equipment_family,
         planned_block=pairing.block_hours,
         planned_credit=pairing.credit_hours,
@@ -253,6 +283,7 @@ def build_import_plan(
         planned_legs=planned_legs_total,
         tafb_hours=pairing.tafb_hours,
         status="Planned" if mode == ImportMode.PLANNED else "Actual",
+        actual_credit=pairing.credit_hours if mode == ImportMode.ACTUAL else None,
     )
 
     duty_records: list[PlannedDutyPeriodRecord] = []
@@ -268,6 +299,20 @@ def build_import_plan(
         report_at, release_at, duty_warns = duty_report_release_utc(duty, airport_index)
         for w in duty_warns:
             tz_warnings.append(f"{dp_key}: {w}")
+
+        flown = mode == ImportMode.ACTUAL and not is_future_duty
+        if not flown:
+            duty_status = "Planned"  # planned import, or a future day on an actual import
+        elif any(is_loggable_flight(leg) for leg in duty.legs):
+            duty_status = "Actual"
+        else:
+            duty_status = "Cancelled"  # flown trip, no flight lines this day (R9)
+        if flown:
+            credit_warn = day_credit_check(duty)
+            if credit_warn:
+                tz_warnings.append(
+                    f"{dp_key}: credit check {pairing.pairing_id} {duty.duty_date}: {credit_warn}"
+                )
         duty_records.append(
             PlannedDutyPeriodRecord(
                 duty_period_key=dp_key,
@@ -278,7 +323,8 @@ def build_import_plan(
                 planned_block=duty.day_block_hours,
                 planned_credit=duty.day_credit_hours,
                 planned_legs=duty.planned_leg_count,
-                status="Planned" if (mode == ImportMode.PLANNED or is_future_duty) else "Actual",
+                status=duty_status,
+                actual_credit=duty.day_credit_hours if flown else None,
             )
         )
 
@@ -323,16 +369,13 @@ def build_import_plan(
             for w in warns:
                 tz_warnings.append(f"{if_key}: {w}")
 
-            # CSV A/C Type is the real subtype. The txt header "equipment
-            # family" is NOT a subtype (MSP headers say CRJ/CR7 while the CSV
-            # shows CR5/CR9), so the fallback is a guess — surface it.
-            if leg.aircraft_type:
-                aircraft_code = normalize_aircraft_code(leg.aircraft_type)
-            else:
-                aircraft_code = normalize_aircraft_code(pairing.equipment_family)
+            # Aircraft comes only from the flight line (CSV A/C Type). The txt
+            # header is not trip data (R5): no fallback, leave the link blank.
+            aircraft_code = normalize_aircraft_code(leg.aircraft_type)
+            if not aircraft_code:
                 tz_warnings.append(
-                    f"{if_key}: no CSV aircraft type; using txt header equipment "
-                    f"{pairing.equipment_family!r} -> {aircraft_code!r} (may be the wrong subtype)"
+                    f"{if_key}: no aircraft type on this flight line (CSV A/C Type); "
+                    f"Aircraft link left blank"
                 )
 
             flight_records.append(

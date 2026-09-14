@@ -4,7 +4,12 @@ import re
 from pathlib import Path
 
 from logbook_import.models import CrewAssignment, DutyDay, Leg, PairingExport
-from logbook_import.time_utils import parse_date_mdy, parse_duration_hmm, parse_time_hhmm
+from logbook_import.time_utils import (
+    parse_date_mdy,
+    parse_duration_hmm,
+    parse_duration_minutes,
+    parse_time_hhmm,
+)
 
 HEADER_RE = re.compile(
     r"^(\d+)\s+(.+?)\s{2,}(\w{3})\s+(\w+)\s+(\w+)\s+([A-Z0-9]+)\s+(\d{2}/\d{2}/\d{4})$"
@@ -75,6 +80,7 @@ def _parse_leg_body(leg_number: int, body: str) -> Leg:
         block_hours=block,
         credit_hours=credit,
         deadhead_indicator=deadhead_indicator,
+        credit_minutes=parse_duration_minutes(tokens[idx + 6]),
     )
 
 
@@ -166,6 +172,7 @@ def parse_skedplus_txt(path: Path | str) -> PairingExport:
             if day_total:
                 current_duty.day_block_hours = parse_duration_hmm(day_total.group(1))
                 current_duty.day_credit_hours = parse_duration_hmm(day_total.group(2))
+                current_duty.day_credit_minutes = parse_duration_minutes(day_total.group(2))
                 current_duty.duty_hours = parse_duration_hmm(day_total.group(3))
                 current_duty = None
                 continuation_date = None

@@ -1,6 +1,7 @@
 from datetime import time
 
 from logbook_import.leg_classifier import (
+    counts_toward_planned_legs,
     is_deadhead,
     is_duty_event,
     is_loggable_flight,
@@ -88,3 +89,21 @@ def test_flown_leg_is_loggable() -> None:
     leg = _leg("4266", tail="N713EV")
     assert is_loggable_flight(leg)
     assert not is_deadhead(leg)
+
+
+def test_counts_toward_planned_legs_excludes_placeholders() -> None:
+    def station(code: str, block: float = 0.0) -> Leg:
+        leg = _leg(code, tail=None, block=block, pax=0)
+        leg.destination = leg.origin
+        return leg
+
+    for code in ("CXL", "FDP", "REF", "RSV", "LCO", "SHO"):
+        assert not counts_toward_planned_legs(station(code))
+        # Listed codes never count, even with block time.
+        assert not counts_toward_planned_legs(station(code, block=1.0))
+    # is_placeholder rule: RDY/NMD at a station with 0:00 block.
+    assert not counts_toward_planned_legs(station("RDY"))
+    assert not counts_toward_planned_legs(station("NMD"))
+    # Flights and deadheads count.
+    assert counts_toward_planned_legs(_leg("4266", tail="N123"))
+    assert counts_toward_planned_legs(_leg("1303", tail=None, dhd="F", block=0.0, pax=0))

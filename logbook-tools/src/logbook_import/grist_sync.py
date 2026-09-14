@@ -38,12 +38,10 @@ class GristImporter:
         self,
         settings: GristSettings,
         *,
-        include_equipment_family: bool = False,
         airport_index: dict[str, dict] | None = None,
         client: GristClient | None = None,
     ) -> None:
         self._settings = settings
-        self._include_equipment_family = include_equipment_family
         self._client = client if client is not None else GristClient(settings)
         self._airport_index = (
             airport_index
@@ -75,12 +73,16 @@ class GristImporter:
         if not batch_id:
             raise RuntimeError(f"Import batch upsert returned no row for {plan.pairing_id}")
 
+        # Base is written only when the trip row is created (R4).
+        existing_trips = self._client.fetch_key_index(
+            F.TABLE_TRIPS, F.F_TRIP_KEY, [trip.trip_key for trip in plan.trips]
+        )
         trip_payloads = [
             {
                 **map_trip_fields(
                     trip,
                     mode=plan.mode,
-                    include_equipment_family=self._include_equipment_family,
+                    include_base=trip.trip_key not in existing_trips,
                 ),
                 F.F_TRIP_IMPORT_BATCH: batch_id,
             }

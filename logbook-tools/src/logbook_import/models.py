@@ -26,6 +26,7 @@ class Leg:
     block_hours: float
     credit_hours: float
     deadhead_indicator: str = ""
+    credit_minutes: int = 0
     duty_date: date | None = None
     aircraft_type: str | None = None
     crew: CrewAssignment | None = None
@@ -43,6 +44,7 @@ class DutyDay:
     legs: list[Leg] = field(default_factory=list)
     day_block_hours: float = 0.0
     day_credit_hours: float = 0.0
+    day_credit_minutes: int = 0
     duty_hours: float = 0.0
     hotel: str | None = None
     layover: str | None = None
@@ -50,13 +52,19 @@ class DutyDay:
 
     @property
     def planned_leg_count(self) -> int:
-        return len(self.legs)
+        """Schedule lines that count as planned legs (placeholders excluded)."""
+        from logbook_import.leg_classifier import counts_toward_planned_legs
+
+        return sum(1 for leg in self.legs if counts_toward_planned_legs(leg))
 
 
 @dataclass
 class PairingExport:
     employee_id: str
     employee_name: str
+    # base / equipment_family are the txt header label (e.g. "ORD CRJ FO").
+    # They are NOT trip data: the importer never uses them for Trips.Base or
+    # Flights.Aircraft. Trip base comes from ``first_origin``.
     base: str
     equipment_family: str
     role: str
@@ -72,6 +80,14 @@ class PairingExport:
     @property
     def end_date(self) -> date:
         return self.duty_days[-1].duty_date if self.duty_days else self.start_date
+
+    @property
+    def first_origin(self) -> str:
+        """Origin airport of the trip's first schedule line ("" if none)."""
+        for duty in self.duty_days:
+            if duty.legs:
+                return duty.legs[0].origin.strip().upper()
+        return ""
 
 
 class ImportMode(str, Enum):
@@ -102,6 +118,8 @@ class PlannedTripRecord:
     planned_legs: int
     tafb_hours: float = 0.0
     status: str = "Planned"
+    # Header "Credit:" of an actual export (R7). None on planned imports.
+    actual_credit: float | None = None
 
 
 @dataclass
@@ -115,6 +133,8 @@ class PlannedDutyPeriodRecord:
     planned_credit: float
     planned_legs: int
     status: str = "Planned"
+    # "Day Total" credit of a flown duty day on an actual export (R7). None otherwise.
+    actual_credit: float | None = None
 
 
 @dataclass

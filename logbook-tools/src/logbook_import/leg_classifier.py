@@ -62,10 +62,18 @@ def is_loggable_flight(leg: Leg) -> bool:
     return not is_duty_event(leg) and not is_placeholder(leg)
 
 
-def counts_toward_planned_legs(leg: Leg) -> bool:
-    """All schedule lines from txt export, including RDY/NMD/deadhead.
+# Placeholder codes that never count as planned legs, whatever their times.
+PLACEHOLDER_CODES = frozenset({"CXL", "FDP", "REF", "RSV", "LCO", "SHO"})
 
-    NOTE: currently unused — ``DutyDay.planned_leg_count`` is ``len(legs)``, which
-    also counts placeholder lines (CXL/FDP/REF).
+
+def counts_toward_planned_legs(leg: Leg) -> bool:
+    """Schedule lines counted in Planned_Legs (flights and deadheads).
+
+    Excluded: PLACEHOLDER_CODES, and every ``is_placeholder`` line. The
+    ``is_placeholder`` rule also matches RDY/NMD lines (0:00 block, same
+    station), so those are not counted either. Used by
+    ``DutyDay.planned_leg_count``.
     """
-    return True
+    if normalize_flight_code(leg.flight) in PLACEHOLDER_CODES:
+        return False
+    return not is_placeholder(leg)

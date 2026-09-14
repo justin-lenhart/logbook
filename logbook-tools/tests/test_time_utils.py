@@ -1,12 +1,22 @@
 from datetime import date, datetime, time
 
-from logbook_import.time_utils import combine_report_release, parse_duration_hmm
+from logbook_import.time_utils import (
+    combine_report_release,
+    parse_duration_hmm,
+    parse_duration_minutes,
+)
 
 
 def test_parse_duration_hmm() -> None:
     assert parse_duration_hmm("1:16") == 1.3
     assert parse_duration_hmm("0:00") == 0.0
     assert parse_duration_hmm("10:10") == 10.2
+
+
+def test_parse_duration_minutes() -> None:
+    assert parse_duration_minutes("4:12") == 252
+    assert parse_duration_minutes("0:00") == 0
+    assert parse_duration_minutes("18:17") == 1097
 
 
 def test_combine_report_release_same_day() -> None:

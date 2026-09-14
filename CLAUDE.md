@@ -69,9 +69,12 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
 ## Commands
 All import commands default to dry-run; add `--commit` to write.
 - `import-actual --role {pic|sic} [--operator skw] [--commit] [--update-map] [--update-apps]`
-  — flown legs → Flight rows (+ actuals roll up to Trips/Duty Periods).
-- `import-planned --role {pic|sic} [--commit]` — Trip + Duty Period rows, no flights;
-  writes `Trips.TAFB` from the SkedPlus header.
+  — flown legs → Flight rows; writes `Trips.Actual_Credit` (header Credit:) and
+  `Duty_Periods.Actual_Credit` (Day Total), sets no-flight days `Cancelled`.
+- `import-planned --role {pic|sic} [--commit]` — Trip + Duty Period rows, no flights.
+- Both write `Trips.TAFB` from the SkedPlus header (last import wins). `Trips.Base` =
+  first schedule line origin, on trip create only. The txt header is never used for
+  base or aircraft (see `AGENTRULES.md` → *Aircraft Philosophy*).
 - `export-map [--output PATH] [--update]` — regenerate `docs/map_data.geojson`; `--update`
   commits + pushes (GitHub Pages).
 - `export-apps` / `enrich-night` / `backfill-passengers` — **legacy, Airtable-only.**

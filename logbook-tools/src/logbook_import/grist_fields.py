@@ -28,7 +28,7 @@ F_TRIP_PLANNED_CREDIT = "Planned_Credit"
 F_TRIP_PLANNED_LEGS = "Planned_Legs"
 F_TRIP_PLANNED_DUTY_PERIODS = "Planned_Duty_Periods"
 F_TRIP_TAFB = "TAFB"
-F_TRIP_EQUIPMENT_FAMILY = "Equipment_Family"
+F_TRIP_ACTUAL_CREDIT = "Actual_Credit"      # must be a data column (header Credit:)
 F_TRIP_IMPORT_BATCH = "Import_Batch"        # Ref:Import_Batch (row id)
 
 # Duty Periods
@@ -41,6 +41,7 @@ F_DUTY_RELEASE_TIME = "Release_Time"
 F_DUTY_PLANNED_BLOCK = "Planned_Block"
 F_DUTY_PLANNED_CREDIT = "Planned_Credit"
 F_DUTY_PLANNED_LEGS = "Planned_Legs"
+F_DUTY_ACTUAL_CREDIT = "Actual_Credit"      # must be a data column (Day Total credit)
 F_DUTY_IMPORT_BATCH = "Import_Batch"        # Ref:Import_Batch (row id)
 
 # Flights

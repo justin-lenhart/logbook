@@ -3,6 +3,7 @@ from datetime import date, datetime, time, timezone
 from logbook_import.config import PairingFileSet
 from logbook_import.import_planner import (
     build_import_plan,
+    day_credit_check,
     duty_report_release_utc,
     normalize_aircraft_code,
 )
@@ -65,8 +66,11 @@ def test_planned_import_has_no_flights(e3058e_txt, e3058e_csv) -> None:
     assert len(plan.trips) == 1
     assert len(plan.duty_periods) == 4
     assert len(plan.flights) == 0
-    assert plan.trips[0].planned_legs == 14
+    # 14 schedule lines minus 3 RDY + 1 NMD (0:00 same-station placeholders).
+    assert plan.trips[0].planned_legs == 10
     assert plan.trips[0].planned_duty_periods == 4
+    assert plan.trips[0].actual_credit is None
+    assert all(dp.actual_credit is None for dp in plan.duty_periods)
 
 
 def test_actual_import_e3058e(e3058e_txt, e3058e_csv) -> None:
@@ -88,7 +92,12 @@ def test_actual_import_e3058e(e3058e_txt, e3058e_csv) -> None:
     assert first.airline == "SKW"
     assert first.aircraft_code == "CR5"
     assert plan.import_batch.import_type == "Actual"
-    assert plan.import_batch.batch_name == "E3058E|2026-05-09|Actual"
+    assert plan.import_batch.batch_name == "E3058|2026-05-09|Actual"
+    trip = plan.trips[0]
+    assert trip.pairing_id == "E3058"     # suffix removed (R2)
+    assert trip.trip_key == "E3058|2026-05-09"
+    assert trip.base == pairing.duty_days[0].legs[0].origin
+    assert trip.actual_credit == 19.3     # header Credit: 19:17 (R7)
 
 
 def test_actual_import_e7748_includes_deadhead(e7748_txt, e7748_csv) -> None:
@@ -262,9 +271,9 @@ def test_placeholders_first_and_last_line_do_not_become_flights(tmp_path) -> Non
     txt.write_text(SANITIZED_O1262A)
     pairing = parse_skedplus_txt(txt)
     day2 = pairing.duty_days[1]
-    # Parser keeps every schedule line (they still count as planned legs).
+    # Parser keeps every schedule line; placeholders do not count as planned legs.
     assert [leg.flight for leg in day2.legs] == ["CXL", "6075", "FDP"]
-    assert day2.planned_leg_count == 3
+    assert day2.planned_leg_count == 1
 
     plan = build_import_plan(
         pairing, ImportMode.ACTUAL, role=CrewRole.SIC,
@@ -303,7 +312,7 @@ def test_normalize_aircraft_code() -> None:
     assert normalize_aircraft_code(None) is None
 
 
-def test_crj_csv_and_header_fallback_map_to_cr2(tmp_path) -> None:
+def test_crj_csv_maps_to_cr2_and_no_header_fallback(tmp_path) -> None:
     txt = tmp_path / "000000_20260702_O1262A.txt"
     txt.write_text(SANITIZED_O1262A)
     csv = tmp_path / "000000_20260702_O1262A.csv"
@@ -321,8 +330,109 @@ def test_crj_csv_and_header_fallback_map_to_cr2(tmp_path) -> None:
     codes = {f.flight_number + f.origin: f.aircraft_code for f in plan.flights}
     assert codes["5021ORD"] == "CR2"   # CSV CRJ
     assert codes["5021SUX"] == "CR5"   # CSV subtype untouched
-    assert codes["5059DEN"] == "CR2"   # no CSV row -> header CRJ fallback
-    fallback_warns = [w for w in plan.warnings if "no CSV aircraft type" in w]
-    assert len(fallback_warns) == 2    # 5059 and 6075
-    # Trips.Equipment_Family keeps SkyWest's label.
-    assert plan.trips[0].equipment_family == "CRJ"
+    assert codes["5059DEN"] is None    # no CSV row -> link left blank (R5)
+    assert codes["6075EAR"] is None
+    blank_warns = [w for w in plan.warnings if "no aircraft type on this flight line" in w]
+    assert len(blank_warns) == 2       # 5059 and 6075
+    # Header "ORD CRJ FO" is not trip data: base = first line origin (R3/R4).
+    assert plan.trips[0].base == "ORD"
+    assert plan.trips[0].pairing_id == "O1262"
+
+
+# --- base from first schedule line (R3/R4) ----------------------------------
+
+def test_base_is_first_line_origin_not_header(tmp_path) -> None:
+    # Header says MSP; the first line departs ATY.
+    txt = tmp_path / "000000_20260614_E3436D.txt"
+    txt.write_text(SANITIZED_REF_DAY)
+    plan = build_import_plan(parse_skedplus_txt(txt), ImportMode.PLANNED, airport_index=AIRPORTS)
+    assert plan.trips[0].base == "ATY"
+    assert plan.trips[0].pairing_id == "E3436"
+    assert plan.trips[0].trip_key == "E3436|2026-06-14"
+    assert plan.duty_periods[0].duty_period_key == "E3436|2026-06-14|2026-06-14"
+
+
+# --- flown credit (R7) and credit check (R8) -------------------------------
+
+SANITIZED_O1251_DAYS = """000000 Test Pilot   ORD CRJ FO   O1251 07/22/2026
+Block: 7:15   Credit: 8:58   TAFB: 30:35
+________________________________________________________________________________
+Thursday 07-23-2026    Report: 17:40    Release: 23:25
+    Flight  Tail    Org  Dest Dep    Arr    Pax Block  Credit D/PU Dhd Turn 
+ 4. 6013    N957SW  GRB  ORD  18:14  20:47  32  2:33   2:33            0:58 
+ 5. 5124    N975SW  ORD  EAU  21:45  23:10  46  1:25   1:25                 
+                                     Day Total: 3:58   4:12   Duty: 5:45   
+Hotel: The Lismore Hotel Eau Cla   Layover: 14:25
+________________________________________________________________________________
+Friday 07-24-2026    Report: 13:50    Release: 19:58
+    Flight  Tail    Org  Dest Dep    Arr    Pax Block  Credit D/PU Dhd Turn 
+ 6. 5122    N983SW  EAU  ORD  14:36  16:05  35  1:29   1:29            0:50 
+ 7. 6060    N983SW  ORD  LNS  16:55  19:43  17  1:48   2:00                 
+                                     Day Total: 3:17   4:00   Duty: 5:08   
+________________________________________________________________________________
+"""
+
+
+def test_actual_credit_from_day_total_and_header(tmp_path) -> None:
+    txt = tmp_path / "000000_20260722_O1251.txt"
+    txt.write_text(SANITIZED_O1251_DAYS)
+    pairing = parse_skedplus_txt(txt)
+    plan = build_import_plan(
+        pairing, ImportMode.ACTUAL, role=CrewRole.SIC,
+        operator=Operator.SKW, airport_index=AIRPORTS,
+    )
+    assert plan.trips[0].actual_credit == 9.0          # header Credit: 8:58
+    assert [dp.actual_credit for dp in plan.duty_periods] == [4.2, 4.0]
+    # Day 1: legs 3:58 < 4:12 minimum, Day Total 4:12 -> no warning.
+    # Day 2: legs 3:29, expected 4:12, Day Total 4:00 -> warning, value still imported.
+    credit_warns = [w for w in plan.warnings if "credit check" in w]
+    assert len(credit_warns) == 1
+    assert credit_warns[0].startswith("O1251|2026-07-22|2026-07-24: credit check O1251 2026-07-24")
+    assert "Day Total credit 4:00" in credit_warns[0]
+    assert "leg credit sum 3:29" in credit_warns[0]
+
+    planned = build_import_plan(pairing, ImportMode.PLANNED, airport_index=AIRPORTS)
+    assert not [w for w in planned.warnings if "credit check" in w]
+
+
+def test_day_credit_check_uses_exact_minutes() -> None:
+    legs = [
+        Leg(1, "1", "N1", "ORD", "GRB", time(8), time(9), 1, 1.7, 1.7, credit_minutes=100),
+        Leg(2, "2", "N1", "GRB", "ORD", time(10), time(12), 1, 2.6, 2.6, credit_minutes=155),
+    ]
+    duty = DutyDay(date(2026, 7, 1), time(7), time(13), legs=legs)
+    duty.day_credit_minutes = 255          # 4:15 == leg sum -> OK
+    assert day_credit_check(duty) is None
+    duty.day_credit_minutes = 254          # one minute short
+    assert "4:14" in day_credit_check(duty) and "leg credit sum 4:15" in day_credit_check(duty)
+
+
+# --- cancelled duty periods (R9) -------------------------------------------
+
+def test_actual_duty_without_flight_lines_is_cancelled(tmp_path) -> None:
+    txt = tmp_path / "000000_20260702_O1262A.txt"
+    txt.write_text(SANITIZED_O1262A.replace(
+        " 5. 6075    N218PS  EAR  ORD  19:50  23:08  34  3:18   3:18            0:44 \n", ""
+    ))
+    pairing = parse_skedplus_txt(txt)
+    actual = build_import_plan(
+        pairing, ImportMode.ACTUAL, role=CrewRole.SIC,
+        operator=Operator.SKW, airport_index=AIRPORTS,
+    )
+    assert [dp.status for dp in actual.duty_periods] == ["Actual", "Cancelled"]
+    planned = build_import_plan(pairing, ImportMode.PLANNED, airport_index=AIRPORTS)
+    assert [dp.status for dp in planned.duty_periods] == ["Planned", "Planned"]
+
+
+def test_future_duty_on_actual_import_stays_planned() -> None:
+    future = date.today().replace(year=date.today().year + 1)
+    pairing = PairingExport(
+        employee_id="1", employee_name="Test Pilot", base="ORD",
+        equipment_family="CRJ", role="FO", pairing_id="O1999",
+        start_date=future, block_hours=0.0, credit_hours=4.2, tafb_hours=0.0,
+        duty_days=[DutyDay(future, time(8), time(14), day_credit_hours=4.2)],
+    )
+    plan = build_import_plan(pairing, ImportMode.ACTUAL)
+    assert plan.duty_periods[0].status == "Planned"
+    assert plan.duty_periods[0].actual_credit is None
+    assert not [w for w in plan.warnings if "credit check" in w]

@@ -203,8 +203,28 @@ This allows:
 - subtype reporting
 
 SkyWest exports label the CRJ-200 `CRJ`; the importer maps it to `CR2` for the
-Flight's Aircraft link. `Trips.Equipment_Family` keeps SkyWest's header label
-(`CRJ`, `CR7`), which is NOT a reliable subtype — the CSV `A/C Type` is.
+Flight's Aircraft link. The Aircraft link comes ONLY from each flight line (CSV
+`A/C Type`). A line without an aircraft type gets a blank link and a warning.
+
+The txt header line (e.g. `ORD CRJ FO`) is NOT trip data: it is never used for
+base or aircraft, and `Trips.Equipment_Family` is not written. The importer reads
+the header only for the Block / Credit / TAFB totals.
+
+## Trip and duty values
+
+- `Trips.Base` = origin of the trip's first schedule line. Written only when the
+  trip row is created; never overwritten on re-import.
+- `Trips.TAFB` = header TAFB of the most recent import (planned or actual).
+- Flight hours come ONLY from the Flights table. Duty_Periods data is ONLY for
+  Part 117 analysis.
+- Flown credit (actual import): `Duty_Periods.Actual_Credit` = the txt "Day Total"
+  credit; `Trips.Actual_Credit` = the header "Credit:". Both must be data columns.
+  `Actual_Block` stays a Grist formula (sum of Flights).
+- Credit check: per flown duty day, expected = max(sum of leg credit, 4:12). A Day
+  Total below expected is still imported, with a warning.
+- `Planned_Legs` excludes placeholder lines (CXL/FDP/REF/RSV/LCO/SHO and every
+  `is_placeholder` line, which includes 0:00 same-station RDY/NMD).
+- Actual import: a flown duty day with no flight lines gets Status `Cancelled`.
 
 Tail numbers belong ONLY on Flights.
 
@@ -276,8 +296,12 @@ Format:
 Example:
 
 ```text
-E3058E|2026-05-09
+E3058|2026-05-09
 ```
+
+A pairing letter suffix has no meaning: `E3436D`, `E3436` and `E3436A` are the same
+pairing `E3436`. The importer removes the suffix from every key, from
+`Trips.Trip_Number_Pairing_ID` and from the Import_Batch name.
 
 ---
 
@@ -310,7 +334,7 @@ Format:
 Example:
 
 ```text
-E3058E|2026-05-09|4266|MSP|INL|1252
+E3058|2026-05-09|4266|MSP|INL|1252
 ```
 
 DO NOT use Airtable autonumber Flight Key for matching.
