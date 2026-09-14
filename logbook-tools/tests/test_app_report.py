@@ -96,3 +96,11 @@ def test_recency_buckets():
     a = R.aggregate(rows, today=today)["CRJ"]
     assert a.recency["12"] == 10.0
     assert a.recency["36"] == 20.0
+
+
+def test_cr2_and_crj_both_map_to_crj_family():
+    # Grist renamed the CRJ-200 Aircraft row CRJ -> CR2; the Airtable backup keeps CRJ.
+    from logbook_import import app_families as AF
+
+    assert AF.family_for_aircraft("CR2") == "CRJ"
+    assert AF.family_for_aircraft("CRJ") == "CRJ"

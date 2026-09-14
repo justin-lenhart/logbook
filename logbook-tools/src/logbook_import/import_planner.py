@@ -159,10 +159,15 @@ def duty_report_release_utc(
     if duty.duty_hours:
         computed = (release_utc - report_utc).total_seconds() / 3600.0
         if abs(computed - duty.duty_hours) > DUTY_HOURS_TOLERANCE:
+            note = (
+                " (SDuty: the sheet's Duty likely excludes the split-duty rest)"
+                if duty.sduty
+                else ""
+            )
             warnings.append(
                 f"Computed duty {computed:.2f} h ({report_iata} report -> "
                 f"{release_iata} release) differs from SkedPlus Duty "
-                f"{duty.duty_hours} h"
+                f"{duty.duty_hours} h{note}"
             )
 
     return report_utc, release_utc, warnings

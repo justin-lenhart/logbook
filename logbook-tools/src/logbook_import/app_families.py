@@ -118,7 +118,8 @@ AIRCRAFT_TO_FAMILY: dict[str, str] = {
     "CR5":    "CRJ",
     "CR7":    "CRJ",
     "CR9":    "CRJ",
-    "CRJ":    "CRJ",
+    "CRJ":    "CRJ",   # CRJ-200 as named in the frozen Airtable backup
+    "CR2":    "CRJ",   # CRJ-200 after the Grist Aircraft rename CRJ -> CR2
     "E175":   "E175",
 }
 
