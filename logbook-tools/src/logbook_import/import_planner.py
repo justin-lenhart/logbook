@@ -182,6 +182,12 @@ def duty_report_release_utc(
     return report_utc, release_utc, warnings
 
 
+def day_actual_credit(duty: DutyDay) -> float:
+    """Duty_Periods.Actual_Credit: the day's Day Total credit from exact minutes,
+    rounded to 0.01 h (so a trip's duty values add up to its Actual_Credit)."""
+    return round(duty.day_credit_minutes / 60.0, 2)
+
+
 def trip_actual_credit(pairing: PairingExport) -> float:
     """Trips.Actual_Credit: sum of the trip's Day Total credits, in hours.
 
@@ -339,7 +345,7 @@ def build_import_plan(
                 planned_credit=duty.day_credit_hours,
                 planned_legs=duty.planned_leg_count,
                 status=duty_status,
-                actual_credit=duty.day_credit_hours if flown else None,
+                actual_credit=day_actual_credit(duty) if flown else None,
                 report_airport=report_airport,
                 release_airport=release_airport,
             )

@@ -3,6 +3,7 @@ from datetime import date, datetime, time, timezone
 from logbook_import.config import PairingFileSet
 from logbook_import.import_planner import (
     build_import_plan,
+    day_actual_credit,
     duty_airports,
     duty_report_release_utc,
     normalize_aircraft_code,
@@ -101,6 +102,8 @@ def test_actual_import_e3058e(e3058e_txt, e3058e_csv) -> None:
     assert trip.base == pairing.duty_days[0].legs[0].origin
     # Sum of Day Totals 5:45 + 5:16 + 4:12 + 4:04 = 19:17 (R7); no 4:12 floor.
     assert trip.actual_credit == 19.28
+    # Duty values at 0.01 h from exact minutes; they sum to the trip value.
+    assert [dp.actual_credit for dp in plan.duty_periods] == [5.75, 5.27, 4.2, 4.07]
 
 
 def test_actual_import_e7748_includes_deadhead(e7748_txt, e7748_csv) -> None:
@@ -386,7 +389,7 @@ def test_actual_credit_from_day_total_and_header(tmp_path) -> None:
     )
     # Trip = sum of Day Totals 4:12 + 4:00 = 8:12, not the header 8:58.
     assert plan.trips[0].actual_credit == 8.2
-    # Day Totals as printed; Day 2 (4:00) stays under 4:12 with no warning.
+    # Day Totals from exact minutes; Day 2 (4:00) stays under 4:12 with no warning.
     assert [dp.actual_credit for dp in plan.duty_periods] == [4.2, 4.0]
     assert not [w for w in plan.warnings if "Day Total credit" in w]
     # The header differs from the Day Totals -> trip credit warning (N2).
@@ -411,6 +414,9 @@ def test_trip_actual_credit_sums_exact_minutes() -> None:
         block_hours=0.0, credit_hours=19.0, tafb_hours=0.0, duty_days=days,
     )
     assert trip_actual_credit(pairing) == 20.63
+    # Per-day values at 0.01 h add up to the trip value (1-decimal days gave 20.7).
+    assert [day_actual_credit(d) for d in days] == [8.62, 7.05, 4.97]
+    assert round(sum(day_actual_credit(d) for d in days), 2) == 20.64  # within 0.01 of 20.63
 
 
 # --- cancelled duty periods (R9) -------------------------------------------

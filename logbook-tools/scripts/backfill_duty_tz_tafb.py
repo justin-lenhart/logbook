@@ -64,6 +64,7 @@ from logbook_import.grist_client import GristClient  # noqa: E402
 from logbook_import.grist_mapper import format_grist_date, format_grist_datetime  # noqa: E402
 from logbook_import.grist_settings import DEFAULT_GRIST_URL, GristSettings  # noqa: E402
 from logbook_import.import_planner import (  # noqa: E402
+    day_actual_credit,
     duty_airports,
     duty_report_release_utc,
     trip_actual_credit,
@@ -451,10 +452,11 @@ def main() -> None:
                 flown = mode == "actual" and duty.duty_date <= today
                 if not flown:
                     continue
-                if num_changed(row.get("acredit"), duty.day_credit_hours):
-                    put(F.TABLE_DUTY_PERIODS, rid, F.F_DUTY_ACTUAL_CREDIT, duty.day_credit_hours)
+                new_dcredit = day_actual_credit(duty)
+                if num_changed(row.get("acredit"), new_dcredit):
+                    put(F.TABLE_DUTY_PERIODS, rid, F.F_DUTY_ACTUAL_CREDIT, new_dcredit)
                     dcredit_rows.append([dp_key, src_label, fmt_num(row.get("acredit")),
-                                         f"{duty.day_credit_hours:g}"])
+                                         f"{new_dcredit:g}"])
                 target = ("Actual" if any(is_loggable_flight(leg) for leg in duty.legs)
                           else "Cancelled")
                 if row.get("status") in ("Planned", "Actual") and row.get("status") != target:

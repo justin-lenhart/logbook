@@ -219,7 +219,7 @@ the header only for the Block / Credit / TAFB totals.
 - Flight hours come ONLY from the Flights table. Duty_Periods data is ONLY for
   Part 117 analysis.
 - Flown credit (actual import): `Duty_Periods.Actual_Credit` = the txt "Day Total"
-  credit; `Trips.Actual_Credit` = the sum of the trip's Day Totals (exact minutes,
+  credit (exact minutes, 0.01 h); `Trips.Actual_Credit` = the sum of the trip's Day Totals (exact minutes,
   0.01 h), NOT the header "Credit:" (stale on reassigned trips). No per-day minimum
   (4:12) is applied anywhere: the Day Totals match the pay report's Processed Credit.
   Both must be data columns. `Actual_Block` stays a Grist formula (sum of Flights).
