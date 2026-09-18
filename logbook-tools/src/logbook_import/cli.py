@@ -19,7 +19,7 @@ from logbook_import.airport_map import (
 from logbook_import.airtable_settings import load_airtable_settings
 from logbook_import.airtable_sync import AirtableImporter, format_commit_summary
 from logbook_import.backend import active_backend
-from logbook_import.config import RECORDED_DIR, WORKSPACE_ROOT, discover_pairing_file_sets, move_processed_files
+from logbook_import.config import INBOX_DIR, RECORDED_DIR, WORKSPACE_ROOT, discover_pairing_file_sets, move_processed_files
 from logbook_import.dry_run import format_run_summary
 from logbook_import.import_planner import build_plans_for_exports
 from logbook_import.models import CrewRole, ImportMode, Operator
@@ -790,6 +790,81 @@ def backfill_passengers(source: str, commit: bool) -> None:
     payloads = [{"id": u["id"], "fields": u["fields"]} for u in updates]
     flights_table.batch_update(payloads, typecast=True)
     click.echo(f"Updated Passengers on {len(updates)} flight(s).")
+
+
+@main.command("import-rsr")
+@click.argument(
+    "pdfs", nargs=-1, type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option(
+    "--inbox",
+    "inbox",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Directory of RSR PDFs to import when none are named (default: inbox/rsr/).",
+)
+@click.option("--commit", is_flag=True, default=False)
+def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None:
+    """Import SkyWest RSR system-wide efficiency metrics into RSR_Metrics.
+
+    Dry-run by default. Domicile reports carry no efficiency metrics; they are
+    recognised, reported, and (on --commit) archived with the rest.
+    """
+    import shutil
+
+    from logbook_import.grist_rsr import TABLE, build_payloads, sync_rsr
+    from logbook_import.parsers.rsr_pdf import RsrParseError, parse_rsr_pdf
+
+    paths = list(pdfs) or sorted(
+        p for p in (inbox or INBOX_DIR / "rsr").iterdir() if p.suffix.lower() == ".pdf"
+    )
+    if not paths:
+        raise click.ClickException(f"No RSR PDFs found in {inbox or 'inbox/rsr/'}")
+
+    rows, source_files, warnings, failed = [], {}, [], []
+    for path in paths:
+        try:
+            parsed = parse_rsr_pdf(path)
+        except (RsrParseError, subprocess.CalledProcessError) as exc:
+            failed.append(path)
+            click.echo(f"  FAILED   {path.name}: {exc}", err=True)
+            continue
+        if not parsed:
+            click.echo(f"  domicile {path.name}: no efficiency metrics (archived only)")
+            continue
+        report_month = parsed[0].report_month
+        source_files[report_month] = path.name
+        rows.extend(parsed)
+        warnings.extend(w for r in parsed for w in r.warnings)
+        click.echo(f"  system   {path.name}: {report_month} report, {len(parsed)} fleet-months")
+
+    payloads = build_payloads(rows, source_files)
+    for w in warnings:
+        click.echo(f"WARN: {w}")
+    click.echo(f"{len(payloads)} {TABLE} row(s) from {len(source_files)} system report(s).")
+
+    if not commit:
+        click.echo("Dry run — nothing written. Re-run with --commit to write.")
+        if failed:
+            sys.exit(1)
+        return
+
+    if payloads:
+        from logbook_import.grist_client import GristClient
+        from logbook_import.grist_settings import load_grist_settings
+
+        result = sync_rsr(GristClient(load_grist_settings()), payloads)
+        click.echo(f"{TABLE}: {result.created} created, {result.updated} updated")
+
+    if not pdfs:  # inbox mode: archive what was processed; named files stay put
+        dest = RECORDED_DIR / "rsr"
+        dest.mkdir(parents=True, exist_ok=True)
+        done = [p for p in paths if p not in failed]
+        for path in done:
+            shutil.move(str(path), dest / path.name)
+        click.echo(f"Moved {len(done)} file(s) to recorded/rsr/")
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

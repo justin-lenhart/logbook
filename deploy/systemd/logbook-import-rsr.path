@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch logbook inbox/rsr for SkyWest RSR report PDFs
+
+[Path]
+DirectoryNotEmpty=/home/mint/Developer/logbook/inbox/rsr
+MakeDirectory=true
+DirectoryMode=0755
+Unit=logbook-import-rsr.service
+
+[Install]
+WantedBy=multi-user.target
