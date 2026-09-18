@@ -28,7 +28,7 @@ F_TRIP_PLANNED_CREDIT = "Planned_Credit"
 F_TRIP_PLANNED_LEGS = "Planned_Legs"
 F_TRIP_PLANNED_DUTY_PERIODS = "Planned_Duty_Periods"
 F_TRIP_TAFB = "TAFB"
-F_TRIP_ACTUAL_CREDIT = "Actual_Credit"      # must be a data column (header Credit:)
+F_TRIP_ACTUAL_CREDIT = "Actual_Credit"      # data column: sum of Day Total credits
 F_TRIP_IMPORT_BATCH = "Import_Batch"        # Ref:Import_Batch (row id)
 
 # Duty Periods

@@ -119,7 +119,7 @@ class PlannedTripRecord:
     planned_legs: int
     tafb_hours: float = 0.0
     status: str = "Planned"
-    # Header "Credit:" of an actual export (R7). None on planned imports.
+    # Sum of the Day Total credits of an actual export (R7). None on planned imports.
     actual_credit: float | None = None
 
 

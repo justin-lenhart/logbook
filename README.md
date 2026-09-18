@@ -276,8 +276,8 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
 - **Flight hours** come only from the Flights table; Duty_Periods is for Part 117
   analysis.
 - **Flown credit** (actual import): `Duty_Periods.Actual_Credit` = the Day Total
-  credit; `Trips.Actual_Credit` = the header `Credit:`. The importer warns when a Day
-  Total is less than max(sum of leg credit, 4:12) and imports the Day Total anyway.
+  credit; `Trips.Actual_Credit` = the sum of the trip's Day Totals (not the header
+  `Credit:`, which is stale on reassigned trips). No 4:12 day minimum is applied.
   `Actual_Block` stays a formula (sum of Flights).
 - **Cancelled days**: on an actual import, a flown duty day with no flight lines gets
   Status `Cancelled`, and so do the trip's `Planned` duty days that the actual export
@@ -285,7 +285,7 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
 - **Duty airports**: `Duty_Periods.Report_Airport` / `Release_Airport` = first line
   origin / last line destination (the same airports used for the time zones).
 - **Trip credit check**: an actual import warns when the header `Credit:` differs from
-  the sum of the Day Totals.
+  the sum of the Day Totals (usually a reassigned trip).
 - **Import warnings** are saved to `Import_Batch.Notes` (`WARN:` / `ERROR:` lines,
   replaced on re-import).
 - **Deadhead passengers** are stored as 0; passenger totals count only operated

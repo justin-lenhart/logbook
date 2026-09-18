@@ -219,10 +219,10 @@ the header only for the Block / Credit / TAFB totals.
 - Flight hours come ONLY from the Flights table. Duty_Periods data is ONLY for
   Part 117 analysis.
 - Flown credit (actual import): `Duty_Periods.Actual_Credit` = the txt "Day Total"
-  credit; `Trips.Actual_Credit` = the header "Credit:". Both must be data columns.
-  `Actual_Block` stays a Grist formula (sum of Flights).
-- Credit check: per flown duty day, expected = max(sum of leg credit, 4:12). A Day
-  Total below expected is still imported, with a warning.
+  credit; `Trips.Actual_Credit` = the sum of the trip's Day Totals (exact minutes,
+  0.01 h), NOT the header "Credit:" (stale on reassigned trips). No per-day minimum
+  (4:12) is applied anywhere: the Day Totals match the pay report's Processed Credit.
+  Both must be data columns. `Actual_Block` stays a Grist formula (sum of Flights).
 - `Planned_Legs` excludes placeholder lines (CXL/FDP/REF/RSV/LCO/SHO and every
   `is_placeholder` line, which includes 0:00 same-station RDY/NMD).
 - Actual import: a flown duty day with no flight lines gets Status `Cancelled`. The
@@ -233,7 +233,7 @@ the header only for the Block / Credit / TAFB totals.
   line origin / last schedule line destination, the same airports the report/release
   time-zone logic uses.
 - Trip credit check (actual import, warning only): header "Credit:" vs the sum of the
-  Day Totals, in exact minutes.
+  Day Totals, in exact minutes. A difference usually means the trip was reassigned.
 - `Import_Batch.Notes` is replaced on every import with that import's warnings and
   errors, one per line, prefixed `WARN:` / `ERROR:`.
 - Deadhead flights get `Passengers = 0`: passenger totals count only flights the

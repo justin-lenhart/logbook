@@ -182,26 +182,14 @@ def duty_report_release_utc(
     return report_utc, release_utc, warnings
 
 
-# Minimum credit per duty day (4:12) used by the credit check (R8).
-MIN_DAY_CREDIT_MINUTES = 4 * 60 + 12
+def trip_actual_credit(pairing: PairingExport) -> float:
+    """Trips.Actual_Credit: sum of the trip's Day Total credits, in hours.
 
-
-def day_credit_check(duty: DutyDay) -> str | None:
-    """Warn when the Day Total credit is less than max(sum of leg credit, 4:12).
-
-    Compared in exact minutes (the hour values are rounded to 0.1). Returns the
-    warning text, or None when the Day Total is at or above the expected value.
-    The Day Total is imported either way.
+    Summed in exact minutes, then rounded to 0.01 h. Not the header "Credit:"
+    (stale on reassigned trips) and no per-day minimum: the Day Totals match
+    the pay report's Processed Credit.
     """
-    leg_minutes = sum(leg.credit_minutes for leg in duty.legs)
-    expected = max(leg_minutes, MIN_DAY_CREDIT_MINUTES)
-    if duty.day_credit_minutes >= expected:
-        return None
-    return (
-        f"Day Total credit {_hmm(duty.day_credit_minutes)} is less than expected "
-        f"{_hmm(expected)} (leg credit sum {_hmm(leg_minutes)}, minimum "
-        f"{_hmm(MIN_DAY_CREDIT_MINUTES)}); imported the Day Total value"
-    )
+    return round(sum(duty.day_credit_minutes for duty in pairing.duty_days) / 60.0, 2)
 
 
 def _hmm(minutes: int) -> str:
@@ -211,9 +199,9 @@ def _hmm(minutes: int) -> str:
 def trip_credit_check(pairing: PairingExport) -> str | None:
     """Warn when the header "Credit:" differs from the sum of the Day Totals.
 
-    Exact minutes. The leg credit sum is printed for context only: the 4:12
-    day minimum makes header vs legs differ on most trips, so it is never the
-    comparison. Returns the warning text, or None when they match.
+    Exact minutes. A difference usually means the trip was reassigned (the
+    header is stale). The leg credit sum is printed for context only. Returns
+    the warning text, or None when they match.
     """
     day_sum = sum(duty.day_credit_minutes for duty in pairing.duty_days)
     if pairing.credit_minutes == day_sum:
@@ -310,7 +298,7 @@ def build_import_plan(
         planned_legs=planned_legs_total,
         tafb_hours=pairing.tafb_hours,
         status="Planned" if mode == ImportMode.PLANNED else "Actual",
-        actual_credit=pairing.credit_hours if mode == ImportMode.ACTUAL else None,
+        actual_credit=trip_actual_credit(pairing) if mode == ImportMode.ACTUAL else None,
     )
 
     duty_records: list[PlannedDutyPeriodRecord] = []
@@ -340,12 +328,6 @@ def build_import_plan(
             duty_status = "Actual"
         else:
             duty_status = "Cancelled"  # flown trip, no flight lines this day (R9)
-        if flown:
-            credit_warn = day_credit_check(duty)
-            if credit_warn:
-                tz_warnings.append(
-                    f"{dp_key}: credit check {pairing.pairing_id} {duty.duty_date}: {credit_warn}"
-                )
         duty_records.append(
             PlannedDutyPeriodRecord(
                 duty_period_key=dp_key,

@@ -3,11 +3,11 @@ from datetime import date, datetime, time, timezone
 from logbook_import.config import PairingFileSet
 from logbook_import.import_planner import (
     build_import_plan,
-    day_credit_check,
     duty_airports,
     duty_report_release_utc,
-    trip_credit_check,
     normalize_aircraft_code,
+    trip_actual_credit,
+    trip_credit_check,
 )
 from logbook_import.models import CrewRole, DutyDay, ImportMode, Leg, Operator, PairingExport
 from logbook_import.parsers.merge import load_pairing_export
@@ -99,7 +99,8 @@ def test_actual_import_e3058e(e3058e_txt, e3058e_csv) -> None:
     assert trip.pairing_id == "E3058"     # suffix removed (R2)
     assert trip.trip_key == "E3058|2026-05-09"
     assert trip.base == pairing.duty_days[0].legs[0].origin
-    assert trip.actual_credit == 19.3     # header Credit: 19:17 (R7)
+    # Sum of Day Totals 5:45 + 5:16 + 4:12 + 4:04 = 19:17 (R7); no 4:12 floor.
+    assert trip.actual_credit == 19.28
 
 
 def test_actual_import_e7748_includes_deadhead(e7748_txt, e7748_csv) -> None:
@@ -354,7 +355,7 @@ def test_base_is_first_line_origin_not_header(tmp_path) -> None:
     assert plan.duty_periods[0].duty_period_key == "E3436|2026-06-14|2026-06-14"
 
 
-# --- flown credit (R7) and credit check (R8) -------------------------------
+# --- flown credit (R7) -----------------------------------------------------
 
 SANITIZED_O1251_DAYS = """000000 Test Pilot   ORD CRJ FO   O1251 07/22/2026
 Block: 7:15   Credit: 8:58   TAFB: 30:35
@@ -383,30 +384,33 @@ def test_actual_credit_from_day_total_and_header(tmp_path) -> None:
         pairing, ImportMode.ACTUAL, role=CrewRole.SIC,
         operator=Operator.SKW, airport_index=AIRPORTS,
     )
-    assert plan.trips[0].actual_credit == 9.0          # header Credit: 8:58
+    # Trip = sum of Day Totals 4:12 + 4:00 = 8:12, not the header 8:58.
+    assert plan.trips[0].actual_credit == 8.2
+    # Day Totals as printed; Day 2 (4:00) stays under 4:12 with no warning.
     assert [dp.actual_credit for dp in plan.duty_periods] == [4.2, 4.0]
-    # Day 1: legs 3:58 < 4:12 minimum, Day Total 4:12 -> no warning.
-    # Day 2: legs 3:29, expected 4:12, Day Total 4:00 -> warning, value still imported.
-    credit_warns = [w for w in plan.warnings if "Day Total credit" in w]
-    assert len(credit_warns) == 1
-    assert credit_warns[0].startswith("O1251|2026-07-22|2026-07-24: credit check O1251 2026-07-24")
-    assert "Day Total credit 4:00" in credit_warns[0]
-    assert "leg credit sum 3:29" in credit_warns[0]
+    assert not [w for w in plan.warnings if "Day Total credit" in w]
+    # The header differs from the Day Totals -> trip credit warning (N2).
+    assert [w for w in plan.warnings if "Trip credit check" in w] == [
+        "O1251|2026-07-22: Trip credit check O1251 2026-07-22: header Credit 8:58 "
+        "!= sum of Day Totals 8:12 (sum of leg credit 7:27)"
+    ]
 
     planned = build_import_plan(pairing, ImportMode.PLANNED, airport_index=AIRPORTS)
     assert not [w for w in planned.warnings if "credit check" in w]
+    assert planned.trips[0].actual_credit is None
 
 
-def test_day_credit_check_uses_exact_minutes() -> None:
-    legs = [
-        Leg(1, "1", "N1", "ORD", "GRB", time(8), time(9), 1, 1.7, 1.7, credit_minutes=100),
-        Leg(2, "2", "N1", "GRB", "ORD", time(10), time(12), 1, 2.6, 2.6, credit_minutes=155),
-    ]
-    duty = DutyDay(date(2026, 7, 1), time(7), time(13), legs=legs)
-    duty.day_credit_minutes = 255          # 4:15 == leg sum -> OK
-    assert day_credit_check(duty) is None
-    duty.day_credit_minutes = 254          # one minute short
-    assert "4:14" in day_credit_check(duty) and "leg credit sum 4:15" in day_credit_check(duty)
+def test_trip_actual_credit_sums_exact_minutes() -> None:
+    # T4729C-like: 20:38 of Day Totals -> 20.63 h (per-day rounding would give 20.7).
+    days = [DutyDay(date(2026, 8, 12 + i), time(8), time(14)) for i in range(3)]
+    for d, minutes in zip(days, (517, 423, 298)):   # 8:37 + 7:03 + 4:58
+        d.day_credit_minutes = minutes
+    pairing = PairingExport(
+        employee_id="1", employee_name="Test Pilot", base="DFW", equipment_family="CRJ",
+        role="FO", pairing_id="T4729C", start_date=date(2026, 8, 12),
+        block_hours=0.0, credit_hours=19.0, tafb_hours=0.0, duty_days=days,
+    )
+    assert trip_actual_credit(pairing) == 20.63
 
 
 # --- cancelled duty periods (R9) -------------------------------------------

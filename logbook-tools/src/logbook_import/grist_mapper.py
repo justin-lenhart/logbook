@@ -67,7 +67,7 @@ def map_trip_fields(
     # from the file header, so the most recent import wins.
     if trip.tafb_hours:
         fields[F.F_TRIP_TAFB] = round(trip.tafb_hours, 2)
-    # Flown credit = header "Credit:" of the actual export (R7).
+    # Flown credit = sum of the trip's Day Total credits (R7).
     if mode == ImportMode.ACTUAL and trip.actual_credit is not None:
         fields[F.F_TRIP_ACTUAL_CREDIT] = trip.actual_credit
     return fields

@@ -26,11 +26,11 @@ Changes (each listed old -> new in the output):
    - Planned_Block from the planned file header.
    - Base = origin of the first schedule line of the newest file (R4, one-time
      correction; the importer itself never overwrites Base).
-   - Actual_Credit = actual file header "Credit:" (R7).
+   - Actual_Credit = sum of the actual file's Day Total credits (R7).
    - End_Date = last duty date of the actual file (flown span).
 4. Flights: deadhead rows get Passengers = 0.
-Printed only (never written): placeholder Flight rows, R8 day-credit warnings,
-trip credit (header vs Day Totals) warnings.
+Printed only (never written): placeholder Flight rows, trip credit warnings
+(header "Credit:" vs the sum of the Day Totals).
 
 --commit also refuses to run while Trips.Actual_Credit or
 Duty_Periods.Actual_Credit is still a formula column.
@@ -64,9 +64,9 @@ from logbook_import.grist_client import GristClient  # noqa: E402
 from logbook_import.grist_mapper import format_grist_date, format_grist_datetime  # noqa: E402
 from logbook_import.grist_settings import DEFAULT_GRIST_URL, GristSettings  # noqa: E402
 from logbook_import.import_planner import (  # noqa: E402
-    day_credit_check,
     duty_airports,
     duty_report_release_utc,
+    trip_actual_credit,
     trip_credit_check,
 )
 from logbook_import.keys import duty_period_key, import_flight_key, normalize_pairing_id, trip_key  # noqa: E402
@@ -403,7 +403,6 @@ def main() -> None:
     # ── 2. Duty periods ───────────────────────────────────────────────────────
     time_rows, ap_rows, dcredit_rows, status_rows = [], [], [], []
     duty_warnings: list[str] = []
-    credit_warnings: list[str] = []
     missing_duty_rows: list[str] = []
     for src in sorted(sources.values(), key=lambda s: s.key):
         ordered = [("actual", p) for p in reversed(src.actual)] + [
@@ -452,10 +451,6 @@ def main() -> None:
                 flown = mode == "actual" and duty.duty_date <= today
                 if not flown:
                     continue
-                warn = day_credit_check(duty)
-                if warn:
-                    credit_warnings.append(
-                        f"{dp_key}: credit check {pairing.pairing_id} {duty.duty_date}: {warn}")
                 if num_changed(row.get("acredit"), duty.day_credit_hours):
                     put(F.TABLE_DUTY_PERIODS, rid, F.F_DUTY_ACTUAL_CREDIT, duty.day_credit_hours)
                     dcredit_rows.append([dp_key, src_label, fmt_num(row.get("acredit")),
@@ -528,10 +523,11 @@ def main() -> None:
             warn = trip_credit_check(act)
             if warn:
                 trip_warnings.append(f"{src.key}: {warn}")
-            if num_changed(t.get("acredit"), act.credit_hours):
-                put(F.TABLE_TRIPS, trip_id, F.F_TRIP_ACTUAL_CREDIT, act.credit_hours)
+            new_credit = trip_actual_credit(act)
+            if num_changed(t.get("acredit"), new_credit):
+                put(F.TABLE_TRIPS, trip_id, F.F_TRIP_ACTUAL_CREDIT, new_credit)
                 tcredit_rows.append([src.key, act_label, fmt_num(t.get("acredit")),
-                                     f"{act.credit_hours:g}"])
+                                     f"{new_credit:g}", fmt_num(act.credit_hours)])
             new_end = format_grist_date(act.end_date)
             if t.get("end_date") != new_end:
                 put(F.TABLE_TRIPS, trip_id, F.F_TRIP_END_DATE, new_end)
@@ -545,8 +541,8 @@ def main() -> None:
     print_table("Trips Planned_Block", ["Trip_Key", "source", "before", "after"], pb_rows)
     print_table("Trips Base (first schedule line origin)",
                 ["Trip_Key", "source", "before", "after"], base_rows)
-    print_table("Trips Actual_Credit (header Credit:)",
-                ["Trip_Key", "source", "before", "after"], tcredit_rows)
+    print_table("Trips Actual_Credit (sum of Day Totals)",
+                ["Trip_Key", "source", "before", "after", "header Credit"], tcredit_rows)
     print_table("Trips End_Date (flown span)", ["Trip_Key", "source", "before", "after"], end_rows)
 
     # ── 4. Deadhead passengers ────────────────────────────────────────────────
@@ -586,10 +582,6 @@ def main() -> None:
                 [placeholder_rows[k] for k in sorted(placeholder_rows)])
 
     # ── Warnings ──────────────────────────────────────────────────────────────
-    print(f"=== R8 day credit warnings (Day Total < max(leg sum, 4:12)): {len(credit_warnings)} ===")
-    for w in credit_warnings:
-        print(f"  WARN: {w}")
-    print()
     print(f"=== Trip credit warnings (header Credit != sum of Day Totals): {len(trip_warnings)} ===")
     for w in trip_warnings:
         print(f"  WARN: {w}")
@@ -621,7 +613,6 @@ def main() -> None:
         ("trip End_Date", len(end_rows)),
         ("deadhead Passengers -> 0", len(pax_rows)),
         ("placeholder flights (listed only)", len(placeholder_rows)),
-        ("R8 day credit warnings", len(credit_warnings)),
         ("trip credit warnings", len(trip_warnings)),
     ):
         print(f"  {label:<40} {n}")
