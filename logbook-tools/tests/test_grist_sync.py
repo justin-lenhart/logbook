@@ -2,7 +2,8 @@ from datetime import date, time
 
 from logbook_import import grist_fields as F
 from logbook_import.grist_client import UpsertResult
-from logbook_import.grist_sync import GristImporter
+from logbook_import.grist_mapper import format_grist_date
+from logbook_import.grist_sync import GristImporter, missing_duty_days_to_cancel
 from logbook_import.import_planner import build_import_plan
 from logbook_import.models import DutyDay, ImportMode, Leg, PairingExport
 
@@ -15,9 +16,12 @@ class FakeClient:
         self.payloads: dict[str, list[dict]] = {}
         self.updates: list[tuple[str, list]] = []
         self.fail_table: str | None = None
+        self.duty_rows: list[dict] = []   # returned for the Duty_Periods-by-trip query
         self._next_id = 100
 
     def sql(self, query: str, args=None) -> list[dict]:
+        if f'FROM "{F.TABLE_DUTY_PERIODS}"' in query:
+            return self.duty_rows
         return []
 
     def fetch_key_index(self, table: str, key_col: str, keys: list[str]) -> dict[str, int]:
@@ -117,3 +121,50 @@ def test_batch_notes_record_error_then_reraise() -> None:
     else:
         raise AssertionError("expected RuntimeError")
     assert client.notes()[0].splitlines()[0] == "ERROR: RuntimeError: HTTP 400 on Duty_Periods"
+
+
+def _epoch(d: date) -> int:
+    return format_grist_date(d)
+
+
+def test_missing_duty_days_to_cancel_rules() -> None:
+    today = date(2026, 7, 10)
+    rows = [
+        {"id": 1, "k": "O1262|2026-07-02|2026-07-02", "d": _epoch(date(2026, 7, 2)), "s": "Actual"},
+        {"id": 3, "k": "O1262|2026-07-02|2026-07-04", "d": _epoch(date(2026, 7, 4)), "s": "Planned"},
+        {"id": 4, "k": "O1262|2026-07-02|2026-07-05", "d": _epoch(date(2026, 7, 5)), "s": "Planned"},
+        {"id": 5, "k": "O1262|2026-07-02|2026-07-10", "d": _epoch(today), "s": "Planned"},
+        {"id": 6, "k": "O1262|2026-07-02|2026-07-11", "d": _epoch(date(2026, 7, 11)), "s": "Planned"},
+        {"id": 7, "k": "O1262|2026-07-02|2026-07-06", "d": _epoch(date(2026, 7, 6)), "s": "Replaced"},
+        {"id": 8, "k": "O1262|2026-07-02|2026-07-03", "d": _epoch(date(2026, 7, 3)), "s": "Planned"},
+    ]
+    in_file = {"O1262|2026-07-02|2026-07-02", "O1262|2026-07-02|2026-07-03"}
+    # 3, 4 and 5 (today): Planned, not in file, dated <= today. 6 is future,
+    # 7 is not "Planned", 8 is in the file.
+    assert [rid for rid, _ in missing_duty_days_to_cancel(rows, in_file, today)] == [3, 4, 5]
+
+
+def test_actual_import_cancels_missing_planned_days_and_sets_flown_span() -> None:
+    plan = _plan(ImportMode.ACTUAL)
+    client = FakeClient(existing_trip_keys={"O1251|2026-07-22"})
+    client.duty_rows = [
+        {"id": 50, "k": "O1251|2026-07-22|2026-07-22", "d": _epoch(date(2026, 7, 22)), "s": "Actual"},
+        {"id": 51, "k": "O1251|2026-07-22|2026-07-23", "d": _epoch(date(2026, 7, 23)), "s": "Planned"},
+    ]
+    result = GristImporter(None, airport_index={}, client=client).sync_plan(plan)
+    duty_updates = [ups for table, ups in client.updates if table == F.TABLE_DUTY_PERIODS]
+    assert duty_updates == [[(51, {F.F_DUTY_STATUS: "Cancelled"})]]
+    assert any("2026-07-23: not in the actual export" in w for w in result.warnings)
+    # The trip's dates follow the actual export (flown span).
+    trip = client.payloads[F.TABLE_TRIPS][0]
+    assert trip[F.F_TRIP_START_DATE] == _epoch(date(2026, 7, 22))
+    assert trip[F.F_TRIP_END_DATE] == _epoch(date(2026, 7, 22))
+
+
+def test_planned_import_never_cancels() -> None:
+    client = FakeClient(existing_trip_keys=set())
+    client.duty_rows = [
+        {"id": 51, "k": "O1251|2026-07-22|2026-07-23", "d": _epoch(date(2026, 7, 23)), "s": "Planned"},
+    ]
+    GristImporter(None, airport_index={}, client=client).sync_plan(_plan())
+    assert not [u for table, u in client.updates if table == F.TABLE_DUTY_PERIODS]

@@ -9,7 +9,7 @@ Differences from the Airtable backend, all consequences of the Grist schema:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from logbook_import import grist_fields as F
@@ -82,6 +82,32 @@ class GristImporter:
         self._write_notes(batch_id, result.warnings)
         return result
 
+    def _cancel_missing_duty_days(
+        self, plan: ImportPlan, trip_ids: dict[str, int], warnings: list[str]
+    ) -> None:
+        """Actual import: the trip's "Planned" duty rows that are absent from the
+        actual export and dated today or earlier become "Cancelled" (trip cut
+        short, e.g. O1262 planned 4 days, flew 2). Other statuses are untouched."""
+        plan_keys = {d.duty_period_key for d in plan.duty_periods}
+        for trip in plan.trips:
+            trip_id = trip_ids.get(trip.trip_key)
+            if not trip_id:
+                continue
+            rows = self._client.sql(
+                f'SELECT id, "{F.F_DUTY_PERIOD_KEY}" AS k, "{F.F_DUTY_DATE}" AS d, '
+                f'"{F.F_DUTY_STATUS}" AS s FROM "{F.TABLE_DUTY_PERIODS}" '
+                f'WHERE "{F.F_DUTY_TRIPS}" = ?',
+                [trip_id],
+            )
+            cancel = missing_duty_days_to_cancel(rows, plan_keys, date.today())
+            if cancel:
+                self._client.update_records(
+                    F.TABLE_DUTY_PERIODS,
+                    [(rid, {F.F_DUTY_STATUS: "Cancelled"}) for rid, _ in cancel],
+                )
+            for _, key in cancel:
+                warnings.append(f"{key}: not in the actual export; Status Planned -> Cancelled")
+
     def _write_notes(
         self, batch_id: int, warnings: list[str], errors: list[str] | None = None
     ) -> None:
@@ -151,6 +177,9 @@ class GristImporter:
         )
         duty_ids = duty_result.key_to_id
         duty_counts = _counts(duty_result)
+
+        if plan.mode == ImportMode.ACTUAL:
+            self._cancel_missing_duty_days(plan, trip_ids, warnings)
 
         flight_payloads = []
         for flight in plan.flights:
@@ -286,6 +315,25 @@ class GristImporter:
             night_enriched=night_enriched,
             warnings=warnings,
         )
+
+
+def missing_duty_days_to_cancel(
+    rows: list[dict[str, Any]], plan_keys: set[str], today: date
+) -> list[tuple[int, str]]:
+    """(row id, key) of "Planned" duty rows not in ``plan_keys`` dated <= today.
+
+    ``rows`` carry ``id``, ``k`` (Duty_Period_Key), ``d`` (Duty_Date, Grist epoch
+    seconds at UTC midnight) and ``s`` (Status).
+    """
+    cutoff = int(datetime(today.year, today.month, today.day, tzinfo=timezone.utc).timestamp())
+    return [
+        (int(r["id"]), str(r["k"]))
+        for r in rows
+        if r.get("s") == "Planned"
+        and r.get("k") not in plan_keys
+        and r.get("d") not in (None, "")
+        and int(r["d"]) <= cutoff
+    ]
 
 
 def format_commit_summary(results: list[PlanSyncResult]) -> str:

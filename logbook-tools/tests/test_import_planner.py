@@ -487,3 +487,6 @@ def test_deadhead_flight_has_zero_passengers() -> None:
     )
     plan = build_import_plan(pairing, ImportMode.ACTUAL, role=CrewRole.SIC, airport_index=AIRPORTS)
     assert [(f.deadhead, f.passengers) for f in plan.flights] == [(False, 30), (True, 0)]
+    # No CSV here: the operated leg warns about the blank aircraft, the deadhead does not.
+    blank = [w for w in plan.warnings if "no aircraft type" in w]
+    assert len(blank) == 1 and "|5907|" in blank[0]

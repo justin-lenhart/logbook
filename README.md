@@ -271,7 +271,7 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
   schedule line, written only when the trip row is created. `Trips.Equipment_Family`
   is not written.
 - **Aircraft code**: the Flight's Aircraft link comes only from the CSV `A/C Type`.
-  No aircraft on a line → blank link and a warning. SkyWest's `CRJ` (CRJ-200) is
+  No aircraft on a line → blank link and a warning (deadheads: no warning). SkyWest's `CRJ` (CRJ-200) is
   stored as `CR2`.
 - **Flight hours** come only from the Flights table; Duty_Periods is for Part 117
   analysis.
@@ -280,7 +280,8 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
   Total is less than max(sum of leg credit, 4:12) and imports the Day Total anyway.
   `Actual_Block` stays a formula (sum of Flights).
 - **Cancelled days**: on an actual import, a flown duty day with no flight lines gets
-  Status `Cancelled`.
+  Status `Cancelled`, and so do the trip's `Planned` duty days that the actual export
+  no longer contains (trip cut short) and that are dated today or earlier.
 - **Duty airports**: `Duty_Periods.Report_Airport` / `Release_Airport` = first line
   origin / last line destination (the same airports used for the time zones).
 - **Trip credit check**: an actual import warns when the header `Credit:` differs from

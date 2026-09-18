@@ -204,7 +204,8 @@ This allows:
 
 SkyWest exports label the CRJ-200 `CRJ`; the importer maps it to `CR2` for the
 Flight's Aircraft link. The Aircraft link comes ONLY from each flight line (CSV
-`A/C Type`). A line without an aircraft type gets a blank link and a warning.
+`A/C Type`). A line without an aircraft type gets a blank link and a warning
+(no warning for deadhead lines, which never carry an A/C Type).
 
 The txt header line (e.g. `ORD CRJ FO`) is NOT trip data: it is never used for
 base or aircraft, and `Trips.Equipment_Family` is not written. The importer reads
@@ -224,7 +225,10 @@ the header only for the Block / Credit / TAFB totals.
   Total below expected is still imported, with a warning.
 - `Planned_Legs` excludes placeholder lines (CXL/FDP/REF/RSV/LCO/SHO and every
   `is_placeholder` line, which includes 0:00 same-station RDY/NMD).
-- Actual import: a flown duty day with no flight lines gets Status `Cancelled`.
+- Actual import: a flown duty day with no flight lines gets Status `Cancelled`. The
+  trip's `Planned` duty rows that are absent from the actual export and dated today or
+  earlier also become `Cancelled` (trip cut short). Trips Start/End dates follow the
+  actual export (flown span).
 - `Duty_Periods.Report_Airport` / `Release_Airport` (both imports) = first schedule
   line origin / last schedule line destination, the same airports the report/release
   time-zone logic uses.
