@@ -72,6 +72,9 @@ All import commands default to dry-run; add `--commit` to write.
   — flown legs → Flight rows (+ actuals roll up to Trips/Duty Periods).
 - `import-planned --role {pic|sic} [--commit]` — Trip + Duty Period rows, no flights;
   writes `Trips.TAFB` from the SkedPlus header.
+- `import-rsr [PDF...] [--inbox DIR] [--commit]` — SkyWest RSR system-wide reports →
+  `RSR_Metrics` (one row per Scope|Fleet|Data_Month; newest report wins, a report's
+  oldest column only fills gaps). Domicile reports have no efficiency pages.
 - `export-map [--output PATH] [--update]` — regenerate `docs/map_data.geojson`; `--update`
   commits + pushes (GitHub Pages).
 - `export-apps` / `enrich-night` / `backfill-passengers` — **legacy, Airtable-only.**
@@ -89,8 +92,8 @@ All import commands default to dry-run; add `--commit` to write.
   `GRIST_API_KEY`, `GRIST_DOC` (legacy `AIRTABLE_*`). Template: `logbook-tools/.env.example`.
 - **Grist canonical URL:** `http://100.78.241.102:8484` (Tailscale-only; other hostnames
   rejected).
-- **Deployed on mintbox:** `deploy/systemd/logbook-import-{planned,actual}.{path,service}`
-  watch `inbox/{planned,actual}` and run `scripts/process-inbox.sh` (settle delay,
+- **Deployed on mintbox:** `deploy/systemd/logbook-import-{planned,actual,rsr}.{path,service}`
+  watch `inbox/{planned,actual,rsr}` and run `scripts/process-inbox.sh` (settle delay,
   txt/csv pair-wait, `flock`, always empties the watch dir). Transport: Syncthing
   (Mac↔mintbox). `sudo` install steps are the user's.
 

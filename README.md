@@ -147,12 +147,17 @@ into `recorded/<mode>/` as usual; anything that fails lands in
 `inbox/failed/<timestamp>-<mode>/` together with `import-log.txt`, which syncs
 back to the Mac so you'll see it.
 
+A third folder, **`inbox/rsr/`**, takes SkyWest RSR report PDFs. System-wide
+reports are parsed into the Grist `RSR_Metrics` table (13-month history per fleet;
+see `logbook-import import-rsr --help`); domicile reports carry no efficiency
+metrics and are just archived. Processed PDFs move to `recorded/rsr/`.
+
 The pieces, all in this repo:
 
 | Piece | Where |
 |---|---|
 | Watcher wrapper (settle delay, pair-wait, quarantine) | `scripts/process-inbox.sh` |
-| systemd path + service units (×2 modes) | `deploy/systemd/` |
+| systemd path + service units (planned, actual, rsr) | `deploy/systemd/` |
 | Backend/credentials the auto-import uses | `logbook-tools/.env` (`LOGBOOK_BACKEND`, `GRIST_*`) |
 
 Install (once, needs sudo):
@@ -160,7 +165,7 @@ Install (once, needs sudo):
 ```sh
 sudo cp deploy/systemd/logbook-import-*.{path,service} /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now logbook-import-planned.path logbook-import-actual.path
+sudo systemctl enable --now logbook-import-planned.path logbook-import-actual.path logbook-import-rsr.path
 ```
 
 Watch a run / debug: `journalctl -u logbook-import-actual.service -f`.

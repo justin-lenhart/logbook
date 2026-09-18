@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Auto-import SkedPlus exports dropped into inbox/planned or inbox/actual.
+# Auto-import SkedPlus exports dropped into inbox/planned or inbox/actual, and
+# SkyWest RSR report PDFs dropped into inbox/rsr.
 #
 # Invoked by the logbook-import-<mode>.path systemd units whenever the watched
 # directory becomes non-empty (see deploy/systemd/). Can also be run by hand:
 #
 #   scripts/process-inbox.sh planned
 #   scripts/process-inbox.sh actual
+#   scripts/process-inbox.sh rsr
 #
 # Behaviour:
 #   - waits briefly so a txt/csv pair syncing in from the Mac arrives complete
@@ -20,8 +22,8 @@
 
 set -uo pipefail
 
-MODE="${1:?usage: process-inbox.sh <planned|actual>}"
-case "$MODE" in planned|actual) ;; *) echo "unknown mode: $MODE" >&2; exit 2 ;; esac
+MODE="${1:?usage: process-inbox.sh <planned|actual|rsr>}"
+case "$MODE" in planned|actual|rsr) ;; *) echo "unknown mode: $MODE" >&2; exit 2 ;; esac
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WATCH_DIR="$REPO_ROOT/inbox/$MODE"
@@ -85,7 +87,12 @@ EXTRA_ARGS=()
 [ "$MODE" = actual ] && EXTRA_ARGS+=(--update-map)
 
 echo "=== logbook auto-import: mode=$MODE $(date -Is) ==="
-"$PYTHON" -m logbook_import.cli "import-$MODE" --commit --inbox "$WATCH_DIR" "${EXTRA_ARGS[@]}" 2>&1 | tee "$LOG"
+if [ "$MODE" = rsr ]; then
+    # RSR PDFs: system reports -> RSR_Metrics; all processed PDFs -> recorded/rsr/
+    "$PYTHON" -m logbook_import.cli import-rsr --commit --inbox "$WATCH_DIR" 2>&1 | tee "$LOG"
+else
+    "$PYTHON" -m logbook_import.cli "import-$MODE" --commit --inbox "$WATCH_DIR" "${EXTRA_ARGS[@]}" 2>&1 | tee "$LOG"
+fi
 status=${PIPESTATUS[0]}
 
 # macOS AppleDouble sidecars (._foo) ride along with files copied from a Mac —
