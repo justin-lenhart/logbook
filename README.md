@@ -281,6 +281,14 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
   `Actual_Block` stays a formula (sum of Flights).
 - **Cancelled days**: on an actual import, a flown duty day with no flight lines gets
   Status `Cancelled`.
+- **Duty airports**: `Duty_Periods.Report_Airport` / `Release_Airport` = first line
+  origin / last line destination (the same airports used for the time zones).
+- **Trip credit check**: an actual import warns when the header `Credit:` differs from
+  the sum of the Day Totals.
+- **Import warnings** are saved to `Import_Batch.Notes` (`WARN:` / `ERROR:` lines,
+  replaced on re-import).
+- **Deadhead passengers** are stored as 0; passenger totals count only operated
+  flights.
 - **Night time & landings** follow FAA currency rules (1 hr after sunset → 1 hr before
   sunrise) and are assigned by **pairing**, not by calendar day. Grist imports
   compute this inline on every flight; the standalone `enrich-night` backfill is

@@ -42,6 +42,8 @@ F_DUTY_PLANNED_BLOCK = "Planned_Block"
 F_DUTY_PLANNED_CREDIT = "Planned_Credit"
 F_DUTY_PLANNED_LEGS = "Planned_Legs"
 F_DUTY_ACTUAL_CREDIT = "Actual_Credit"      # must be a data column (Day Total credit)
+F_DUTY_REPORT_AIRPORT = "Report_Airport"    # Text, IATA
+F_DUTY_RELEASE_AIRPORT = "Release_Airport"  # Text, IATA
 F_DUTY_IMPORT_BATCH = "Import_Batch"        # Ref:Import_Batch (row id)
 
 # Flights
@@ -82,6 +84,7 @@ F_BATCH_IMPORT_DATETIME = "Import_Date_Time"
 F_BATCH_SOURCE_FOLDER = "Source_Folder"
 F_BATCH_SOURCE_FILENAME = "Source_Filename"
 F_BATCH_IMPORT_STATUS = "Import_Status"
+F_BATCH_NOTES = "Notes"                     # Text: WARN:/ERROR: lines of the last import
 
 # Airports
 F_AIRPORT_TYPE = "Type"

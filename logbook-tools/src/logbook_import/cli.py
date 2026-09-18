@@ -151,11 +151,15 @@ def _run_import(
         )
 
     pairings = []
-    plan_warnings: list[str] = []
+    file_warnings: list[list[str]] = []  # per pairing; saved to Import_Batch.Notes
+    attached: set[str] = set()
     for file_set in file_sets:
         pairing, warnings = load_pairing_export(file_set)
         pairings.append(pairing)
-        plan_warnings.extend(warnings)
+        mine = [w for w in inbox_warnings if file_set.pairing_id in w]
+        attached.update(mine)
+        file_warnings.append(mine + warnings)
+    plan_warnings: list[str] = []
 
     backend = active_backend()
 
@@ -188,9 +192,10 @@ def _run_import(
     plans = build_plans_for_exports(
         pairings, mode, role=crew_role, operator=op, airport_index=airport_index
     )
-    for plan in plans:
+    for plan, warns in zip(plans, file_warnings):
+        plan.warnings[:0] = warns
         plan_warnings.extend(plan.warnings)
-    all_warnings = inbox_warnings + plan_warnings
+    all_warnings = [w for w in inbox_warnings if w not in attached] + plan_warnings
 
     if dry_run:
         click.echo(format_run_summary(plans, all_warnings))

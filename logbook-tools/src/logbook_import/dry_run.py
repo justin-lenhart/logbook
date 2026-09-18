@@ -5,6 +5,7 @@ from dataclasses import asdict
 from datetime import date, datetime, time
 from enum import Enum
 
+from logbook_import.grist_mapper import format_batch_notes
 from logbook_import.models import ImportPlan
 
 
@@ -77,7 +78,8 @@ def format_run_summary(
                 f"  DUTY [{duty.status}] {duty.duty_period_key} "
                 f"date={duty.duty_date} block={duty.planned_block} "
                 f"credit={duty.planned_credit} legs={duty.planned_legs} "
-                f"actual_credit={duty.actual_credit}"
+                f"actual_credit={duty.actual_credit} "
+                f"rpt={duty.report_airport or '-'} rel={duty.release_airport or '-'}"
             )
 
         for flight in plan.flights:
@@ -85,9 +87,13 @@ def format_run_summary(
             lines.append(
                 f"  FLIGHT{dh} {flight.import_flight_key} "
                 f"block={flight.block_hours} pic={flight.pic_hours} sic={flight.sic_hours} "
-                f"ac={flight.aircraft_code} tail={flight.tail_number}"
+                f"ac={flight.aircraft_code} tail={flight.tail_number} "
+                f"pax={flight.passengers}"
             )
+        notes = format_batch_notes(plan.warnings)
+        lines.append("  NOTES (Import_Batch.Notes; commit adds sync warnings):")
+        lines.extend(f"    {n}" for n in (notes.splitlines() or ["(empty)"]))
         lines.append("")
 
-    lines.append("No Airtable writes performed (dry-run).")
+    lines.append("No backend writes performed (dry-run).")
     return "\n".join(lines)

@@ -85,6 +85,11 @@ def map_duty_period_fields(
         F.F_DUTY_REPORT_TIME: format_grist_datetime(duty.report_at),
         F.F_DUTY_RELEASE_TIME: format_grist_datetime(duty.release_at),
     }
+    # Same airports as the report/release time-zone logic; both modes.
+    if duty.report_airport:
+        fields[F.F_DUTY_REPORT_AIRPORT] = duty.report_airport
+    if duty.release_airport:
+        fields[F.F_DUTY_RELEASE_AIRPORT] = duty.release_airport
     if mode == ImportMode.PLANNED:
         fields[F.F_DUTY_PLANNED_BLOCK] = duty.planned_block
         fields[F.F_DUTY_PLANNED_CREDIT] = duty.planned_credit
@@ -126,6 +131,13 @@ def map_flight_fields(flight: PlannedFlightRecord) -> dict[str, Any]:
     if flight.special_categories:
         fields[F.F_FLIGHT_SPECIAL_CATEGORY] = encode_choice_list(flight.special_categories)
     return fields
+
+
+def format_batch_notes(warnings: list[str], errors: list[str] | None = None) -> str:
+    """Plain text for Import_Batch.Notes: one line per item, WARN:/ERROR: prefix."""
+    lines = [f"ERROR: {e}" for e in errors or []]
+    lines += [f"WARN: {w}" for w in warnings]
+    return "\n".join(lines)
 
 
 def map_import_batch_fields(

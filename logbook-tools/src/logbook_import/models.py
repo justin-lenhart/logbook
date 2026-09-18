@@ -74,6 +74,7 @@ class PairingExport:
     credit_hours: float
     tafb_hours: float
     duty_days: list[DutyDay] = field(default_factory=list)
+    credit_minutes: int = 0  # header "Credit:" in exact minutes
     source_txt: Path | None = None
     source_csv: Path | None = None
 
@@ -135,6 +136,9 @@ class PlannedDutyPeriodRecord:
     status: str = "Planned"
     # "Day Total" credit of a flown duty day on an actual export (R7). None otherwise.
     actual_credit: float | None = None
+    # IATA codes: first schedule line origin / last schedule line destination.
+    report_airport: str = ""
+    release_airport: str = ""
 
 
 @dataclass

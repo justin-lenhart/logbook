@@ -17,6 +17,7 @@ from logbook_import.airtable_sync import PlanSyncResult, TableUpsertCounts
 from logbook_import.grist_airports import fetch_airport_index
 from logbook_import.grist_client import GristClient, UpsertResult
 from logbook_import.grist_mapper import (
+    format_batch_notes,
     map_duty_period_fields,
     map_flight_fields,
     map_import_batch_fields,
@@ -73,6 +74,30 @@ class GristImporter:
         if not batch_id:
             raise RuntimeError(f"Import batch upsert returned no row for {plan.pairing_id}")
 
+        try:
+            result = self._sync_rows(plan, batch_id, warnings, aircraft_index)
+        except Exception as exc:
+            self._write_notes(batch_id, warnings, errors=[f"{type(exc).__name__}: {exc}"])
+            raise
+        self._write_notes(batch_id, result.warnings)
+        return result
+
+    def _write_notes(
+        self, batch_id: int, warnings: list[str], errors: list[str] | None = None
+    ) -> None:
+        """Replace Import_Batch.Notes with this import's warnings and errors."""
+        self._client.update_records(
+            F.TABLE_IMPORT_BATCH,
+            [(batch_id, {F.F_BATCH_NOTES: format_batch_notes(warnings, errors)})],
+        )
+
+    def _sync_rows(
+        self,
+        plan: ImportPlan,
+        batch_id: int,
+        warnings: list[str],
+        aircraft_index: dict[str, int],
+    ) -> PlanSyncResult:
         # Base is written only when the trip row is created (R4).
         existing_trips = self._client.fetch_key_index(
             F.TABLE_TRIPS, F.F_TRIP_KEY, [trip.trip_key for trip in plan.trips]

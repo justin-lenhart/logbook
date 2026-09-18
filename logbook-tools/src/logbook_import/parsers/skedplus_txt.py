@@ -143,6 +143,7 @@ def parse_skedplus_txt(path: Path | str) -> PairingExport:
             if summary:
                 header.block_hours = parse_duration_hmm(summary.group(1))
                 header.credit_hours = parse_duration_hmm(summary.group(2))
+                header.credit_minutes = parse_duration_minutes(summary.group(2))
                 header.tafb_hours = parse_duration_hmm(summary.group(3))
                 continue
 

@@ -4,7 +4,9 @@ from logbook_import.config import PairingFileSet
 from logbook_import.import_planner import (
     build_import_plan,
     day_credit_check,
+    duty_airports,
     duty_report_release_utc,
+    trip_credit_check,
     normalize_aircraft_code,
 )
 from logbook_import.models import CrewRole, DutyDay, ImportMode, Leg, Operator, PairingExport
@@ -385,7 +387,7 @@ def test_actual_credit_from_day_total_and_header(tmp_path) -> None:
     assert [dp.actual_credit for dp in plan.duty_periods] == [4.2, 4.0]
     # Day 1: legs 3:58 < 4:12 minimum, Day Total 4:12 -> no warning.
     # Day 2: legs 3:29, expected 4:12, Day Total 4:00 -> warning, value still imported.
-    credit_warns = [w for w in plan.warnings if "credit check" in w]
+    credit_warns = [w for w in plan.warnings if "Day Total credit" in w]
     assert len(credit_warns) == 1
     assert credit_warns[0].startswith("O1251|2026-07-22|2026-07-24: credit check O1251 2026-07-24")
     assert "Day Total credit 4:00" in credit_warns[0]
@@ -436,3 +438,52 @@ def test_future_duty_on_actual_import_stays_planned() -> None:
     assert plan.duty_periods[0].status == "Planned"
     assert plan.duty_periods[0].actual_credit is None
     assert not [w for w in plan.warnings if "credit check" in w]
+
+
+# --- Phase 1b: duty airports (N1), trip credit check (N2), deadhead pax (N4) --
+
+def test_duty_airports_match_time_zone_airports(tmp_path) -> None:
+    txt = tmp_path / "000000_20260702_O1262A.txt"
+    txt.write_text(SANITIZED_O1262A)
+    pairing = parse_skedplus_txt(txt)
+    # Day 2 starts with CXL at EAR and ends with FDP at ORD.
+    assert duty_airports(pairing.duty_days[1]) == ("EAR", "ORD")
+    assert duty_airports(DutyDay(date(2026, 7, 1), time(8), time(9))) == ("", "")
+    for mode in (ImportMode.PLANNED, ImportMode.ACTUAL):
+        plan = build_import_plan(pairing, mode, airport_index=AIRPORTS)
+        assert [(d.report_airport, d.release_airport) for d in plan.duty_periods] == [
+            ("ORD", "EAR"), ("EAR", "ORD"),
+        ]
+
+
+def test_trip_credit_check_header_vs_day_totals(tmp_path) -> None:
+    txt = tmp_path / "000000_20260702_O1262A.txt"
+    txt.write_text(SANITIZED_O1262A)
+    pairing = parse_skedplus_txt(txt)
+    # Header Credit 9:42 == Day Totals 6:24 + 3:18.
+    assert trip_credit_check(pairing) is None
+    pairing.credit_minutes += 1
+    warn = trip_credit_check(pairing)
+    assert warn == (
+        "Trip credit check O1262A 2026-07-02: header Credit 9:43 != sum of Day Totals "
+        "9:42 (sum of leg credit 9:42)"
+    )
+    actual = build_import_plan(pairing, ImportMode.ACTUAL, airport_index=AIRPORTS)
+    assert f"O1262|2026-07-02: {warn}" in actual.warnings
+    planned = build_import_plan(pairing, ImportMode.PLANNED, airport_index=AIRPORTS)
+    assert not [w for w in planned.warnings if "Trip credit check" in w]
+
+
+def test_deadhead_flight_has_zero_passengers() -> None:
+    legs = [
+        _line(1, "5907", "ORD", "GRB", (15, 26), (16, 51)),
+        _line(2, "4681", "GRB", "ORD", (18, 50), (20, 15), dhd="F"),
+    ]
+    pairing = PairingExport(
+        employee_id="1", employee_name="Test Pilot", base="ORD",
+        equipment_family="CRJ", role="FO", pairing_id="O1251",
+        start_date=date(2026, 7, 22), block_hours=2.0, credit_hours=4.2, tafb_hours=0.0,
+        duty_days=[DutyDay(date(2026, 7, 22), time(14, 50), time(20, 30), legs=legs)],
+    )
+    plan = build_import_plan(pairing, ImportMode.ACTUAL, role=CrewRole.SIC, airport_index=AIRPORTS)
+    assert [(f.deadhead, f.passengers) for f in plan.flights] == [(False, 30), (True, 0)]

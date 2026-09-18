@@ -5,6 +5,7 @@ import pytest
 from logbook_import import grist_fields as F
 from logbook_import.grist_mapper import (
     encode_choice_list,
+    format_batch_notes,
     format_grist_date,
     format_grist_datetime,
     map_duty_period_fields,
@@ -238,3 +239,27 @@ def test_map_import_batch_fields() -> None:
     assert fields[F.F_BATCH_NAME] == "E3058E|2026-05-09|Actual"
     assert fields[F.F_BATCH_IMPORT_DATETIME] == format_grist_datetime(imported_at)
     assert fields[F.F_BATCH_IMPORT_STATUS] == "Imported"
+
+
+def test_map_duty_period_fields_airports_both_modes() -> None:
+    duty = PlannedDutyPeriodRecord(
+        duty_period_key="O1251|2026-07-22|2026-07-24",
+        trip_key="O1251|2026-07-22",
+        duty_date=date(2026, 7, 24),
+        report_at=datetime(2026, 7, 24, 18, 50, tzinfo=timezone.utc),
+        release_at=datetime(2026, 7, 24, 23, 58, tzinfo=timezone.utc),
+        planned_block=3.3,
+        planned_credit=4.2,
+        planned_legs=2,
+        report_airport="EAU",
+        release_airport="LNS",
+    )
+    for mode in (ImportMode.PLANNED, ImportMode.ACTUAL):
+        fields = map_duty_period_fields(duty, mode=mode)
+        assert fields[F.F_DUTY_REPORT_AIRPORT] == "EAU"
+        assert fields[F.F_DUTY_RELEASE_AIRPORT] == "LNS"
+
+
+def test_format_batch_notes() -> None:
+    assert format_batch_notes([]) == ""
+    assert format_batch_notes(["a", "b"], errors=["boom"]) == "ERROR: boom\nWARN: a\nWARN: b"

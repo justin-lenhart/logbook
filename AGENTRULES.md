@@ -225,6 +225,15 @@ the header only for the Block / Credit / TAFB totals.
 - `Planned_Legs` excludes placeholder lines (CXL/FDP/REF/RSV/LCO/SHO and every
   `is_placeholder` line, which includes 0:00 same-station RDY/NMD).
 - Actual import: a flown duty day with no flight lines gets Status `Cancelled`.
+- `Duty_Periods.Report_Airport` / `Release_Airport` (both imports) = first schedule
+  line origin / last schedule line destination, the same airports the report/release
+  time-zone logic uses.
+- Trip credit check (actual import, warning only): header "Credit:" vs the sum of the
+  Day Totals, in exact minutes.
+- `Import_Batch.Notes` is replaced on every import with that import's warnings and
+  errors, one per line, prefixed `WARN:` / `ERROR:`.
+- Deadhead flights get `Passengers = 0`: passenger totals count only flights the
+  user operated.
 
 Tail numbers belong ONLY on Flights.
 
