@@ -303,7 +303,7 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
 ### Efficiency metrics (viewed in Grist/Metabase, not here)
 
 There are no efficiency *commands* — the metrics live in the Metabase
-**Pairing Productivity** dashboard (logbook-visualize), which compares flown trips
+**Efficiency** dashboard (logbook-visualize), which compares flown trips
 with the SkyWest RSR system averages that `import-rsr` loads into `RSR_Metrics`:
 credit and block per duty period and per day, TAFB and duty per block and per
 credit. Inputs this repo writes:
