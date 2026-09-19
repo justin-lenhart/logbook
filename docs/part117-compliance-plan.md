@@ -418,7 +418,7 @@ These are derived analytics, not direct compliance checks. For a given date rang
 
 **Implementation path:** Done — `Trips.TAFB` is populated on planned import; per-trip and per-TAFB-day efficiency metrics render in Metabase.
 
-**Operational value:** MEDIUM for Part 117 purposes directly. TAFB is more relevant for pay computation and efficiency metrics (as analyzed in `metrics-plan-efficiency-variance.md`). It is not a Part 117 compliance metric per se, but it is related to overall duty exposure.
+**Operational value:** MEDIUM for Part 117 purposes directly. TAFB is more relevant for pay computation and efficiency metrics (see the Pairing Productivity dashboard). It is not a Part 117 compliance metric per se, but it is related to overall duty exposure.
 
 ---
 

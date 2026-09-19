@@ -117,4 +117,4 @@ All import commands default to dry-run; add `--commit` to write.
 - `docs/part117-compliance-plan.md` — Part 117 regulatory reference (analytics ship in the
   Metabase Trip Efficiency & Duty Legality dashboard; exact Table A/B limits are blocked on
   local report time — `Airports.UTC_Offset` is all zeros).
-- `docs/metrics-plan-efficiency-variance.md`, `docs/historical-logbook-import.md`.
+- `docs/historical-logbook-import.md`.

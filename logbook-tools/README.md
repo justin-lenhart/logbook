@@ -80,6 +80,7 @@ arrival date). For legs departing just before local midnight and arriving just a
 the UTC dates may coincide and slightly underestimate the night window. Rare in
 SkyWest regional operations.
 
-**Split-duty / reposition credit** — SDuty and RDY/NMD credit are not modeled, so
-actual credit reads low on trips containing them. Treat planned credit as
-authoritative for those. See `docs/metrics-plan-efficiency-variance.md`.
+**Actual credit vs pay** — actual credit is the sum of the export's Day Totals,
+which matches the crew pay report's Processed Credit on most trips. Reassigned or
+pay-protected trips can be paid more than their Day Totals; the pay report is
+authoritative for those.

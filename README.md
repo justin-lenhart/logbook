@@ -302,18 +302,18 @@ auto-reflect here. Embed URLs: `logbook-visualize/embed-urls.md`.
 
 ### Efficiency metrics (viewed in Grist/Metabase, not here)
 
-There are no efficiency *commands* — the metrics live as formula columns and
-dashboards in the Grist doc and Metabase. The ones worth watching to judge a trip:
+There are no efficiency *commands* — the metrics live in the Metabase
+**Pairing Productivity** dashboard (logbook-visualize), which compares flown trips
+with the SkyWest RSR system averages that `import-rsr` loads into `RSR_Metrics`:
+credit and block per duty period and per day, TAFB and duty per block and per
+credit. Inputs this repo writes:
 
-- **Credit : Block ratio** — how favorable the rig is (anything > 1.0 is paid more
-  than flown).
-- **Credit per TAFB day** — the big one: pay earned per day away from home.
-- **Block per TAFB day** — how hard the trip works you.
-
-The full design (formulas, which need the new `Trips.TAFB` field) is in
-[`docs/metrics-plan-efficiency-variance.md`](docs/metrics-plan-efficiency-variance.md).
-TAFB import is implemented — both `import-planned` and `import-actual` write `Trips.TAFB`
-from the SkedPlus header, so the most recent import wins.
+- `Trips.Actual_Credit` = sum of the export's Day Totals (no 4:12 floor). Checked
+  against the crew pay reports' Processed Credit: exact on most trips, a little
+  low on reassigned or pay-protected ones. The header credit is not used — it goes
+  stale when a trip is reassigned.
+- `Trips.TAFB` from the SkedPlus header (both import modes; the latest import wins).
+- Duty periods with `Status = Actual`, report → release, drive the per-duty metrics.
 
 ### Part 117 awareness (Metabase dashboard; no CLI command)
 
