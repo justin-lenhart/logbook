@@ -11,6 +11,7 @@ from logbook_import.parsers.rsr_pdf import (
     RsrParseError,
     column_months,
     parse_rsr_text,
+    parse_share,
     parse_value,
 )
 
@@ -40,6 +41,34 @@ def _report(bid: str = "October 2026", cr200_bk_day: str = "3:54") -> str:
         "      All Domiciles, All Aircraft Types\n"
         + fleet("CRJ 200", time_vals, ratio, bk_dp, bk_day)
         + fleet("CRJ 550", zero_vals, ratio_zero, zero_vals, zero_vals)
+    )
+
+
+def _domicile(
+    bid: str = "November 2026",
+    sdo_count: str = "100",
+    sdo_share: str = "17.6%",
+) -> str:
+    def row(label: str, value: str) -> str:
+        return f"      {label}  " + " ".join([value] * 13) + "\n"
+
+    def page(heading: str, rows: str) -> str:
+        return (
+            f"   ORD Report on CRJ 200 for {bid} Bid Month\n"
+            f"        {heading}\n{MONTH_HEADER}{rows}"
+            "        SDO   1-Day   2-Day   3-Day   4-Day\n"
+        )
+
+    return (
+        "  Regional Scheduling Representative Report\n            ORD CRJ\n"
+        + page("Numbers of Each Pairing Length",
+               row("SDO", sdo_count) + row("3-Day", "100") + row("4-Day", "100"))
+        + page("Percentage of Total Pairing-Days Offered by Each Pairing Length",
+               row("SDO", sdo_share) + row("3-Day", "35.3%") + row("4-Day", "47.1%"))
+        + page("Average Credit Hours Per Day in Each Pairing Length",
+               row("SDO", "6:00") + row("3-Day", "4:00") + row("4-Day", "5:00"))
+        + page("Percentage of Total Credit Offered by Each Pairing Length",
+               row("SDO", "22%") + row("3-Day", "29%") + row("4-Day", "49%"))
     )
 
 
@@ -86,8 +115,44 @@ def test_per_day_above_per_dp_is_dropped_with_warning() -> None:
     assert row.warnings and "Bk_per_Day" in row.warnings[0]
 
 
-def test_domicile_report_yields_nothing() -> None:
-    assert parse_rsr_text("Regional Scheduling Representative Report\n DFW CRJ\n") == []
+def test_parse_share() -> None:
+    assert parse_share("17.6%") == 17.6
+    with pytest.raises(RsrParseError):
+        parse_share("17.6")
+
+
+def test_domicile_credit_per_day_is_pairing_day_weighted() -> None:
+    rows = {r.key: r for r in parse_rsr_text(_domicile())}
+    row = rows["ORD|CRJ200|2026-11"]
+    assert row.scope == "ORD" and row.report_month == "2026-11"
+    assert row.metrics == {"Cr_per_Day": pytest.approx(4.8235, abs=1e-4)}
+    assert not row.warnings
+    assert len(rows) == 13  # one fleet, 13 months, no ratio metrics
+
+
+def test_domicile_counts_checked_against_published_shares() -> None:
+    # 10 stand-ups cannot be 17.6% of pairing-days next to 200 trip pairings.
+    rows = {r.key: r for r in parse_rsr_text(_domicile(sdo_count="10"))}
+    row = rows["ORD|CRJ200|2026-11"]
+    assert row.metrics["Cr_per_Day"] is None
+    assert row.warnings and "report prints 17.6%" in row.warnings[0]
+
+
+def test_domicile_month_without_data_is_blank() -> None:
+    text = _domicile().replace("      3-Day  100 100", "      3-Day  #N/A 100", 1)
+    rows = {r.key: r for r in parse_rsr_text(text)}
+    assert rows["ORD|CRJ200|2025-11"].metrics["Cr_per_Day"] is None
+    assert rows["ORD|CRJ200|2026-11"].metrics["Cr_per_Day"] is not None
+
+
+def test_domicile_without_bid_month_raises() -> None:
+    with pytest.raises(RsrParseError, match="Bid Month"):
+        parse_rsr_text("Regional Scheduling Representative Report\n DFW CRJ\n")
+
+
+def test_domicile_rows_carry_no_payload_when_blank() -> None:
+    rows = parse_rsr_text(_domicile(sdo_count="10"))
+    assert build_payloads(rows, {}) == []
 
 
 def test_wrong_column_count_raises() -> None:

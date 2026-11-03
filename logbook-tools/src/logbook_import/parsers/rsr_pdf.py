@@ -12,8 +12,10 @@ are derived from the report's bid month instead: the last column is the bid
 month and the 12 before it step back one month each. A value of 0:00 / 0.00
 means the fleet had no pairings that month and is returned as ``None``.
 
-Domicile reports (DFW/MSP/ORD) do not include these eight metrics; parsing
-them yields no rows.
+Domicile reports (DFW/MSP/ORD) carry none of these eight ratios. They do print,
+per fleet, the number of pairings of each length and the average credit hours
+per day within each length, which together give one of the eight -- credit per
+day over the bid package. See ``parse_domicile_text``.
 """
 
 from __future__ import annotations
@@ -54,6 +56,18 @@ METRICS = {
     "duty/cr": "Duty_per_Cr",
 }
 
+# Pairing length label -> pairing-days one such pairing contributes. A stand-up
+# (SDO) counts as 1.5 days: that is the only weight which reproduces the
+# domicile reports' own "Percentage of Total Pairing-Days" table.
+PAIRING_DAYS = {
+    "SDO": 1.5,
+    "1-Day": 1.0,
+    "2-Day": 2.0,
+    "3-Day": 3.0,
+    "4-Day": 4.0,
+    "5-Day": 5.0,
+}
+
 _BID_MONTH_RE = re.compile(r"System-Wide Report on .+? for (\w+) (\d{4}) Bid Month")
 _FLEET_RE = re.compile(r"^\s*(.+?)\s+System-Wide Data\s*$")
 _ROW_RE = re.compile(
@@ -63,6 +77,21 @@ _ROW_RE = re.compile(
 )
 _HHMM_RE = re.compile(r"^(\d+):([0-5]\d)$")
 _DECIMAL_RE = re.compile(r"^\d+\.\d+$")
+
+# Domicile reports: page headers name the base and the fleet the page covers.
+_DOMICILE_RE = re.compile(
+    r"^\s*([A-Z]{3}) Report on (.+?) for (\w+) (\d{4}) Bid Month\s*$"
+)
+_COUNTS_HEADING = "Numbers of Each Pairing Length"
+_SHARES_HEADING = "Percentage of Total Pairing-Days Offered by Each Pairing Length"
+_CREDIT_HEADING = "Average Credit Hours Per Day in Each Pairing Length"
+_LENGTH_RE = re.compile(r"^\s*(SDO|[1-5]-Day)\s+(.+?)\s*$")
+_COUNT_RE = re.compile(r"^\d+$")
+_PERCENT_RE = re.compile(r"^\d+(\.\d+)?%$")
+_NOT_AVAILABLE = "#N/A"  # a month the report has no data for
+
+# Published pairing-day percentages are rounded to 0.1, so allow that much.
+SHARE_TOLERANCE = 0.15
 
 
 class RsrParseError(ValueError):
@@ -108,6 +137,20 @@ def parse_value(token: str) -> float | None:
     return None if value == 0 else round(value, 4)
 
 
+def parse_count(token: str) -> float:
+    """Number of pairings of one length in one month."""
+    if _COUNT_RE.match(token):
+        return float(token)
+    raise RsrParseError(f"unrecognised pairing count {token!r}")
+
+
+def parse_share(token: str) -> float:
+    """Percentage of pairing-days one length accounts for in one month."""
+    if _PERCENT_RE.match(token):
+        return float(token.rstrip("%"))
+    raise RsrParseError(f"unrecognised percentage {token!r}")
+
+
 def column_months(bid_year: int, bid_month: int) -> list[str]:
     months = []
     for back in range(COLUMNS - 1, -1, -1):
@@ -123,10 +166,158 @@ def bid_month_of(text: str) -> tuple[int, int]:
     return int(m.group(2)), MONTHS[m.group(1)]
 
 
+def domicile_bid_month_of(text: str) -> tuple[str, int, int]:
+    """Base code and bid month from a domicile report's first page header."""
+    for line in text.splitlines():
+        if (m := _DOMICILE_RE.match(line)) and m.group(3) in MONTHS:
+            return m.group(1), int(m.group(4)), MONTHS[m.group(3)]
+    raise RsrParseError("no '<BASE> Report on … for <Month> <Year> Bid Month' line")
+
+
+def _pairing_days(
+    counts: dict[tuple[str, str], list[float | None]], fleet: str, index: int
+) -> float:
+    return sum(
+        counts[(fleet, length)][index] * per_pairing
+        for length, per_pairing in PAIRING_DAYS.items()
+        if (fleet, length) in counts and counts[(fleet, length)][index] is not None
+    )
+
+
+def _shares_disagree(
+    counts: dict[tuple[str, str], list[float | None]],
+    shares: dict[tuple[str, str], list[float | None]],
+    fleet: str,
+    index: int,
+) -> str | None:
+    """Check the pairing counts against the percentages printed beside them.
+
+    The percentage of pairing-days each length accounts for is published, so
+    the counts we weight can be verified rather than trusted. The CRJ550
+    columns next to the oldest one have carried counts that contradict their
+    own percentages (a month reading as 94% stand-ups), and a credit/day
+    derived from those would look entirely plausible.
+    """
+    total = _pairing_days(counts, fleet, index)
+    if not total:
+        return None
+    for length, per_pairing in PAIRING_DAYS.items():
+        published = shares.get((fleet, length), [None] * COLUMNS)[index]
+        count = counts.get((fleet, length), [None] * COLUMNS)[index]
+        if published is None or count is None:
+            continue
+        derived = count * per_pairing / total * 100
+        if abs(derived - published) > SHARE_TOLERANCE:
+            return (
+                f"{length} counts imply {derived:.1f}% of pairing-days, "
+                f"report prints {published:.1f}%"
+            )
+    return None
+
+
+def _credit_per_day(
+    counts: dict[tuple[str, str], list[float | None]],
+    credits: dict[tuple[str, str], list[float | None]],
+    fleet: str,
+    index: int,
+) -> float | None:
+    """Pairing-day weighted mean of the per-length credit/day, or None.
+
+    None when the month is incomplete rather than empty: a '#N/A' count, or a
+    length that has pairings but no credit value. Averaging a subset of the
+    bid package would read as a real number while describing part of it.
+    """
+    days = credit = 0.0
+    for length, per_pairing in PAIRING_DAYS.items():
+        if (fleet, length) not in counts:
+            continue  # the report prints no row for this length
+        count = counts[(fleet, length)][index]
+        rate = credits.get((fleet, length), [None] * COLUMNS)[index]
+        if count is None or (count and rate is None):
+            return None
+        days += count * per_pairing
+        credit += count * per_pairing * (rate or 0.0)
+    return credit / days if days else None
+
+
+def parse_domicile_text(text: str) -> list[RsrMonth]:
+    """Return one ``RsrMonth`` per (fleet, month) carrying Cr_per_Day.
+
+    Credit per day is not printed for a base, but its two inputs are, over the
+    same 13-month history: the number of pairings of each length, and the
+    average credit hours per day within each length. Credit per day over the
+    whole bid package is their pairing-day weighted mean:
+
+        sum(pairings x days x credit-per-day) / sum(pairings x days)
+
+    Each month is checked against the pairing-day percentages the report prints
+    for itself; a month whose counts contradict them carries no value.
+    """
+    scope, year, month = domicile_bid_month_of(text)
+    report_month = f"{year:04d}-{month:02d}"
+    months = column_months(year, month)
+
+    counts: dict[tuple[str, str], list[float | None]] = {}
+    shares: dict[tuple[str, str], list[float | None]] = {}
+    credits: dict[tuple[str, str], list[float | None]] = {}
+    fleet: str | None = None
+    table: dict[tuple[str, str], list[float | None]] | None = None
+    parse = parse_count
+    for line in text.splitlines():
+        if m := _DOMICILE_RE.match(line):
+            fleet, table = FLEETS.get(m.group(2).strip()), None
+            continue
+        if _COUNTS_HEADING in line:
+            table, parse = counts, parse_count
+            continue
+        if _SHARES_HEADING in line:
+            table, parse = shares, parse_share
+            continue
+        if _CREDIT_HEADING in line:
+            table, parse = credits, parse_value
+            continue
+        if "Percentage" in line:
+            table = None  # percentage of total credit: same row labels
+            continue
+        m = _LENGTH_RE.match(line)
+        if m is None or table is None or fleet is None:
+            continue
+        try:
+            values = [
+                None if t == _NOT_AVAILABLE else parse(t)
+                for t in m.group(2).split()
+            ]
+        except RsrParseError:
+            continue  # chart legend ("SDO  1-Day  2-Day ..."), not a data row
+        if len(values) != COLUMNS:
+            raise RsrParseError(
+                f"{fleet} {m.group(1)}: expected {COLUMNS} values, got {len(values)}"
+            )
+        table[(fleet, m.group(1))] = values
+
+    if not counts or not credits:
+        raise RsrParseError(f"{scope} report but no pairing-length tables found")
+
+    rows = []
+    for fleet in sorted({f for f, _ in counts}):
+        for index, data_month in enumerate(months):
+            row = RsrMonth(scope, fleet, data_month, report_month)
+            value = _credit_per_day(counts, credits, fleet, index)
+            if disagreement := _shares_disagree(counts, shares, fleet, index):
+                row.warnings.append(
+                    f"{row.key}: {disagreement} in the {report_month} report "
+                    f"— ignored"
+                )
+                value = None
+            row.metrics["Cr_per_Day"] = None if value is None else round(value, 4)
+            rows.append(row)
+    return rows
+
+
 def parse_rsr_text(text: str, *, scope: str = "SYS") -> list[RsrMonth]:
     """Return one ``RsrMonth`` per (fleet, month) with every metric found."""
     if "All Domiciles" not in text[:2000]:
-        return []  # domicile report: no efficiency-ratio pages
+        return parse_domicile_text(text)
     year, month = bid_month_of(text)
     report_month = f"{year:04d}-{month:02d}"
     months = column_months(year, month)

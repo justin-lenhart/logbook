@@ -807,8 +807,8 @@ def backfill_passengers(source: str, commit: bool) -> None:
 def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None:
     """Import SkyWest RSR system-wide efficiency metrics into RSR_Metrics.
 
-    Dry-run by default. Domicile reports carry no efficiency metrics; they are
-    recognised, reported, and (on --commit) archived with the rest.
+    Dry-run by default. System-wide reports carry all eight metrics; domicile
+    reports carry credit/day only, derived from their pairing-length tables.
     """
     import shutil
 
@@ -830,18 +830,19 @@ def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None
             click.echo(f"  FAILED   {path.name}: {exc}", err=True)
             continue
         if not parsed:
-            click.echo(f"  domicile {path.name}: no efficiency metrics (archived only)")
+            click.echo(f"  skipped  {path.name}: no metrics found (archived only)")
             continue
         report_month = parsed[0].report_month
         source_files[report_month] = path.name
         rows.extend(parsed)
         warnings.extend(w for r in parsed for w in r.warnings)
-        click.echo(f"  system   {path.name}: {report_month} report, {len(parsed)} fleet-months")
+        click.echo(f"  {parsed[0].scope:8} {path.name}: {report_month} report, "
+                   f"{len(parsed)} fleet-months")
 
     payloads = build_payloads(rows, source_files)
     for w in warnings:
         click.echo(f"WARN: {w}")
-    click.echo(f"{len(payloads)} {TABLE} row(s) from {len(source_files)} system report(s).")
+    click.echo(f"{len(payloads)} {TABLE} row(s) from {len(source_files)} report(s).")
 
     if not commit:
         click.echo("Dry run — nothing written. Re-run with --commit to write.")
