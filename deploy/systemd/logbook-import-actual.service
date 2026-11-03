@@ -7,9 +7,9 @@ StartLimitBurst=5
 
 [Service]
 Type=oneshot
-User=mint
-Group=mint
-WorkingDirectory=/home/mint/Developer/logbook
-ExecStart=/home/mint/Developer/logbook/scripts/process-inbox.sh actual
+User=crushbox
+Group=crushbox
+WorkingDirectory=/home/crushbox/Developer/logbook
+ExecStart=/home/crushbox/Developer/logbook/scripts/process-inbox.sh actual
 Nice=10
 TimeoutStartSec=15min

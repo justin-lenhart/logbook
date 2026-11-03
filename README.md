@@ -56,7 +56,7 @@ logbook-import import-planned --role sic --operator skw --commit
 2. **Import actual trips** — after you fly, load the flown legs as real flight rows.
 3. **Publish** — refresh the [flight map](https://justin-lenhart.github.io/logbook/).
 
-You *view and analyze* everything in the Grist doc (`http://100.78.241.102:8484`,
+You *view and analyze* everything in the Grist doc (`http://100.78.232.7:8484`,
 Tailscale-only) and its embedded Metabase dashboards (see the `logbook-visualize`
 repo). This tool only does the import and publish steps — it never asks you
 questions and has no reporting mode.
@@ -80,7 +80,7 @@ Create `logbook-tools/.env` with the backend credentials (needed for `--commit`)
 
 ```sh
 LOGBOOK_BACKEND=grist
-GRIST_URL=http://100.78.241.102:8484
+GRIST_URL=http://100.78.232.7:8484
 GRIST_API_KEY=...your key...
 GRIST_DOC=...the live doc id...
 ```
@@ -238,7 +238,7 @@ Day-to-day you don't need any of this. It's here so the context isn't lost.
 
 ### Grist doc pages (the live logbook UI)
 
-The Grist `Logbook` doc (`http://100.78.241.102:8484`, Tailscale-only) carries these
+The Grist `Logbook` doc (`http://100.78.232.7:8484`, Tailscale-only) carries these
 pages:
 
 | Page | What it shows |

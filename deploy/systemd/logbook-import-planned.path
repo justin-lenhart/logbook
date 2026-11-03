@@ -2,7 +2,7 @@
 Description=Watch logbook inbox/planned for SkedPlus exports
 
 [Path]
-DirectoryNotEmpty=/home/mint/Developer/logbook/inbox/planned
+DirectoryNotEmpty=/home/crushbox/Developer/logbook/inbox/planned
 MakeDirectory=true
 DirectoryMode=0755
 Unit=logbook-import-planned.service

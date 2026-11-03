@@ -93,7 +93,7 @@ All import commands default to dry-run; add `--commit` to write.
 ## Config & deployment
 - **Creds:** `logbook-tools/.env` (gitignored) — `LOGBOOK_BACKEND=grist`, `GRIST_URL`,
   `GRIST_API_KEY`, `GRIST_DOC` (legacy `AIRTABLE_*`). Template: `logbook-tools/.env.example`.
-- **Grist canonical URL:** `http://100.78.241.102:8484` (Tailscale-only; other hostnames
+- **Grist canonical URL:** `http://100.78.232.7:8484` (Tailscale-only; other hostnames
   rejected).
 - **Deployed on mintbox:** `deploy/systemd/logbook-import-{planned,actual,rsr}.{path,service}`
   watch `inbox/{planned,actual,rsr}` and run `scripts/process-inbox.sh` (settle delay,

@@ -1,7 +1,7 @@
 # Logbook Project — Agent Rules / Passdown
 
 > **STATUS 2026-07-23 — read this first.** The operational datastore is now a
-> **self-hosted Grist doc** on the home server (`http://100.78.241.102:8484`,
+> **self-hosted Grist doc** on the home server (`http://100.78.232.7:8484`,
 > Tailscale-only; docId in the server's `homelab/migration/grist-doc.txt`).
 > Airtable is a **frozen pre-cutover backup** — do not write to it, do not build
 > on it. Imports are **fully automated**: Syncthing syncs `inbox/` from the

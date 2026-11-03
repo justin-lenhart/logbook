@@ -11,7 +11,7 @@ ENV_PATH = TOOLS_ROOT / ".env"
 
 # Canonical URL for the mintbox Grist instance. It binds to the Tailscale IP
 # ONLY (localhost is refused) and APP_HOME_URL pins this hostname.
-DEFAULT_GRIST_URL = "http://100.78.241.102:8484"
+DEFAULT_GRIST_URL = "http://100.78.232.7:8484"
 
 
 @dataclass(frozen=True)

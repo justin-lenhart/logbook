@@ -2,7 +2,7 @@
 Description=Watch logbook inbox/actual for SkedPlus exports
 
 [Path]
-DirectoryNotEmpty=/home/mint/Developer/logbook/inbox/actual
+DirectoryNotEmpty=/home/crushbox/Developer/logbook/inbox/actual
 MakeDirectory=true
 DirectoryMode=0755
 Unit=logbook-import-actual.service
