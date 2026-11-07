@@ -406,6 +406,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -82.2717971802,
+          29.6900997162
+        ]
+      },
+      "properties": {
+        "iata": "GNV",
+        "name": "Gainesville Regional Airport",
+        "city": "Gainesville",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -88.130805,
           44.483459
         ]
@@ -862,6 +878,22 @@
         "iata": "SJT",
         "name": "San Angelo Regional Mathis Field",
         "city": "San Angelo",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -111.979866,
+          40.78886
+        ]
+      },
+      "properties": {
+        "iata": "SLC",
+        "name": "Salt Lake City International Airport",
+        "city": "Salt Lake City",
         "country": "US"
       }
     },
@@ -2934,6 +2966,56 @@
         "min_block": 1.6,
         "max_block": 1.8,
         "avg_credit": 1.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -82.2717971802,
+            29.6900997162
+          ],
+          [
+            -112.005905,
+            33.435302
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "GNV",
+        "destination": "PHX",
+        "count": 1,
+        "avg_block": 4.3,
+        "min_block": 4.3,
+        "max_block": 4.3,
+        "avg_credit": 4.3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -83.353786,
+            42.21377
+          ],
+          [
+            -111.979866,
+            40.78886
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "DTW",
+        "destination": "SLC",
+        "count": 1,
+        "avg_block": 3.7,
+        "min_block": 3.7,
+        "max_block": 3.7,
+        "avg_credit": 3.7
       }
     }
   ]
