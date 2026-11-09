@@ -1,0 +1,17 @@
+# Pilot identity for `logbook-import export-profile`.
+# Copy to pilot.toml (gitignored — never commit the real one) and fill in.
+# None of this lives in Grist.
+
+name = "First M. Last"
+certificate = "Airline Transport Pilot"
+certificate_number = "0000000"
+
+# Printed on the summary page header.
+ratings = [
+    "Airplane Multiengine Land",
+    "Rotorcraft-Helicopter",
+    "Instrument Airplane",
+]
+
+# FAA_Type codes from the Grist Aircraft table. Drives United's "Type rated" field.
+type_ratings = ["CL65"]

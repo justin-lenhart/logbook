@@ -51,3 +51,7 @@ backups/
 
 # macOS AppleDouble metadata
 ._*
+
+# --- Logbook export profiles (pilot identity + flight records, local only) ---
+exports/
+pilot.toml

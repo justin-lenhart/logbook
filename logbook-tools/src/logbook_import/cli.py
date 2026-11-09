@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import click
@@ -866,6 +866,100 @@ def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None
         click.echo(f"Moved {len(done)} file(s) to recorded/rsr/")
     if failed:
         sys.exit(1)
+
+
+@main.command("export-profile")
+@click.option(
+    "--target",
+    type=click.Choice(["faa", "ual", "swa"]),
+    required=True,
+    help="Who the export is for: FAA 8710, United, or Southwest.",
+)
+@click.option(
+    "--output",
+    "output_dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=None,
+    help="Directory for the HTML file (default: exports/ in repo root, gitignored).",
+)
+@click.option(
+    "--as-of",
+    "as_of",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="Report date; later flights are left out (default: today).",
+)
+@click.option(
+    "--pilot",
+    "pilot_path",
+    type=click.Path(path_type=Path, dir_okay=False),
+    default=None,
+    help="Pilot identity file (default: pilot.toml in repo root, gitignored).",
+)
+@click.option(
+    "--no-log",
+    "no_log",
+    is_flag=True,
+    default=False,
+    help="Leave out the certified per-flight log pages.",
+)
+def export_profile(
+    target: str,
+    output_dir: Path | None,
+    as_of: datetime | None,
+    pilot_path: Path | None,
+    no_log: bool,
+) -> None:
+    """Export a printable logbook summary tailored to one target (read-only)."""
+    from logbook_import.grist_client import GristClient
+    from logbook_import.grist_settings import load_grist_settings
+    from logbook_import.profile_data import load_legs, total
+    from logbook_import.profile_render import render_profile
+    from logbook_import.profiles import PROFILES, Context, load_pilot
+
+    try:
+        if active_backend() != "grist":
+            raise click.ClickException("export-profile reads Grist: set LOGBOOK_BACKEND=grist")
+        client = GristClient(load_grist_settings())
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    report_date = as_of.date() if as_of else date.today()
+    resolved_pilot = pilot_path or (WORKSPACE_ROOT / "pilot.toml")
+    pilot = load_pilot(resolved_pilot)
+    if not pilot.name:
+        click.echo(
+            f"WARNING: no pilot name in {resolved_pilot} — copy pilot.toml.example "
+            "to pilot.toml; the export will have a blank name.",
+            err=True,
+        )
+
+    legs = [leg for leg in load_legs(client) if leg.date <= report_date]
+    if not legs:
+        raise click.ClickException("No flights found in Flights table")
+    for leg in legs:
+        if not leg.category:
+            click.echo(
+                f"WARNING: flight {leg.id} ({leg.date}, {leg.block:.1f} h) has no Aircraft "
+                "link — counted in total time but in no category/class/type.",
+                err=True,
+            )
+
+    html = render_profile(
+        PROFILES[target], legs, Context(as_of=report_date, pilot=pilot),
+        include_log=not no_log,
+    )
+    resolved_dir = output_dir or (WORKSPACE_ROOT / "exports")
+    resolved_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    out_file = resolved_dir / f"logbook-{target}-{report_date.isoformat()}.html"
+    out_file.write_text(html, encoding="utf-8")
+    out_file.chmod(0o600)
+
+    click.echo(
+        f"{len(legs)} flights, total {total(legs):.1f} h "
+        f"(PIC {total(legs, 'pic'):.1f} / SIC {total(legs, 'sic'):.1f} / "
+        f"dual {total(legs, 'dual_received'):.1f}) → {out_file}"
+    )
 
 
 if __name__ == "__main__":

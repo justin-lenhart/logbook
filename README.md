@@ -208,6 +208,7 @@ Everything else the CLI can do. You will rarely touch these.
 | `import-actual` | Import flown legs as Flight rows *(what the auto-importer runs)* |
 | `import-planned` | Import the schedule as planned Trips/Duty Periods |
 | `export-map` | Regenerate `docs/map_data.geojson` (add `--update` to push) |
+| `export-profile --target {faa,ual,swa}` | Printable logbook export (summary, FAA 8710 / United / Southwest sections, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
 | `export-apps` | *(legacy, Airtable-only)* regenerate `docs/apps/*.html` |
 | `enrich-night` | *(legacy, Airtable-only)* backfill night data — Grist imports enrich inline |
 | `backfill-passengers` | *(legacy, Airtable-only)* re-derive Passengers from archived exports |

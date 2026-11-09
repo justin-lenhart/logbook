@@ -64,6 +64,10 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
 - **App pages (LEGACY):** `app_families.py`, `app_report.py` — superseded by the Metabase
   Application Reference dashboard (see `docs/application-pages-setup.md`).
 - **Map:** `airport_map.py`, `grist_map.py`.
+- **Export profiles (read-only):** `profile_data.py` (`Leg`, `load_legs`, predicates,
+  aggregators), `profiles.py` (per-target `Profile`/`Section` specs, `pilot.toml`),
+  `profile_render.py` (print HTML + certified log pages). Per-flight pages never print
+  night/instrument/XC/landings — synthetic on the pre-2026 rows.
 - **CLI:** `cli.py` (Click). Entry point `logbook-import` (`pyproject.toml [project.scripts]`).
 
 ## Commands
@@ -80,6 +84,10 @@ All import commands default to dry-run; add `--commit` to write.
   oldest column only fills gaps). Domicile reports have no efficiency pages.
 - `export-map [--output PATH] [--update]` — regenerate `docs/map_data.geojson`; `--update`
   commits + pushes (GitHub Pages).
+- `export-profile --target {faa|ual|swa} [--output DIR] [--as-of DATE] [--pilot FILE]
+  [--no-log]` — printable summary + target sections + certified log pages. Read-only
+  toward Grist (no `--commit`). Writes `exports/` (gitignored — never `docs/`, which is
+  public). Pilot identity comes from gitignored `pilot.toml` (see `pilot.toml.example`).
 - `export-apps` / `enrich-night` / `backfill-passengers` — **legacy, Airtable-only.**
 
 ## Dev / test
