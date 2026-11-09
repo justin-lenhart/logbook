@@ -710,6 +710,22 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          -87.896599,
+          42.947201
+        ]
+      },
+      "properties": {
+        "iata": "MKE",
+        "name": "General Mitchell International Airport",
+        "city": "Milwaukee",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           -101.279123,
           48.25801
         ]
@@ -766,6 +782,22 @@
         "iata": "ORD",
         "name": "Chicago O'Hare International Airport",
         "city": "Chicago",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.16680145,
+          37.74010086
+        ]
+      },
+      "properties": {
+        "iata": "OWB",
+        "name": "Owensboro Daviess County Airport",
+        "city": "Owensboro",
         "country": "US"
       }
     },
@@ -846,6 +878,22 @@
         "iata": "SBN",
         "name": "South Bend International Airport",
         "city": "South Bend",
+        "country": "US"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -93.388596,
+          37.245047
+        ]
+      },
+      "properties": {
+        "iata": "SGF",
+        "name": "Springfield Branson National Airport",
+        "city": "Springfield",
         "country": "US"
       }
     },
@@ -1036,11 +1084,11 @@
       "properties": {
         "origin": "CKB",
         "destination": "ORD",
-        "count": 2,
-        "avg_block": 1.5,
+        "count": 3,
+        "avg_block": 1.6667,
         "min_block": 1.4,
-        "max_block": 1.6,
-        "avg_credit": 1.75
+        "max_block": 2.0,
+        "avg_credit": 1.8333
       }
     },
     {
@@ -1186,11 +1234,11 @@
       "properties": {
         "origin": "CKB",
         "destination": "IAD",
-        "count": 2,
-        "avg_block": 0.95,
+        "count": 3,
+        "avg_block": 1.0333,
         "min_block": 0.8,
-        "max_block": 1.1,
-        "avg_credit": 1.1
+        "max_block": 1.2,
+        "avg_credit": 1.1333
       }
     },
     {
@@ -2161,11 +2209,11 @@
       "properties": {
         "origin": "IAD",
         "destination": "MGW",
-        "count": 1,
-        "avg_block": 1.0,
+        "count": 2,
+        "avg_block": 1.1,
         "min_block": 1.0,
-        "max_block": 1.0,
-        "avg_credit": 1.1
+        "max_block": 1.2,
+        "avg_credit": 1.15
       }
     },
     {
@@ -2186,11 +2234,11 @@
       "properties": {
         "origin": "MGW",
         "destination": "ORD",
-        "count": 1,
-        "avg_block": 2.3,
-        "min_block": 2.3,
+        "count": 2,
+        "avg_block": 1.9,
+        "min_block": 1.5,
         "max_block": 2.3,
-        "avg_credit": 2.3
+        "avg_credit": 1.95
       }
     },
     {
@@ -3016,6 +3064,106 @@
         "min_block": 3.7,
         "max_block": 3.7,
         "avg_credit": 3.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.896599,
+            42.947201
+          ],
+          [
+            -87.9048,
+            41.9786
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "MKE",
+        "destination": "ORD",
+        "count": 2,
+        "avg_block": 0.95,
+        "min_block": 0.9,
+        "max_block": 1.0,
+        "avg_credit": 1.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -77.455803,
+            38.9445
+          ],
+          [
+            -87.16680145,
+            37.74010086
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "IAD",
+        "destination": "OWB",
+        "count": 2,
+        "avg_block": 2.05,
+        "min_block": 1.9,
+        "max_block": 2.2,
+        "avg_credit": 2.05
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.9048,
+            41.9786
+          ],
+          [
+            -86.316922,
+            41.708304
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ORD",
+        "destination": "SBN",
+        "count": 2,
+        "avg_block": 0.95,
+        "min_block": 0.9,
+        "max_block": 1.0,
+        "avg_credit": 1.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -87.9048,
+            41.9786
+          ],
+          [
+            -93.388596,
+            37.245047
+          ]
+        ]
+      },
+      "properties": {
+        "origin": "ORD",
+        "destination": "SGF",
+        "count": 2,
+        "avg_block": 1.65,
+        "min_block": 1.6,
+        "max_block": 1.7,
+        "avg_credit": 1.85
       }
     }
   ]
