@@ -833,7 +833,7 @@ def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None
             click.echo(f"  skipped  {path.name}: no metrics found (archived only)")
             continue
         report_month = parsed[0].report_month
-        source_files[report_month] = path.name
+        source_files[(report_month, parsed[0].scope)] = path.name
         rows.extend(parsed)
         warnings.extend(w for r in parsed for w in r.warnings)
         click.echo(f"  {parsed[0].scope:8} {path.name}: {report_month} report, "

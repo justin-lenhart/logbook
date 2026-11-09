@@ -8,6 +8,7 @@ from logbook_import.grist_client import GristClient, UpsertResult
 from logbook_import.grist_rsr import FILL_ONLY, build_payloads, sync_rsr
 from logbook_import.grist_settings import GristSettings
 from logbook_import.parsers.rsr_pdf import (
+    RsrMonth,
     RsrParseError,
     column_months,
     parse_rsr_text,
@@ -166,7 +167,10 @@ def test_build_payloads_newest_value_wins_and_blanks_never_clear() -> None:
     newer = parse_rsr_text(_report(bid="October 2026", cr200_bk_day="4:26"))
     payloads = {
         p["Key"]: p
-        for p in build_payloads(older + newer, {"2026-09": "sep.pdf", "2026-10": "oct.pdf"})
+        for p in build_payloads(
+            older + newer,
+            {("2026-09", "SYS"): "sep.pdf", ("2026-10", "SYS"): "oct.pdf"},
+        )
     }
     # Sep 2026 appears in both; the October report is newer and wins.
     sep = payloads["SYS|CRJ200|2026-09"]
@@ -177,6 +181,23 @@ def test_build_payloads_newest_value_wins_and_blanks_never_clear() -> None:
     assert not payloads["SYS|CRJ200|2026-09"][FILL_ONLY]
     # CRJ550 months with no data in any report produce no row at all.
     assert "SYS|CRJ550|2025-12" not in payloads
+
+
+def test_source_file_is_per_report_not_per_month() -> None:
+    # One bid month has several reports: system-wide plus one per domicile.
+    rows = [
+        RsrMonth("SYS", "CRJ200", "2026-11", "2026-11", {"Cr_per_Day": 4.53}),
+        RsrMonth("ORD", "CRJ200", "2026-11", "2026-11", {"Cr_per_Day": 4.51}),
+    ]
+    payloads = {
+        p["Key"]: p
+        for p in build_payloads(
+            rows,
+            {("2026-11", "SYS"): "sys.pdf", ("2026-11", "ORD"): "ord.pdf"},
+        )
+    }
+    assert payloads["SYS|CRJ200|2026-11"]["Source_File"] == "sys.pdf"
+    assert payloads["ORD|CRJ200|2026-11"]["Source_File"] == "ord.pdf"
 
 
 def test_oldest_column_only_fills_gaps() -> None:

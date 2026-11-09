@@ -21,10 +21,14 @@ KEY_COL = "Key"
 FILL_ONLY = "_fill_only"  # internal flag, stripped before writing
 
 
-def build_payloads(rows: list[RsrMonth], source_files: dict[str, str]) -> list[dict[str, Any]]:
+def build_payloads(
+    rows: list[RsrMonth], source_files: dict[tuple[str, str], str]
+) -> list[dict[str, Any]]:
     """Merge rows from any number of reports into one payload per key.
 
-    ``source_files`` maps report_month -> PDF file name.
+    ``source_files`` maps (report_month, scope) -> PDF file name. The scope is
+    part of the key because one bid month has several reports: the system-wide
+    one and a report per domicile.
     """
     merged: dict[str, dict[str, Any]] = {}
     # Later rows overwrite earlier ones: oldest-column values go first.
@@ -38,7 +42,7 @@ def build_payloads(rows: list[RsrMonth], source_files: dict[str, str]) -> list[d
         if values:
             payload.update(values)
             payload["Report_Month"] = row.report_month
-            payload["Source_File"] = source_files.get(row.report_month, "")
+            payload["Source_File"] = source_files.get((row.report_month, row.scope), "")
             payload[FILL_ONLY] = row.is_oldest_column
     # Months with no values in any report (e.g. CRJ550 Dec-Mar) carry no data.
     return [
