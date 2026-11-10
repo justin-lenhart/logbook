@@ -245,7 +245,7 @@ letter, log pages are landscape letter. In the print dialog leave margins on
 
 **What is in the file**, in order:
 
-1. **Flight Time Summary** — headline totals, milestones, 1/2/3-year history, and a
+1. **Flight Time Summary** — headline totals, 1/2/3-year history, and a
    table by aircraft type. Same in every export.
 2. **The target's pages** — `faa`: the 8710 Section III grid (Airplane / Rotorcraft /
    Powered Lift) plus Class Hours; `ual`: one form block per aircraft to copy into

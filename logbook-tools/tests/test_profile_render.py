@@ -127,7 +127,7 @@ def test_southwest_sortie_conversion(legs: list[Leg]) -> None:
 # -- summary ----------------------------------------------------------------
 
 def test_summary_headline_and_by_type_totals(legs: list[Leg]) -> None:
-    headline, milestones, history, by_type = profiles.SUMMARY_SECTIONS
+    headline, history, by_type = profiles.SUMMARY_SECTIONS
     values = {r.label: r.value(legs, CTX) for r in headline.rows}
     assert values == pytest.approx({
         "Total Time": 9.1, "FW Multi-Eng": 4.0, "FW Turbine": 4.0,
@@ -135,7 +135,6 @@ def test_summary_headline_and_by_type_totals(legs: list[Leg]) -> None:
     })
     assert headline.notes == ("No military conversions applied.",
                               "No simulator time included.")
-    assert milestones.rows[1].value(legs, CTX) == "8.1 of 1500 — 1491.9 to go"
     assert [r.value(legs, CTX) for r in history.rows] == pytest.approx([4.0, 4.0, 4.0])
 
     html = render.render_section(by_type, legs, CTX)
@@ -215,6 +214,10 @@ def test_render_profile_document(target: str, legs: list[Leg]) -> None:
     assert "<Test>" not in html                       # pilot.toml text is escaped
     assert "size: letter landscape" in html and "break-inside: avoid" in html
     assert "2015-03-01 to 2026-11-01" in html
+    # An export is handed to the airline: no personal goal tracking in it.
+    assert "Milestones" not in html and "to go" not in html
+    # The section wrapper must not pick up the tile grid's own class.
+    assert 'class="section metrics"' not in html
     short = render.render_profile(profiles.PROFILES[target], legs, CTX, include_log=False)
     assert 'class="log-page"' not in short
 

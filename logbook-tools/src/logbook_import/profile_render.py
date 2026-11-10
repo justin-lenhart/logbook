@@ -144,7 +144,7 @@ _RENDERERS: dict[str, Callable[[Section, Sequence[Leg], Context], str]] = {
 
 def render_section(section: Section, legs: Sequence[Leg], ctx: Context) -> str:
     body = _RENDERERS[section.kind](section, legs, ctx)
-    return (f'<section class="section {section.kind}"><h2>{escape(section.title)}</h2>'
+    return (f'<section class="section kind-{section.kind}"><h2>{escape(section.title)}</h2>'
             f"{body}{_notes(section.notes)}</section>")
 
 
@@ -326,7 +326,7 @@ td.num, tfoot td { text-align: right; font-variant-numeric: tabular-nums; }
             border-bottom: 2pt solid #111; padding-bottom: 6pt; }
 .identity .sub { font-size: 11pt; }
 .identity .meta { text-align: right; font-size: 8pt; }
-.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6pt; }
+.metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6pt; }
 .metric { border: 0.5pt solid #777; padding: 5pt 7pt; }
 .lbl { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.04em; color: #444; }
 .val { font-size: 12pt; font-weight: 600; font-variant-numeric: tabular-nums; min-height: 1.35em; }

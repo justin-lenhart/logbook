@@ -109,15 +109,6 @@ def recent(months: int, field: str = "block") -> Metric:
     return lambda legs, ctx: pd.total(pd.within(legs, months, ctx.as_of), field)
 
 
-def milestone(target: int, field: str, where: Predicate) -> Metric:
-    def metric(legs: Sequence[Leg], ctx: Context) -> str:
-        have = pd.total(legs, field, where)
-        if have >= target:
-            return f"{have:.1f} of {target} — met"
-        return f"{have:.1f} of {target} — {target - have:.1f} to go"
-    return metric
-
-
 def not_tracked(legs: Sequence[Leg], ctx: Context) -> None:
     return None
 
@@ -228,15 +219,6 @@ SUMMARY_SECTIONS: tuple[Section, ...] = (
             Row("Military", hours(where=pd.is_military)),
         ),
         notes=("No military conversions applied.", "No simulator time included."),
-    ),
-    Section(
-        title="Milestones",
-        kind="metrics",
-        rows=(
-            Row("1000 FW Turbine PIC", milestone(1000, "pic", _FW_TURBINE)),
-            Row("1500 Turbine", milestone(1500, "block", pd.is_turbine)),
-            Row("1000 FW Turbine", milestone(1000, "block", _FW_TURBINE)),
-        ),
     ),
     Section(
         title="1 / 2 / 3 Yr History",
