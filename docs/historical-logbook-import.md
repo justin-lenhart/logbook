@@ -79,3 +79,12 @@ rows). The new rows use the clean partition (`Dual = Block − PIC − SIC`), so
 Metabase career tiles (total 1699.9 / PIC 348.4 / SIC 1245.9) unchanged; per-aircraft & 8710
 category/class rollups preserved; flight map unaffected (historical rows carry no airports →
 0 routes). Departure/Arrival airports intentionally left empty (not recorded in the source).
+
+## Amendment 2026-11-10: TH-57 time is instruction received, not SIC
+
+The "H57 → SIC" rule above was reversed on 2026-11-10 at the pilot's direction. The 77 TH-57
+rows (ids 220–296: TH-57B 33.7 h, TH-57C 89.6 h) now carry `Dual_Received = Block`,
+`SIC_Time = 0`, `Flight_Position = Other`, matching the T-6 treatment and the source sheet's
+own Dual flag. Totals after the change: SIC 1052.3 → **929.0** on the historical rows
+(career 1391.4 → 1268.1), dual received 105.6 → **228.9**; rotorcraft SIC 582.1 → 458.8 and
+instruction received 0 → 123.3. Block and PIC are unchanged.

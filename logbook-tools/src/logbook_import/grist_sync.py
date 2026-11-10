@@ -25,6 +25,7 @@ from logbook_import.grist_mapper import (
 )
 from logbook_import.grist_settings import GristSettings
 from logbook_import.models import ImportMode, ImportPlan
+from logbook_import.cross_country import cross_country_hours
 from logbook_import.night_enrichment import compute_night_data
 
 
@@ -228,6 +229,24 @@ class GristImporter:
                     f"Flight {flight.import_flight_key}: airport {flight.destination!r} "
                     f"not in index; Arrival Airport link omitted"
                 )
+
+            # Cross-country (14 CFR 61.1, >50 nm straight-line): the mapper
+            # defaults to block time; a leg that ends within 50 nm of where it
+            # began (air return, gate return, short reposition) logs none.
+            origin_ap = self._airport_index.get(flight.origin)
+            dest_ap = self._airport_index.get(flight.destination)
+            if not flight.deadhead:
+                if origin_ap and dest_ap:
+                    fields[F.F_FLIGHT_XC_TIME] = cross_country_hours(
+                        flight.block_hours,
+                        origin_ap["lat"], origin_ap["lon"],
+                        dest_ap["lat"], dest_ap["lon"],
+                    )
+                else:
+                    warnings.append(
+                        f"Flight {flight.import_flight_key}: airport coordinates missing; "
+                        f"Cross Country left equal to block (distance not checked)"
+                    )
 
             flight_payloads.append(fields)
 
