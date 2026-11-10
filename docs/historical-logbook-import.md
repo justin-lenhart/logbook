@@ -110,7 +110,8 @@ result is Airplane 244.7 / Rotorcraft 212.6 / Powered Lift 0.3.
 The column's `colId` is `SIC_to_PIC` with `untieColIdFromLabel` set, so its display name can be
 edited freely. This matters: renaming a tied column rewrites its `colId`, and when the label was
 first changed to "SIC-to-PIC (§61.51)" every query naming `SIC_to_PIC` began failing with
-`Invalid column`.
+`Invalid column`. That rename also left a second, empty `SIC_to_PIC_61_51_` column behind
+(the data having gone into a freshly created `SIC_to_PIC`); it was dropped on 2026-11-10.
 
 **Training event codes (833 codes over 386 rows, stored in `Notes`).** The remarks are concatenated
 4-digit military training event codes. Up to 16 digits they are stored exactly (2^53 covers
@@ -123,8 +124,8 @@ rest is zero padding. 68 codes were dropped as unrecoverable. Truncating instead
 would have emitted 11 codes that occur nowhere else in the logbook (2299, 2899, 3299, 6099, …);
 rounding yields only codes that do. There is deliberately **no code-to-description lookup** —
 that mapping is the pilot's to maintain. The codes are stored in `Notes` and nowhere else: a
-`Training_Codes` column was tried on 2026-11-10 and abandoned the same day as redundant. No code
-reads it; drop it from the Grist doc when convenient.
+`Training_Codes` column was tried on 2026-11-10 and dropped the same day as redundant, since
+Notes already reads back as the identical list.
 
 **`Notes` now holds the remark alone (560 rows).** Every historical row carried a
 `Historical line-item import from LEN2J-…xlsx (Master row N). Secondary hours … distributed
