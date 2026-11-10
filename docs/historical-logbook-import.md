@@ -88,3 +88,43 @@ rows (ids 220–296: TH-57B 33.7 h, TH-57C 89.6 h) now carry `Dual_Received = Bl
 own Dual flag. Totals after the change: SIC 1052.3 → **929.0** on the historical rows
 (career 1391.4 → 1268.1), dual received 105.6 → **228.9**; rotorcraft SIC 582.1 → 458.8 and
 instruction received 0 → 123.3. Block and PIC are unchanged.
+
+## Amendment 2026-11-10: SIC-to-PIC, training codes, and plain Notes
+
+Three changes to the historical rows, all driven from the same workbook and all one-off.
+
+**`SIC_to_PIC` (new Numeric column, 457.6 h over 289 rows).** 14 CFR 61.51 lets an SIC who is
+the pilot flying, under a supervising PIC, log that time; the field had never existed, so the
+figure was missing from every application. It comes from the **`Print` sheet** (sheet 5, not
+`Master`), column **`W` = PF**, which is the only thing that sheet was read for — every other
+number in the workbook is superseded by Grist. The rule is *PF on rows logged SIC, excluding
+flight school* (T-6B, TH-57B/C): not "all PF except flight school" (600.5 h), because 142.9 h
+of that sits on flights already logged PIC and would double-count. Workbook rows join Grist
+rows on (date, normalised type, tail, block), assigning in order inside duplicate-key groups —
+a clean 560/560 match. `backfill-sic-to-pic` refuses to write unless the per-aircraft totals
+match to the tenth (UC-12W 244.7, AH-1Z 210.7, AH-1W 1.3, UH-1Y 0.6, MV-22 0.3 = **457.6**) and
+no row would log SIC-to-PIC alongside PIC. The `Print` sheet also independently confirms the
+import: 560 flight rows totalling 1506.3 h, and the same two non-flight markers.
+
+**`Training_Codes` (new Text column, 833 codes over 386 rows).** The remarks are concatenated
+4-digit military training event codes. Up to 16 digits they are stored exactly (2^53 covers
+every 16-digit integer) and the trailing zeros are real code endings, so `6300610219016100` is
+6300 / 6102 / 1901 / 6100. The 31 longer ones reached Grist as scientific notation and only the
+leading ~15 significant digits are trustworthy: the literal is **rounded** (not truncated) to 15
+significant digits, which repairs the float in both directions — `...0022999` back to
+`...0023000`, `...29001` back to `...29000` — after which the first four codes are sound and the
+rest is zero padding. 68 codes were dropped as unrecoverable. Truncating instead of rounding
+would have emitted 11 codes that occur nowhere else in the logbook (2299, 2899, 3299, 6099, …);
+rounding yields only codes that do. There is deliberately **no code-to-description lookup** —
+that mapping is the pilot's to maintain.
+
+**`Notes` now holds the remark alone (560 rows).** Every historical row carried a
+`Historical line-item import from LEN2J-…xlsx (Master row N). Secondary hours … distributed
+proportionally …` preamble ahead of a `Logbook remark:` line. All of the pre-2026 flights come
+from that one workbook, so the preamble said nothing a reader needed; it was stripped at the
+pilot's direction on 2026-11-10. Notes now contains the training codes where there are any
+(`4603`), the pilot's own words otherwise (`IFS, 5R4`), and nothing where there was no remark.
+The proportional-distribution caveat is **not** lost: it is documented above and printed on
+every export as `SYNTHETIC_NOTE`. `profile_data.parse_remark` reads both shapes, so a row that
+missed the migration still behaves; rows the importer writes leave Notes empty, so nothing else
+can be mistaken for a remark.

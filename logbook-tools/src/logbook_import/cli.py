@@ -871,9 +871,11 @@ def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None
 @main.command("export-profile")
 @click.option(
     "--target",
-    type=click.Choice(["faa", "ual", "swa"]),
+    # Kept literal so --help works without importing the profile modules;
+    # test_profiles.py asserts this list equals profiles.TARGETS.
+    type=click.Choice(["faa", "ual", "swa", "allegiant"]),
     required=True,
-    help="Who the export is for: FAA 8710, United, or Southwest.",
+    help="Who the export is for: FAA 8710, United, Southwest, or Allegiant.",
 )
 @click.option(
     "--output",
@@ -960,6 +962,116 @@ def export_profile(
         f"(PIC {total(legs, 'pic'):.1f} / SIC {total(legs, 'sic'):.1f} / "
         f"dual {total(legs, 'dual_received'):.1f}) → {out_file}"
     )
+
+
+@main.command("backfill-sic-to-pic")
+@click.option(
+    "--workbook",
+    "workbook_path",
+    type=click.Path(path_type=Path, dir_okay=False, exists=True),
+    required=True,
+    help="LEN2J-AnytimeLogbook .xlsx holding the PF column (never inside this repo).",
+)
+@click.option(
+    "--commit",
+    is_flag=True,
+    default=False,
+    help="Write Flights.SIC_to_PIC (default: dry run).",
+)
+def backfill_sic_to_pic(workbook_path: Path, commit: bool) -> None:
+    """Backfill Flights.SIC_to_PIC from the legacy workbook's PF column.
+
+    SIC time flown as pilot flying under a supervising PIC (14 CFR 61.51).
+    Reads the workbook for the PF column only -- every other figure in it is
+    superseded by Grist. Refuses to write unless the per-aircraft
+    reconciliation gate matches exactly.
+    """
+    from logbook_import import sic_to_pic as backfill
+    from logbook_import.grist_client import GristClient
+    from logbook_import.grist_settings import load_grist_settings
+
+    try:
+        if active_backend() != "grist":
+            raise click.ClickException(
+                "backfill-sic-to-pic writes Grist: set LOGBOOK_BACKEND=grist")
+        client = GristClient(load_grist_settings())
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    try:
+        rows = backfill.parse_workbook(workbook_path)
+        backfill.check_workbook(rows)
+        plan = backfill.build_plan(rows, backfill.load_grist_rows(client))
+        backfill.check_gate(plan)
+    except backfill.BackfillError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(
+        f"workbook {len(rows)} flight rows, PF {plan.pf_all:.1f} h "
+        f"({plan.pf_excl_school:.1f} h excluding flight school)"
+    )
+    click.echo(f"matched {plan.matched} workbook rows to Grist flights "
+               f"({len(plan.leftover_grist)} Grist rows unmatched)")
+    click.echo("SIC-to-PIC by aircraft:")
+    for aircraft, hours in plan.by_aircraft.items():
+        click.echo(f"  {aircraft:8s} {hours:7.1f}")
+    click.echo(f"  {'TOTAL':8s} {plan.total:7.1f}")
+    click.echo(f"gate OK - {len(plan.nonzero)} of {len(plan.updates)} legacy "
+               "flights carry SIC-to-PIC; only those rows are written")
+
+    if not commit:
+        click.echo("dry run - nothing written. Re-run with --commit to write.")
+        return
+    written = backfill.apply_plan(client, plan)
+    click.echo(f"wrote SIC_to_PIC on {written} Flights rows")
+
+
+@main.command("backfill-training-codes")
+@click.option(
+    "--commit",
+    is_flag=True,
+    default=False,
+    help="Write Flights.Training_Codes (default: dry run).",
+)
+def backfill_training_codes(commit: bool) -> None:
+    """Parse the historical remarks into Flights.Training_Codes.
+
+    The old logbook stored each flight's 4-digit military training event codes
+    concatenated into one numeric field. Remarks up to 16 digits are exact;
+    longer ones went through a float, so only the leading codes are recovered
+    and the rest are reported as dropped. No code-to-description lookup is
+    applied.
+
+    Also strips the "Historical line-item import from ..." preamble from Notes,
+    leaving the remark alone: the codes where there are any, the pilot's own
+    words otherwise.
+    """
+    from logbook_import import training_codes as codes
+    from logbook_import.grist_client import GristClient
+    from logbook_import.grist_settings import load_grist_settings
+
+    try:
+        if active_backend() != "grist":
+            raise click.ClickException(
+                "backfill-training-codes writes Grist: set LOGBOOK_BACKEND=grist")
+        client = GristClient(load_grist_settings())
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    plan = codes.load_plan(client)
+    click.echo("legacy remarks:")
+    for kind in (codes.EXACT, codes.RECONSTRUCTED, codes.TEXT, codes.EMPTY):
+        click.echo(f"  {kind:14s} {plan.counts.get(kind, 0):4d}")
+    click.echo(f"{plan.codes_written} codes on {plan.code_rows} flights; "
+               f"{plan.dropped} codes dropped as unrecoverable")
+    click.echo(f"{plan.notes_cleaned} Notes fields lose the import preamble and "
+               "keep the remark alone")
+    click.echo(f"{plan.rows} rows to update in total")
+    if not commit:
+        click.echo("dry run - nothing written. Re-run with --commit to write.")
+        return
+    written = codes.apply_plan(client, plan)
+    click.echo(f"wrote Training_Codes on {written} Flights rows")
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ from html import escape
 from logbook_import import profile_data as pd
 from logbook_import.profile_data import Leg
 from logbook_import.profiles import (
+    REFERENCE_SECTIONS,
     SUMMARY_SECTIONS,
     SYNTHETIC_NOTE,
     Context,
@@ -72,13 +73,24 @@ def _render_metrics(section: Section, legs: Sequence[Leg], ctx: Context) -> str:
 
 def _render_matrix(section: Section, legs: Sequence[Leg], ctx: Context) -> str:
     column_legs = [[leg for leg in legs if col.where(leg)] for col in section.columns]
-    head = "".join(f"<th>{escape(col.label)}</th>" for col in section.columns)
-    body = "".join(
-        f"<tr><th>{escape(row.label)}</th>"
-        + "".join(_cell(row.value(subset, ctx)) for subset in column_legs)
-        + "</tr>"
-        for row in section.rows
-    )
+    if section.transpose:
+        # One table row per column predicate (e.g. a class), one table column
+        # per metric -- so a row reads PIC + SIC + Instruction = Total.
+        head = "".join(f"<th>{escape(row.label)}</th>" for row in section.rows)
+        body = "".join(
+            f"<tr><th>{escape(col.label)}</th>"
+            + "".join(_cell(row.value(subset, ctx)) for row in section.rows)
+            + "</tr>"
+            for col, subset in zip(section.columns, column_legs)
+        )
+    else:
+        head = "".join(f"<th>{escape(col.label)}</th>" for col in section.columns)
+        body = "".join(
+            f"<tr><th>{escape(row.label)}</th>"
+            + "".join(_cell(row.value(subset, ctx)) for subset in column_legs)
+            + "</tr>"
+            for row in section.rows
+        )
     return (f'<table class="matrix"><thead><tr><th></th>{head}</tr></thead>'
             f"<tbody>{body}</tbody></table>")
 
@@ -110,7 +122,8 @@ def _render_by_type(section: Section, legs: Sequence[Leg], ctx: Context) -> str:
     foot = ""
     if section.totals:
         foot = ("<tfoot><tr><th>TOTAL</th>"
-                + "".join(_cell(row.value(legs, ctx)) for row in section.rows)
+                + "".join(_cell(row.value(legs, ctx)) if row.in_totals else "<td></td>"
+                          for row in section.rows)
                 + "</tr></tfoot>")
     return (f'<table class="by-type"><thead>{_group_header(section.rows)}'
             f"<tr><th>TYPE</th>{head}</tr></thead><tbody>{body}</tbody>{foot}</table>")
@@ -167,7 +180,14 @@ def _route(leg: Leg) -> str:
 
 
 def _remark(leg: Leg) -> str:
-    return leg.remark or " ".join(p for p in (leg.airline, leg.flight_number) if p)
+    """REMARKS cell: parsed training event codes, else the pilot's own remark.
+
+    ``training_codes`` holds the 4-digit military event codes parsed out of the
+    concatenated digit string the old logbook stored, so it replaces that raw
+    string. Flight-school rows carry a text remark and no codes.
+    """
+    return (leg.training_codes or leg.remark
+            or " ".join(p for p in (leg.airline, leg.flight_number) if p))
 
 
 # Deliberately absent: landings, NT, ACT IN, XC (synthetic before 2026) and
@@ -389,11 +409,16 @@ def render_profile(profile: Profile, legs: Sequence[Leg], ctx: Context,
         render_section(s, legs, ctx) for s in SUMMARY_SECTIONS)
     target = _identity(legs, ctx, profile.title) + "".join(
         render_section(s, legs, ctx) for s in profile.sections)
+    # The standing application-reference block closes every export, whatever
+    # the target, so any figure quoted on one application can be traced here.
+    reference = _identity(legs, ctx, "Application Reference") + "".join(
+        render_section(s, legs, ctx) for s in REFERENCE_SECTIONS)
     log = render_log_pages(legs, ctx) if include_log else ""
     title = escape(f"{ctx.pilot.name or 'Pilot'} — {profile.title}")
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         f"<title>{title}</title><style>{CSS}</style></head><body>"
         f'<section class="sheet">{summary}</section>'
-        f'<section class="sheet">{target}</section>{log}</body></html>\n'
+        f'<section class="sheet">{target}</section>'
+        f'<section class="sheet">{reference}</section>{log}</body></html>\n'
     )

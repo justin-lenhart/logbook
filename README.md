@@ -229,10 +229,34 @@ still runs, with a warning and a blank name.
 ```sh
 cd logbook/logbook-tools
 source .venv/bin/activate
-logbook-import export-profile --target faa     # FAA 8710 / IACRA Section III
-logbook-import export-profile --target ual     # United
-logbook-import export-profile --target swa     # Southwest
+logbook-import export-profile --target faa        # FAA 8710 / IACRA Section III
+logbook-import export-profile --target ual        # United
+logbook-import export-profile --target swa        # Southwest
+logbook-import export-profile --target allegiant  # Allegiant
 ```
+
+Every target ends with the same three-table **Application Reference** sheet, so a
+figure quoted on one application can be traced on any other:
+
+| Table | What it answers |
+|---|---|
+| Totals by FAA Type | One row per `Aircraft.FAA_Type` — CL65 collapses the CRJ variants, H1 the AH-1Z / AH-1W / UH-1Y, H57 the TH-57B / C. Includes SIC-to-PIC and last-flown |
+| Hours by Category | Airplane / Rotorcraft / Powered Lift, by role and condition |
+| Class Hours | ASEL / ASES / AMEL / AMES / Helicopter / Gyroplane with PIC, SIC, Instruction Received and Total — the Total column reconciles against Hours by Category |
+
+The per-aircraft **Summary by Aircraft Type** on the first sheet is kept as well:
+it groups by individual aircraft rather than by type rating, which is a different
+question.
+
+Night, instrument and cross-country are printed **as stored** in Grist and never
+recomputed here, so a change to how the importer defines them flows straight
+through to these tables.
+
+**Allegiant** applies no conversions of any kind. Its own instruction is "enter
+exact flight times as of the application date; do not round", and it accepts no
+conversions, substitutions, landing credits, simulator or UAS time. The Southwest
+sortie conversion lives in the same module and must never reach it — there is a
+test that guards exactly that.
 
 Each run prints a one-line total (flights, total / PIC / SIC / dual) and the file
 it wrote: `logbook/exports/logbook-<target>-<date>.html`. `exports/` is gitignored
@@ -284,7 +308,9 @@ Everything else the CLI can do. You will rarely touch these.
 | `import-actual` | Import flown legs as Flight rows *(what the auto-importer runs)* |
 | `import-planned` | Import the schedule as planned Trips/Duty Periods |
 | `export-map` | Regenerate `docs/map_data.geojson` (add `--update` to push) |
-| `export-profile --target {faa,ual,swa}` | Printable logbook export (summary, FAA 8710 / United / Southwest sections, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
+| `export-profile --target {faa,ual,swa,allegiant}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
+| `backfill-sic-to-pic --workbook FILE` | One-off: fill `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51). Dry-run unless `--commit`; refuses to write unless the per-aircraft reconciliation gate matches exactly |
+| `backfill-training-codes` | One-off: parse the historical remarks into `Flights.Training_Codes` (4-digit military event codes). Dry-run unless `--commit` |
 | `export-apps` | *(legacy, Airtable-only)* regenerate `docs/apps/*.html` |
 | `enrich-night` | *(legacy, Airtable-only)* backfill night data — Grist imports enrich inline |
 | `backfill-passengers` | *(legacy, Airtable-only)* re-derive Passengers from archived exports |

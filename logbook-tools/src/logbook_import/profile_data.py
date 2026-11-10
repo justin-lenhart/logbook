@@ -23,6 +23,9 @@ from datetime import date, datetime, timezone
 from logbook_import.grist_client import GristClient
 
 REMARK_PREFIX = "Logbook remark:"
+# Pre-cleanup provenance preamble; still recognised so an un-migrated
+# row never reports its import note as the pilot's remark.
+PROVENANCE_PREFIX = "Historical line-item import"
 
 LEGS_SQL = """
 SELECT f.id                 AS id,
@@ -34,9 +37,11 @@ SELECT f.id                 AS id,
        f."Operation"        AS operation,
        f."Legacy_Summary"   AS historical,
        f."Notes"            AS notes,
+       f."Training_Codes"   AS training_codes,
        f."Block_Time"       AS block,
        f."PIC_Time"         AS pic,
        f."SIC_Time"         AS sic,
+       f."SIC_to_PIC"       AS sic_to_pic,
        f."Dual_Received"    AS dual_received,
        f."Dual_Given"       AS dual_given,
        f."Night_Time"       AS night,
@@ -84,10 +89,14 @@ class Leg:
     dest: str = ""
     historical: bool = False    # pre-2026 logbook row: secondary hours are synthetic
     remark: str = ""
+    training_codes: str = ""    # comma-separated 4-digit military event codes
     # Genuine per flight
     block: float = 0.0
     pic: float = 0.0
     sic: float = 0.0
+    # SIC time flown as pilot flying under a supervising PIC (14 CFR 61.51).
+    # A subset of ``sic``, never overlapping ``pic`` on the same row.
+    sic_to_pic: float = 0.0
     dual_received: float = 0.0
     dual_given: float = 0.0
     mil_sortie: float = 0.0
@@ -109,15 +118,24 @@ Predicate = Callable[[Leg], bool]
 def parse_remark(notes: str | None) -> str:
     """Pull the pilot's remark back out of Flights.Notes.
 
-    The historical backfill appended a line ``Logbook remark: <text>`` after the
-    import-provenance line. Anything else in Notes is not a logbook remark.
+    Historical rows were imported with a ``Logbook remark: <text>`` line after
+    an import-provenance preamble; that preamble has since been stripped, so
+    Notes now holds the remark on its own. Both shapes are read here: a
+    prefixed line wins where one exists, otherwise the whole field is the
+    remark. Rows the importer writes leave Notes empty, so nothing else can be
+    mistaken for a remark.
     """
+    text = notes or ""
     remarks = [
         line.strip()[len(REMARK_PREFIX):].strip()
-        for line in (notes or "").splitlines()
+        for line in text.splitlines()
         if line.strip().startswith(REMARK_PREFIX)
     ]
-    return "; ".join(r for r in remarks if r)
+    if remarks:
+        return "; ".join(r for r in remarks if r)
+    if PROVENANCE_PREFIX and text.lstrip().startswith(PROVENANCE_PREFIX):
+        return ""                      # provenance only, no remark
+    return " ".join(text.split())
 
 
 def _num(value: object) -> float:
@@ -153,9 +171,11 @@ def leg_from_row(row: dict) -> Leg:
         dest=_text(row.get("dest")),
         historical=bool(row.get("historical")),
         remark=parse_remark(row.get("notes")),
+        training_codes=_text(row.get("training_codes")),
         block=_num(row.get("block")),
         pic=_num(row.get("pic")),
         sic=_num(row.get("sic")),
+        sic_to_pic=_num(row.get("sic_to_pic")),
         dual_received=_num(row.get("dual_received")),
         dual_given=_num(row.get("dual_given")),
         mil_sortie=_num(row.get("mil_sortie")),
@@ -221,6 +241,15 @@ def is_pic(leg: Leg) -> bool:
 
 def is_sic(leg: Leg) -> bool:
     return leg.sic > 0
+
+
+def never(leg: Leg) -> bool:
+    """A column that is structurally empty (ASES / AMES / Gyroplane: none flown).
+
+    Printing a real 0.0 is the honest answer on an application; it is not the
+    same as "not tracked", which renders as an em dash.
+    """
+    return False
 
 
 def all_of(*preds: Predicate) -> Predicate:

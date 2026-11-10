@@ -52,6 +52,7 @@ class Row:
     label: str
     value: Metric
     group: str = ""          # by_type only: column-group heading
+    in_totals: bool = True   # by_type: False leaves the totals-row cell blank
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,7 @@ class Section:
     form: tuple[tuple[Row, ...], ...] = ()      # per_aircraft_form: rows of cells
     group: Callable[[Leg], str] = lambda leg: leg.aircraft   # per-type kinds
     totals: bool = False                        # by_type: append a totals row
+    transpose: bool = False                     # matrix: classes down, metrics across
     notes: tuple[str, ...] = ()
 
 
@@ -248,6 +250,106 @@ _CATEGORY_COLUMNS = (
 )
 _ALL = (Column("Hours", lambda leg: True),)
 
+# -- application reference block (closes every export) ----------------------
+# Three standing tables the airline applications all draw on. They go on every
+# target, so a figure quoted on one application can be traced on any other.
+#
+# Grouping is always on ``Aircraft.FAA_Type``, never a display name: a typo fix
+# in the Aircraft table must not be able to move a grouping. Night, instrument
+# and cross-country are read as stored and never recomputed here, so a change
+# to how the importer defines them flows straight through to these tables.
+
+SIC_TO_PIC_LABEL = "SIC-to-PIC (\u00a761.51)"
+
+SIC_TO_PIC_NOTE = (
+    "SIC-to-PIC is second-in-command time flown as pilot flying under the "
+    "supervision of a pilot in command, logged under 14 CFR 61.51. It is a "
+    "subset of SIC time, not an addition to it, and never overlaps PIC on the "
+    "same flight."
+)
+
+# Table 1 -- totals by FAA type. CL65 collapses the CRJ variants; H1 the
+# AH-1Z / AH-1W / UH-1Y; H57 the TH-57B / TH-57C.
+FAA_TYPE_COLUMNS: tuple[Row, ...] = (
+    # Listing every aircraft again on the TOTAL row would just be noise.
+    Row("TYPES INCLUDED", distinct(lambda leg: leg.aircraft), in_totals=False),
+    Row("Total", hours(), "HOURS"),
+    Row("PIC", hours("pic"), "HOURS"),
+    Row("SIC", hours("sic"), "HOURS"),
+    Row("SIC->PIC", hours("sic_to_pic"), "HOURS"),
+    Row("Dual Recv", hours("dual_received"), "HOURS"),
+    Row("Instructor", hours("dual_given"), "HOURS"),
+    Row("Night", hours("night"), "CONDITIONS"),
+    Row("Instrument", hours("instrument"), "CONDITIONS"),
+    Row("XC", hours("xc"), "CONDITIONS"),
+    Row("Day", count("day_landings"), "LANDINGS"),
+    Row("Night", count("night_landings"), "LANDINGS"),
+    Row("Last flown", last_flown("%Y-%m-%d")),
+)
+
+# Table 3 -- class hours. Columns are the classes, rows the roles; PIC + SIC +
+# Instruction Received = Total for each class, and the Total row adds up to the
+# matching category column in table 2 (Powered Lift has no FAA class, so it
+# appears in table 2 only).
+_CLASS_COLUMNS = (
+    Column("ASEL", pd.is_single),
+    Column("ASES", pd.never),
+    Column("AMEL", pd.is_multi),
+    Column("AMES", pd.never),
+    Column("Helicopter", pd.is_rotorcraft),
+    Column("Gyroplane", pd.never),
+)
+
+REFERENCE_SECTIONS: tuple[Section, ...] = (
+    Section(
+        title="Totals by FAA Type",
+        kind="by_type",
+        rows=FAA_TYPE_COLUMNS,
+        group=lambda leg: leg.faa_type or "(no type)",
+        totals=True,
+        notes=(SIC_TO_PIC_NOTE, SYNTHETIC_NOTE),
+    ),
+    Section(
+        title="Hours by Category",
+        kind="matrix",
+        columns=_CATEGORY_COLUMNS,
+        rows=(
+            Row("Total Hours", hours()),
+            Row("Pilot in Command (PIC)", hours("pic")),
+            Row("Second in Command (SIC)", hours("sic")),
+            Row(SIC_TO_PIC_LABEL, hours("sic_to_pic")),
+            Row("Instruction Received", hours("dual_received")),
+            Row("Instructor Given", hours("dual_given")),
+            Row("Night", hours("night")),
+            Row("Instrument", hours("instrument")),
+            Row("Cross Country", hours("xc")),
+            Row("Day Landings", count("day_landings")),
+            Row("Night Landings", count("night_landings")),
+        ),
+        notes=(SYNTHETIC_NOTE,),
+    ),
+    Section(
+        title="Class Hours",
+        kind="matrix",
+        columns=_CLASS_COLUMNS,
+        transpose=True,
+        rows=(
+            Row("PIC", hours("pic")),
+            Row("SIC", hours("sic")),
+            Row("Instruction Received", hours("dual_received")),
+            Row("Total", hours()),
+        ),
+        notes=(
+            "PIC + SIC + Instruction Received = Total for each class. The Total "
+            "column reconciles against Hours by Category: ASEL + AMEL equals the "
+            "Airplane column, Helicopter equals the Rotorcraft column.",
+            "Powered Lift (MV-22) has no FAA airplane class and appears in Hours "
+            "by Category only.",
+            "ASES, AMES and Gyroplane are 0.0: none flown.",
+        ),
+    ),
+)
+
 FAA = Profile(
     target="faa",
     title="FAA Form 8710-1 / IACRA — Section III Record of Pilot Time",
@@ -279,23 +381,6 @@ FAA = Profile(
                 SYNTHETIC_NOTE + " The PIC / SIC / instruction splits of night and "
                 "cross-country time before 2026 are therefore proportional estimates; "
                 "the totals they add up to are exact.",
-            ),
-        ),
-        Section(
-            title="Class Hours",
-            kind="matrix",
-            columns=_ALL,
-            rows=(
-                Row("ASEL PIC", hours("pic", pd.is_single)),
-                Row("ASES PIC", zero),
-                Row("AMEL PIC", hours("pic", pd.is_multi)),
-                Row("AMES PIC", zero),
-                Row("ASEL SIC", hours("sic", pd.is_single)),
-                Row("ASES SIC", zero),
-                Row("AMEL SIC", hours("sic", pd.is_multi)),
-                Row("AMES SIC", zero),
-                Row("Helicopter", hours(where=pd.is_rotorcraft)),
-                Row("Gyroplane", zero),
             ),
         ),
         Section(
@@ -412,5 +497,110 @@ SWA = Profile(
 )
 
 
-PROFILES: dict[str, Profile] = {p.target: p for p in (FAA, UAL, SWA)}
+# -- Allegiant ---------------------------------------------------------------
+# Allegiant's own instruction, verbatim: "Enter exact flight times as of the
+# application date; do not round. Allegiant does not accept conversions,
+# substitutions, landing credits, simulator time, or any UAS/drone time."
+#
+# So this profile prints raw logged hours to one decimal and must NEVER apply
+# the Southwest sortie conversion (SORTIE_FACTOR), which lives in this same
+# module. test_profiles.py guards that: same codebase, opposite rules.
+
+# Field 17 wants PIC in a multi-engine turbine fixed-wing or powered-lift
+# aircraft flown in a multi-pilot operation. "Requiring more than one pilot" is
+# not recorded in Grist, so the qualifying aircraft are listed explicitly rather
+# than inferred from Class + Engine + Category -- that filter only happens to
+# give the right answer today (MV-22 PIC is 0, so no powered lift slips in).
+def _is_part135(leg: Leg) -> bool:
+    return leg.operation == "Part 135"
+
+
+MIL_MULTI_PILOT_TYPES: tuple[str, ...] = ("UC-12W", "MV-22")
+
+
+def _is_mil_multi_pilot(leg: Leg) -> bool:
+    return leg.aircraft in MIL_MULTI_PILOT_TYPES
+
+
+def _mil_qualifying(legs: Sequence[Leg], ctx: Context) -> float:
+    """Raw logged PIC on the qualifying aircraft -- not converted sorties."""
+    return pd.total(legs, "pic", pd.all_of(_is_mil_multi_pilot, pd.is_military))
+
+
+_APL = pd.is_airplane
+
+
+def _supervised(field: str, where: Predicate | None = None) -> Metric:
+    """PIC plus supervised-SIC (SIC-to-PIC) share of ``field``.
+
+    Allegiant's fields 7-9 accept time as PIC *or* as an SIC performing PIC
+    duties under supervision. For ``block`` that is a plain sum of the two
+    columns; for night / cross-country it is each role's proportional share of
+    the leg, the same basis the FAA 8710 sheet uses.
+    """
+    def metric(legs: Sequence[Leg], ctx: Context) -> float:
+        if field == "block":
+            return pd.total(legs, "pic", where) + pd.total(legs, "sic_to_pic", where)
+        return (pd.total(legs, field, where, share="pic")
+                + pd.total(legs, field, where, share="sic_to_pic"))
+    return metric
+
+
+ALLEGIANT = Profile(
+    target="allegiant",
+    title="Allegiant Air — Flight Time (application field order)",
+    sections=(
+        Section(
+            title="Flight Time",
+            kind="matrix",
+            columns=_ALL,
+            rows=(
+                Row("1. Total flight time", hours()),
+                Row("2. Total fixed-wing", hours(where=_APL)),
+                Row("3. Cross-country", hours("xc")),
+                Row("4. Night", hours("night")),
+                Row("5. Multi-Engine Land", hours(where=pd.is_multi)),
+                Row("6. Instrument", hours("instrument")),
+                Row("7. PIC airplane or supervised SIC airplane",
+                    _supervised("block", _APL)),
+                Row("8. Cross-country as PIC or supervised SIC",
+                    _supervised("xc", _APL)),
+                Row("9. Night as PIC or supervised SIC",
+                    _supervised("night", _APL)),
+                Row("10. Turbine fixed-wing", hours(where=_FW_TURBINE)),
+                Row("11. Turbine fixed-wing PIC", hours("pic", _FW_TURBINE)),
+                Row("12. Turbine fixed-wing SIC", hours("sic", _FW_TURBINE)),
+                Row("13. Part 121 PIC", hours("pic", pd.is_part121)),
+                Row("14. Part 121 SIC", hours("sic", pd.is_part121)),
+                Row("15. Part 135 PIC", hours("pic", _is_part135)),
+                Row("16. Part 135 SIC", hours("sic", _is_part135)),
+                Row("17. Military qualifying time", _mil_qualifying),
+            ),
+            notes=(
+                "Exact logged times, not rounded. No military sortie conversion, "
+                "no substitutions, no landing credits, no simulator time and no "
+                "UAS time are applied anywhere on this form.",
+                "Fields 7-9 combine PIC with SIC-to-PIC (14 CFR 61.51) in "
+                "airplanes; fields 8 and 9 use each role's proportional share of "
+                "the leg.",
+                "Field 17 is raw logged PIC in "
+                + " / ".join(MIL_MULTI_PILOT_TYPES)
+                + " on military operations: multi-engine turbine fixed-wing or "
+                "powered lift, flown multi-pilot.",
+                SYNTHETIC_NOTE,
+            ),
+        ),
+    ),
+)
+
+
+# -- pending targets ---------------------------------------------------------
+# JetBlue (the pilot's first priority) and Delta: both need their real field
+# lists from the published applications before anything is built. JetBlue will
+# use the SIC-to-PIC column. Nothing is guessed here on purpose -- add a
+# Profile for each once the form is in hand and register it below.
+PENDING_TARGETS: tuple[str, ...] = ("jetblue", "delta")
+
+
+PROFILES: dict[str, Profile] = {p.target: p for p in (FAA, UAL, SWA, ALLEGIANT)}
 TARGETS: tuple[str, ...] = tuple(PROFILES)

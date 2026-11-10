@@ -106,6 +106,37 @@ class GristClient:
                 {"records": [{"id": rid, "fields": f} for rid, f in group]},
             )
 
+    def list_columns(self, table: str) -> dict[str, dict[str, Any]]:
+        """Column id -> its Grist field metadata (type, label, formula, ...)."""
+        resp = self._request("GET", self._doc_path(f"/tables/{table}/columns"))
+        return {c["id"]: c.get("fields", {}) for c in resp["columns"]}
+
+    def add_columns(
+        self, table: str, columns: list[tuple[str, str, str]]
+    ) -> list[str]:
+        """Create data columns, skipping any that already exist.
+
+        ``columns`` is ``(col_id, grist_type, label)``. Adding a column is a
+        schema change and therefore always a user decision (CLAUDE.md golden
+        rule 4) -- callers must have explicit approval before calling this.
+        Returns the ids actually created.
+        """
+        existing = self.list_columns(table)
+        wanted = [c for c in columns if c[0] not in existing]
+        if not wanted:
+            return []
+        self._request(
+            "POST",
+            self._doc_path(f"/tables/{table}/columns"),
+            {
+                "columns": [
+                    {"id": col_id, "fields": {"label": label, "type": gtype}}
+                    for col_id, gtype, label in wanted
+                ]
+            },
+        )
+        return [c[0] for c in wanted]
+
     def sql(self, query: str, args: list[Any] | None = None) -> list[dict[str, Any]]:
         body: dict[str, Any] = {"sql": query}
         if args is not None:

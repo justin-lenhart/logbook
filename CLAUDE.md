@@ -74,7 +74,21 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
 - **Export profiles (read-only):** `profile_data.py` (`Leg`, `load_legs`, predicates,
   aggregators), `profiles.py` (per-target `Profile`/`Section` specs, `pilot.toml`),
   `profile_render.py` (print HTML + certified log pages). Per-flight pages never print
-  night/instrument/XC/landings — synthetic on the pre-2026 rows.
+  night/instrument/XC/landings — synthetic on the pre-2026 rows. Targets: `faa`, `ual`,
+  `swa`, `allegiant`; `profiles.PENDING_TARGETS` names the ones still waiting on a real
+  field list (JetBlue, Delta) — never guess a carrier's fields.
+  - `REFERENCE_SECTIONS` (Totals by FAA Type / Hours by Category / Class Hours) is the
+    standing application-reference block appended to **every** target. Group by
+    `Aircraft.FAA_Type`, never a display name, so a spelling fix cannot move a grouping.
+  - Read `Cross_Country_Time`, `Night_Time` and `Instrument_Time` **as stored** — never
+    recompute them here, so a change to the importer's definition flows through on its own.
+  - Allegiant forbids conversions of any kind and must never see `SORTIE_FACTOR`, which
+    Southwest uses from the same module. `test_profiles.py` guards this; keep it.
+- **One-off backfills (Grist writes, dry-run by default):** `sic_to_pic.py` fills
+  `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51) behind a hard
+  reconciliation gate; `training_codes.py` parses the historical remarks into
+  `Flights.Training_Codes`. Both are history-only and already applied — do not re-run
+  against new data without re-deriving the gates.
 - **CLI:** `cli.py` (Click). Entry point `logbook-import` (`pyproject.toml [project.scripts]`).
 
 ## Commands
@@ -91,17 +105,34 @@ All import commands default to dry-run; add `--commit` to write.
   oldest column only fills gaps). Domicile reports have no efficiency pages.
 - `export-map [--output PATH] [--update]` — regenerate `docs/map_data.geojson`; `--update`
   commits + pushes (GitHub Pages).
-- `export-profile --target {faa|ual|swa} [--output DIR] [--as-of DATE] [--pilot FILE]
-  [--no-log]` — printable summary + target sections + certified log pages. Read-only
-  toward Grist (no `--commit`). Writes `exports/` (gitignored — never `docs/`, which is
-  public). Pilot identity comes from gitignored `pilot.toml` (see `pilot.toml.example`).
+- `export-profile --target {faa|ual|swa|allegiant} [--output DIR] [--as-of DATE]
+  [--pilot FILE] [--no-log]` — printable summary + target sections + the three
+  application-reference tables + certified log pages. Read-only toward Grist (no
+  `--commit`). Writes `exports/` (gitignored — never `docs/`, which is public). Pilot
+  identity comes from gitignored `pilot.toml` (see `pilot.toml.example`).
+- `backfill-sic-to-pic --workbook FILE [--commit]` — fills `Flights.SIC_to_PIC` (SIC time
+  flown as pilot flying under a supervising PIC) from the legacy AnytimeLogbook PF column.
+  The workbook is read for the PF column **only**; every other figure in it is superseded
+  by Grist. Refuses to write unless the per-aircraft gate matches to the tenth
+  (UC-12W 244.7 / AH-1Z 210.7 / AH-1W 1.3 / UH-1Y 0.6 / MV-22 0.3, total 457.6) and no row
+  would log SIC-to-PIC alongside PIC. Never keep that workbook in this repo.
+- `backfill-training-codes [--commit]` — parses the `Logbook remark:` lines in
+  `Flights.Notes` into `Flights.Training_Codes` (concatenated 4-digit military event
+  codes). Remarks up to 16 digits are exact; longer ones went through a float, so the
+  value is rounded to 15 significant digits and only the first four codes are kept. Text
+  remarks (flight school) are left alone. No code-to-description lookup — that mapping is
+  the user's to maintain.
 - `export-apps` / `enrich-night` / `backfill-passengers` — **legacy, Airtable-only.**
 
 ## Dev / test
 - Package is `uv`-managed (`logbook-tools/uv.lock`, `.venv` present). Python ≥ 3.11.
 - Run tests from `logbook-tools/`: **`uv run pytest`** (or activate `.venv` and run `pytest`).
   `pythonpath=src`, `testpaths=tests`. Coverage spans parsers, mappers, keys, night, time,
-  cli, config (17 test modules).
+  cli, config, export profiles and the one-off backfills (26 test modules).
+- **On mintbox** `uv` is not installed and `logbook-tools/.venv` is runtime-only (no
+  `pytest`) — it is what the systemd importer runs, so do not add dev packages to it.
+  Make a throwaway venv instead: `python3 -m venv /tmp/t && /tmp/t/bin/pip install -e
+  logbook-tools pytest && cd logbook-tools && /tmp/t/bin/python -m pytest`.
 - Deps: `click`, `python-dotenv`, `pyairtable` (legacy), `astral`, `timezonefinder`,
   `openpyxl`; dev: `pytest`.
 

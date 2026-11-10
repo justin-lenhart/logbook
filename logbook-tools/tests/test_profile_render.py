@@ -79,16 +79,11 @@ def test_faa_section_iii_rows_and_values(legs: list[Leg]) -> None:
     assert m["Night Takeoff Landing SIC"] == [1, 1, 0]
 
 
-def test_faa_class_hours(legs: list[Leg]) -> None:
-    sec = section(FAA, "Class Hours")
-    assert [r.label for r in sec.rows] == [
-        "ASEL PIC", "ASES PIC", "AMEL PIC", "AMES PIC", "ASEL SIC", "ASES SIC",
-        "AMEL SIC", "AMES SIC", "Helicopter", "Gyroplane",
-    ]
-    m = {k: v[0] for k, v in matrix(sec, legs).items()}
-    assert m["AMEL SIC"] == pytest.approx(4.0)       # powered-lift SIC is not AMEL
-    assert m["Helicopter"] == pytest.approx(3.5)
-    assert m["ASES PIC"] == m["Gyroplane"] == 0.0
+def test_faa_keeps_only_its_own_sections(legs: list[Leg]) -> None:
+    """Class Hours now ships in the shared reference block, not under FAA."""
+    titles = [s.title for s in FAA.sections]
+    assert titles == ["Section III — Record of Pilot Time",
+                      "Glider / Lighter Than Air"]
     assert section(FAA, "Glider / Lighter Than Air").rows
 
 
@@ -233,8 +228,8 @@ def test_load_pilot(tmp_path) -> None:
 def test_cli_targets_match_profiles() -> None:
     result = CliRunner().invoke(cli.main, ["export-profile", "--help"])
     assert result.exit_code == 0
-    assert "[faa|ual|swa]" in result.output
-    assert profiles.TARGETS == ("faa", "ual", "swa")
+    assert f"[{'|'.join(profiles.TARGETS)}]" in result.output
+    assert profiles.TARGETS == ("faa", "ual", "swa", "allegiant")
     assert "--commit" not in result.output            # read-only: nothing to commit
 
 
