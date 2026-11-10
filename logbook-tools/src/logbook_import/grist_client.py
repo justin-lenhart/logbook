@@ -137,6 +137,26 @@ class GristClient:
         )
         return [c[0] for c in wanted]
 
+    def update_column(self, table: str, col_id: str, fields: dict[str, Any]) -> None:
+        """Change one column's metadata (label, type, untieColIdFromLabel, ...).
+
+        Renaming a column's *label* normally renames its ``colId`` too, which
+        silently breaks every query that names it. Pass
+        ``untieColIdFromLabel: True`` alongside a new label to keep the id
+        stable -- that is what makes a display-name change safe.
+        """
+        self._request(
+            "PATCH",
+            self._doc_path(f"/tables/{table}/columns"),
+            {"columns": [{"id": col_id, "fields": fields}]},
+        )
+
+    def delete_column(self, table: str, col_id: str) -> None:
+        """Drop a column. Destructive: a later add does not bring data back."""
+        self._request(
+            "DELETE", self._doc_path(f"/tables/{table}/columns/{col_id}")
+        )
+
     def sql(self, query: str, args: list[Any] | None = None) -> list[dict[str, Any]]:
         body: dict[str, Any] = {"sql": query}
         if args is not None:

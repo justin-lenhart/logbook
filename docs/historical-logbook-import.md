@@ -93,7 +93,7 @@ instruction received 0 → 123.3. Block and PIC are unchanged.
 
 Three changes to the historical rows, all driven from the same workbook and all one-off.
 
-**`SIC_to_PIC` (new Numeric column, 457.6 h over 289 rows).** 14 CFR 61.51 lets an SIC who is
+**`SIC_to_PIC` (new Numeric column, 457.6 h over 289 rows; labelled "SIC-to-PIC (§61.51)").** 14 CFR 61.51 lets an SIC who is
 the pilot flying, under a supervising PIC, log that time; the field had never existed, so the
 figure was missing from every application. It comes from the **`Print` sheet** (sheet 5, not
 `Master`), column **`W` = PF**, which is the only thing that sheet was read for — every other
@@ -104,9 +104,15 @@ rows on (date, normalised type, tail, block), assigning in order inside duplicat
 a clean 560/560 match. `backfill-sic-to-pic` refuses to write unless the per-aircraft totals
 match to the tenth (UC-12W 244.7, AH-1Z 210.7, AH-1W 1.3, UH-1Y 0.6, MV-22 0.3 = **457.6**) and
 no row would log SIC-to-PIC alongside PIC. The `Print` sheet also independently confirms the
-import: 560 flight rows totalling 1506.3 h, and the same two non-flight markers.
+import: 560 flight rows totalling 1506.3 h, and the same two non-flight markers. By category the
+result is Airplane 244.7 / Rotorcraft 212.6 / Powered Lift 0.3.
 
-**`Training_Codes` (new Text column, 833 codes over 386 rows).** The remarks are concatenated
+The column's `colId` is `SIC_to_PIC` with `untieColIdFromLabel` set, so its display name can be
+edited freely. This matters: renaming a tied column rewrites its `colId`, and when the label was
+first changed to "SIC-to-PIC (§61.51)" every query naming `SIC_to_PIC` began failing with
+`Invalid column`.
+
+**Training event codes (833 codes over 386 rows, stored in `Notes`).** The remarks are concatenated
 4-digit military training event codes. Up to 16 digits they are stored exactly (2^53 covers
 every 16-digit integer) and the trailing zeros are real code endings, so `6300610219016100` is
 6300 / 6102 / 1901 / 6100. The 31 longer ones reached Grist as scientific notation and only the
@@ -116,7 +122,9 @@ significant digits, which repairs the float in both directions — `...0022999` 
 rest is zero padding. 68 codes were dropped as unrecoverable. Truncating instead of rounding
 would have emitted 11 codes that occur nowhere else in the logbook (2299, 2899, 3299, 6099, …);
 rounding yields only codes that do. There is deliberately **no code-to-description lookup** —
-that mapping is the pilot's to maintain.
+that mapping is the pilot's to maintain. The codes are stored in `Notes` and nowhere else: a
+`Training_Codes` column was tried on 2026-11-10 and abandoned the same day as redundant. No code
+reads it; drop it from the Grist doc when convenient.
 
 **`Notes` now holds the remark alone (560 rows).** Every historical row carried a
 `Historical line-item import from LEN2J-…xlsx (Master row N). Secondary hours … distributed

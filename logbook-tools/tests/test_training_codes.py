@@ -118,7 +118,7 @@ PREAMBLE = ("Historical line-item import from LEN2J-x.xlsx (Master row 9). "
             "proportionally to preserve per-aircraft totals.")
 
 
-def test_build_plan_writes_codes_and_strips_the_preamble() -> None:
+def test_build_plan_rewrites_notes_to_the_codes() -> None:
     rows = [
         {"id": 1, "notes": f"{PREAMBLE}\nLogbook remark: 28004300"},
         {"id": 2, "notes": f"{PREAMBLE}\nLogbook remark: 2.8002100230029001E+19"},
@@ -128,13 +128,11 @@ def test_build_plan_writes_codes_and_strips_the_preamble() -> None:
     plan = tc.build_plan(rows)
     assert plan.counts == {tc.EXACT: 1, tc.RECONSTRUCTED: 1, tc.TEXT: 1, tc.EMPTY: 1}
     fields = dict(plan.updates)
-    # codes only where there are codes
-    assert fields[1] == {"Training_Codes": "2800, 4300", "Notes": "2800, 4300"}
-    assert fields[2] == {"Training_Codes": "2800, 2100, 2300, 2900",
-                         "Notes": "2800, 2100, 2300, 2900"}
+    # Notes alone carries the codes: a stored column would just duplicate it
+    assert fields[1] == {"Notes": "2800, 4300"}
+    assert fields[2] == {"Notes": "2800, 2100, 2300, 2900"}
     # the pilot's own words survive; the preamble does not
     assert fields[3] == {"Notes": "IFS, 5R4"}
-    assert "Training_Codes" not in fields[3]
     # provenance-only rows end up empty
     assert fields[4] == {"Notes": ""}
     assert plan.codes_written == 6 and plan.dropped == 1
@@ -157,7 +155,7 @@ def test_no_preamble_survives_anywhere() -> None:
 def test_rerunning_the_plan_is_a_no_op() -> None:
     """Already-cleaned rows must not be rewritten on a second run."""
     cleaned = [
-        {"id": 1, "notes": "2800, 4300", "existing": "2800, 4300"},
+        {"id": 1, "notes": "2800, 4300"},
         {"id": 2, "notes": "IFS, 5R4"},
         {"id": 3, "notes": ""},
     ]
@@ -185,6 +183,5 @@ def test_apply_plan_sends_a_uniform_field_set() -> None:
     assert tc.apply_plan(Fake(), plan) == 2
     table, updates = sent[0]
     assert table == "Flights"
-    # Grist needs a uniform field set per PATCH; update_records groups these.
-    assert {frozenset(f) for _, f in updates} == {
-        frozenset({"Training_Codes", "Notes"}), frozenset({"Notes"})}
+    # One uniform field per record, as Grist's PATCH requires.
+    assert {frozenset(f) for _, f in updates} == {frozenset({"Notes"})}

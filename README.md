@@ -310,7 +310,7 @@ Everything else the CLI can do. You will rarely touch these.
 | `export-map` | Regenerate `docs/map_data.geojson` (add `--update` to push) |
 | `export-profile --target {faa,ual,swa,allegiant}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
 | `backfill-sic-to-pic --workbook FILE` | One-off: fill `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51). Dry-run unless `--commit`; refuses to write unless the per-aircraft reconciliation gate matches exactly |
-| `backfill-training-codes` | One-off: parse the historical remarks into `Flights.Training_Codes` (4-digit military event codes). Dry-run unless `--commit` |
+| `backfill-training-codes` | One-off: rewrite the historical `Flights.Notes` remarks to their 4-digit military event codes, dropping the import preamble. Dry-run unless `--commit` |
 | `export-apps` | *(legacy, Airtable-only)* regenerate `docs/apps/*.html` |
 | `enrich-night` | *(legacy, Airtable-only)* backfill night data — Grist imports enrich inline |
 | `backfill-passengers` | *(legacy, Airtable-only)* re-derive Passengers from archived exports |

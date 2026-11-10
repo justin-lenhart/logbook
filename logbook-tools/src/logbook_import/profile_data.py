@@ -37,7 +37,6 @@ SELECT f.id                 AS id,
        f."Operation"        AS operation,
        f."Legacy_Summary"   AS historical,
        f."Notes"            AS notes,
-       f."Training_Codes"   AS training_codes,
        f."Block_Time"       AS block,
        f."PIC_Time"         AS pic,
        f."SIC_Time"         AS sic,
@@ -88,8 +87,7 @@ class Leg:
     origin: str = ""
     dest: str = ""
     historical: bool = False    # pre-2026 logbook row: secondary hours are synthetic
-    remark: str = ""
-    training_codes: str = ""    # comma-separated 4-digit military event codes
+    remark: str = ""           # Notes: training codes, or the pilot's own words
     # Genuine per flight
     block: float = 0.0
     pic: float = 0.0
@@ -171,7 +169,6 @@ def leg_from_row(row: dict) -> Leg:
         dest=_text(row.get("dest")),
         historical=bool(row.get("historical")),
         remark=parse_remark(row.get("notes")),
-        training_codes=_text(row.get("training_codes")),
         block=_num(row.get("block")),
         pic=_num(row.get("pic")),
         sic=_num(row.get("sic")),

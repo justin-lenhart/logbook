@@ -86,9 +86,15 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
     Southwest uses from the same module. `test_profiles.py` guards this; keep it.
 - **One-off backfills (Grist writes, dry-run by default):** `sic_to_pic.py` fills
   `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51) behind a hard
-  reconciliation gate; `training_codes.py` parses the historical remarks into
-  `Flights.Training_Codes`. Both are history-only and already applied — do not re-run
-  against new data without re-deriving the gates.
+  reconciliation gate; `training_codes.py` rewrites the historical `Flights.Notes` remarks
+  to their 4-digit event codes. Both are history-only and already applied (2026-11-10) —
+  do not re-run against new data without re-deriving the gates.
+  - `Flights.SIC_to_PIC` is labelled **SIC-to-PIC (§61.51)** in Grist with
+    `untieColIdFromLabel` set, so the display name can be changed without renaming the
+    `colId` the SQL depends on. Renaming a tied column silently breaks every query that
+    names it — that is how it broke once already.
+  - The codes live in `Notes` and nowhere else; a stored column for them would only
+    duplicate it.
 - **CLI:** `cli.py` (Click). Entry point `logbook-import` (`pyproject.toml [project.scripts]`).
 
 ## Commands
@@ -116,12 +122,13 @@ All import commands default to dry-run; add `--commit` to write.
   by Grist. Refuses to write unless the per-aircraft gate matches to the tenth
   (UC-12W 244.7 / AH-1Z 210.7 / AH-1W 1.3 / UH-1Y 0.6 / MV-22 0.3, total 457.6) and no row
   would log SIC-to-PIC alongside PIC. Never keep that workbook in this repo.
-- `backfill-training-codes [--commit]` — parses the `Logbook remark:` lines in
-  `Flights.Notes` into `Flights.Training_Codes` (concatenated 4-digit military event
-  codes). Remarks up to 16 digits are exact; longer ones went through a float, so the
-  value is rounded to 15 significant digits and only the first four codes are kept. Text
-  remarks (flight school) are left alone. No code-to-description lookup — that mapping is
-  the user's to maintain.
+- `backfill-training-codes [--commit]` — rewrites `Flights.Notes` on the historical rows to
+  the flight's 4-digit military event codes, dropping the `Historical line-item import …`
+  preamble. Remarks up to 16 digits are exact; longer ones went through a float, so the
+  value is rounded (never truncated) to 15 significant digits and only the first four codes
+  are kept. Flight-school text remarks keep the pilot's own words. No code-to-description
+  lookup — that mapping is the user's to maintain. `profile_data.parse_remark` reads both
+  the old prefixed shape and the cleaned one.
 - `export-apps` / `enrich-night` / `backfill-passengers` — **legacy, Airtable-only.**
 
 ## Dev / test

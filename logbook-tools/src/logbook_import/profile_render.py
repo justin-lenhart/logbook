@@ -180,13 +180,13 @@ def _route(leg: Leg) -> str:
 
 
 def _remark(leg: Leg) -> str:
-    """REMARKS cell: parsed training event codes, else the pilot's own remark.
+    """REMARKS cell: whatever ``Notes`` holds, else the flight's own number.
 
-    ``training_codes`` holds the 4-digit military event codes parsed out of the
-    concatenated digit string the old logbook stored, so it replaces that raw
-    string. Flight-school rows carry a text remark and no codes.
+    Notes carries the remark alone: the 4-digit military training event codes
+    on the historical military rows, the pilot's own words on the flight-school
+    rows. Current flights have no remark, so they show airline + flight number.
     """
-    return (leg.training_codes or leg.remark
+    return (leg.remark
             or " ".join(p for p in (leg.airline, leg.flight_number) if p))
 
 

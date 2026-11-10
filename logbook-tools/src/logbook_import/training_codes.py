@@ -5,8 +5,9 @@ concatenated into one field. A spreadsheet somewhere along the way stored that
 field as a *number*, so the remark arrives in Grist as a digit string -- and,
 once it grows past what a float can hold exactly, as scientific notation.
 
-``Flights.Notes`` holds them as ``Logbook remark: <text>``. This module turns
-them back into a comma-separated list for ``Flights.Training_Codes``.
+``Flights.Notes`` holds them as ``Logbook remark: <text>``. This module
+rewrites that field to the comma-separated codes alone. A separate stored
+column for them would only duplicate Notes, so there isn't one.
 
 What survives
 -------------
@@ -116,7 +117,7 @@ def parse_notes(notes: str | None) -> ParsedRemark:
 
 
 NOTES_SQL = """
-SELECT f.id AS id, f."Notes" AS notes, f."Training_Codes" AS existing
+SELECT f.id AS id, f."Notes" AS notes
 FROM "Flights" f
 WHERE f."Legacy_Summary"
 ORDER BY f.id
@@ -132,6 +133,7 @@ class CodePlan:
     dropped: int
     codes_written: int
     notes_cleaned: int
+    rows_with_codes: int = 0
 
     @property
     def rows(self) -> int:
@@ -139,7 +141,7 @@ class CodePlan:
 
     @property
     def code_rows(self) -> int:
-        return sum(1 for _, f in self.updates if "Training_Codes" in f)
+        return self.rows_with_codes
 
 
 def clean_notes(remark: str, parsed: ParsedRemark) -> str:
@@ -171,15 +173,14 @@ def build_plan(rows: list[dict[str, Any]]) -> CodePlan:
         fields: dict[str, Any] = {}
         if parsed.codes:
             written += len(parsed.codes)
-            if (row.get("existing") or "") != parsed.joined:
-                fields["Training_Codes"] = parsed.joined
         wanted = clean_notes(remark, parsed)
         if wanted != notes:
             fields["Notes"] = wanted
             cleaned += 1
         if fields:
             updates.append((int(row["id"]), fields))
-    return CodePlan(updates, counts, dropped, written, cleaned)
+    with_codes = sum(1 for row in rows if parse_codes(parse_remark(row.get("notes") or "")).codes)
+    return CodePlan(updates, counts, dropped, written, cleaned, with_codes)
 
 
 def load_plan(client: GristClient) -> CodePlan:
@@ -190,12 +191,8 @@ CHUNK = 250
 
 
 def apply_plan(client: GristClient, plan: CodePlan) -> int:
-    """Write Training_Codes and the cleaned Notes.
-
-    ``update_records`` groups by field-key-set before sending, so the rows that
-    get both fields and the rows that get only ``Notes`` go in separate PATCHes
-    -- which is what Grist's uniform-field-set rule requires.
-    """
+    """Write the cleaned Notes. Every record carries the same single field,
+    which is what Grist's uniform-field-set rule requires."""
     for start in range(0, len(plan.updates), CHUNK):
         client.update_records("Flights", plan.updates[start:start + CHUNK])
     return len(plan.updates)

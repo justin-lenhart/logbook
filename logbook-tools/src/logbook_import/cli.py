@@ -1031,10 +1031,10 @@ def backfill_sic_to_pic(workbook_path: Path, commit: bool) -> None:
     "--commit",
     is_flag=True,
     default=False,
-    help="Write Flights.Training_Codes (default: dry run).",
+    help="Write the cleaned Flights.Notes (default: dry run).",
 )
 def backfill_training_codes(commit: bool) -> None:
-    """Parse the historical remarks into Flights.Training_Codes.
+    """Rewrite the historical remarks in Flights.Notes to their event codes.
 
     The old logbook stored each flight's 4-digit military training event codes
     concatenated into one numeric field. Remarks up to 16 digits are exact;
@@ -1042,9 +1042,9 @@ def backfill_training_codes(commit: bool) -> None:
     and the rest are reported as dropped. No code-to-description lookup is
     applied.
 
-    Also strips the "Historical line-item import from ..." preamble from Notes,
-    leaving the remark alone: the codes where there are any, the pilot's own
-    words otherwise.
+    Notes ends up holding the remark alone -- the comma-separated codes where
+    there are any, the pilot's own words otherwise -- with the "Historical
+    line-item import from ..." preamble stripped.
     """
     from logbook_import import training_codes as codes
     from logbook_import.grist_client import GristClient
@@ -1071,7 +1071,7 @@ def backfill_training_codes(commit: bool) -> None:
         click.echo("dry run - nothing written. Re-run with --commit to write.")
         return
     written = codes.apply_plan(client, plan)
-    click.echo(f"wrote Training_Codes on {written} Flights rows")
+    click.echo(f"rewrote Notes on {written} Flights rows")
 
 
 if __name__ == "__main__":
