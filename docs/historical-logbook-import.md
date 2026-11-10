@@ -49,7 +49,7 @@ Per-aircraft-type block and PIC/SIC all match the pre-existing values to 0.1h.
 ## Aircraft mapping (no new rows created)
 
 `C→C172(4)`, `T6→T-6B(14)`, `PA44→PA-44(13)`, `MV22B→MV-22(9)`, `UC12W→UC-12W(10, FAA B300)`,
-`AH1Z→AH-1Z(1)`, `AH1W→AH1-W(8)`, `UH1Y→UH-1Y(2)`; **H57 split by detailed type** →
+`AH1Z→AH-1Z(1)`, `AH1W→AH-1W(8)` (named `AH1-W` until the 2026-11-10 typo fix), `UH1Y→UH-1Y(2)`; **H57 split by detailed type** →
 `TH-57B(11)` / `TH-57C(12)` (33.7 / 89.6 SIC).
 
 ## Operation

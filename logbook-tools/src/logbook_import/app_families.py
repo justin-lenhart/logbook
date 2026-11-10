@@ -106,7 +106,8 @@ FAMILIES: dict[str, Family] = {
 # Airtable Aircraft name -> family code.
 AIRCRAFT_TO_FAMILY: dict[str, str] = {
     "AH-1Z":  "AH1Z",
-    "AH1-W":  "AH1W",
+    "AH-1W":  "AH1W",
+    "AH1-W":  "AH1W",   # Grist name before the 2026-11-10 typo fix
     "TH-57B": "H57",
     "TH-57C": "H57",
     "T-6B":   "T6",

@@ -141,7 +141,7 @@ def last_flown(fmt: str) -> Metric:
 AIRCRAFT_INFO: dict[str, tuple[str, str, str]] = {
     # code:   (group,    manufacturer,  model)
     "AH-1Z":  ("AH-1Z",  "Bell",        "AH-1Z Viper"),
-    "AH1-W":  ("AH-1W",  "Bell",        "AH-1W Super Cobra"),
+    "AH-1W":  ("AH-1W",  "Bell",        "AH-1W Super Cobra"),
     "UH-1Y":  ("UH-1Y",  "Bell",        "UH-1Y Venom"),
     "TH-57B": ("TH-57B", "Bell",        "TH-57B Sea Ranger (206)"),
     "TH-57C": ("TH-57C", "Bell",        "TH-57C Sea Ranger (206)"),

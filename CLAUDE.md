@@ -51,6 +51,9 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
 - **Cross-country** (`cross_country.py`) follows 14 CFR 61.1: a leg logs its block time as
   cross-country only when the destination is more than 50 nm straight-line from the
   departure airport; air returns and deadheads log 0. Pre-2026 rows keep their legacy values.
+- **Row timestamps** are Grist trigger formulas, not importer fields: `Flights.Created`
+  fills with `NOW()` when a row is added, `Flights.Edited` on any later edit (manual or
+  import). `Record_Status` is a legacy Airtable field and is not written.
 - **Stable keys** (`keys.py`): Trip / Duty Period / Import Flight keys make imports
   idempotent (upsert, not append). See `AGENTRULES.md` → *Stable Keys*.
 
