@@ -199,6 +199,82 @@ logbook-import export-map --update      # refresh just the map
 GitHub Pages redeploys ~1 minute after the push. The map fetches its data with
 `no-cache`, so a page reload picks up the new flights.
 
+### Printable logbook exports (FAA 8710 / airline applications)
+
+`export-profile` turns the live logbook into one printable HTML file per target.
+It only **reads** Grist — there is no `--commit`, and nothing in the logbook changes.
+
+**1. One-time: tell it who you are.** Your name and certificate details are not in
+Grist. From the repo root:
+
+```sh
+cp pilot.toml.example pilot.toml
+```
+
+Edit `pilot.toml`:
+
+| Key | What it is | Where it shows up |
+|---|---|---|
+| `name` | Your printed name | Page headers; under the signature line on every log page |
+| `certificate` | e.g. `"Airline Transport Pilot"` | Summary header |
+| `certificate_number` | Your certificate number | Summary header |
+| `ratings` | List of ratings | Summary header |
+| `type_ratings` | List of `FAA_Type` codes from the Grist Aircraft table, e.g. `["CL65"]` | United's "Type rated: Yes/No" |
+
+`pilot.toml` is gitignored — it never leaves this machine. Without it the export
+still runs, with a warning and a blank name.
+
+**2. Run it** (on the server, where `logbook-tools/.env` has the Grist credentials):
+
+```sh
+cd logbook/logbook-tools
+source .venv/bin/activate
+logbook-import export-profile --target faa     # FAA 8710 / IACRA Section III
+logbook-import export-profile --target ual     # United
+logbook-import export-profile --target swa     # Southwest
+```
+
+Each run prints a one-line total (flights, total / PIC / SIC / dual) and the file
+it wrote: `logbook/exports/logbook-<target>-<date>.html`. `exports/` is gitignored
+and owner-only — it is **not** `docs/`, which is public.
+
+**3. Print it.** Open the file in a browser (Chrome prints it best) and print /
+"Save as PDF". The page sizes are built in: summary and target pages are portrait
+letter, log pages are landscape letter. In the print dialog leave margins on
+"Default" and scale at 100%. Sign each log page on the line above your name.
+
+**What is in the file**, in order:
+
+1. **Flight Time Summary** — headline totals, milestones, 1/2/3-year history, and a
+   table by aircraft type. Same in every export.
+2. **The target's pages** — `faa`: the 8710 Section III grid (Airplane / Rotorcraft /
+   Powered Lift) plus Class Hours; `ual`: one form block per aircraft to copy into
+   pilothiring.united.com; `swa`: one block per aircraft with the 0.3-per-sortie
+   military conversion.
+3. **Certified log pages** — every flight, 50 per page, with page totals, amount
+   forwarded, totals to date, and the certification/signature block.
+
+**Options**
+
+| Flag | Effect |
+|---|---|
+| `--no-log` | Leave out the certified log pages (just the summary + target pages) |
+| `--as-of 2026-11-03` | Report as of that date; later flights are left out (default: today) |
+| `--output DIR` | Write somewhere other than `exports/` |
+| `--pilot FILE` | Use a different identity file than `pilot.toml` |
+
+**Reading the output**
+
+- A `WARNING: flight … has no Aircraft link` line means that flight counts in Total
+  Time but in no category, class or type. Set its Aircraft in Grist and re-run.
+- Night, instrument, cross-country and landings appear only in the summary and 8710
+  totals, never per flight: on pre-2026 flights they exist as verified totals only.
+- `—` means "not tracked" (solo time).
+- On United's form, helicopters show their engine type (`Turboshaft`) under
+  Powerplant; pick whatever the real form offers.
+- No military conversion is applied anywhere except the Southwest block, where it
+  is shown as its own rows.
+
 ### Command reference
 
 Everything else the CLI can do. You will rarely touch these.
