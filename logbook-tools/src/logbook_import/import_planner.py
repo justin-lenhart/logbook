@@ -394,8 +394,10 @@ def build_import_plan(
 
             # Aircraft comes only from the flight line (CSV A/C Type). The txt
             # header is not trip data (R5): no fallback, leave the link blank.
-            aircraft_code = normalize_aircraft_code(leg.aircraft_type)
-            if not aircraft_code and not deadhead:  # deadhead lines carry no A/C Type
+            # Deadheads never get an aircraft link, even when the CSV has a type:
+            # a row with no logged time must not appear under a category/type.
+            aircraft_code = None if deadhead else normalize_aircraft_code(leg.aircraft_type)
+            if not aircraft_code and not deadhead:
                 tz_warnings.append(
                     f"{if_key}: no aircraft type on this flight line (CSV A/C Type); "
                     f"Aircraft link left blank"

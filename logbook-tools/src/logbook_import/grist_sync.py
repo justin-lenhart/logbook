@@ -253,6 +253,19 @@ class GristImporter:
                 if not record_id:
                     continue
 
+                # Deadheads are flown as a passenger: no night time, no landings.
+                # Written as explicit zeros so a re-import also clears old values.
+                if flight.deadhead:
+                    night_updates.append((
+                        record_id,
+                        {
+                            F.F_FLIGHT_NIGHT_TIME: 0.0,
+                            F.F_FLIGHT_DAY_LANDING: 0,
+                            F.F_FLIGHT_NIGHT_LANDING: 0,
+                        },
+                    ))
+                    continue
+
                 origin = self._airport_index.get(flight.origin)
                 dest = self._airport_index.get(flight.destination)
                 if not origin or not dest:

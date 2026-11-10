@@ -168,3 +168,31 @@ def test_planned_import_never_cancels() -> None:
     ]
     GristImporter(None, airport_index={}, client=client).sync_plan(_plan())
     assert not [u for table, u in client.updates if table == F.TABLE_DUTY_PERIODS]
+
+
+def test_deadhead_gets_zero_night_and_no_landing() -> None:
+    """A deadhead flown entirely in darkness still logs 0 night and no landing."""
+    ord_ = {"record_id": 1, "tz": "America/Chicago", "lat": 41.98, "lon": -87.90}
+    dfw = {"record_id": 2, "tz": "America/Chicago", "lat": 32.90, "lon": -97.04}
+    legs = [
+        Leg(1, "5907", "N975SW", "DFW", "ORD", time(15, 0), time(17, 0), 50, 2.0, 2.0),
+        # 21:05-23:33 CDT in August = 0205Z-0433Z: all night
+        Leg(2, "2281", "", "ORD", "DFW", time(21, 5), time(23, 33), 0, 0.0, 2.5,
+            deadhead_indicator="F"),
+    ]
+    pairing = PairingExport(
+        employee_id="1", employee_name="Test Pilot", base="ORD", equipment_family="CRJ",
+        role="FO", pairing_id="T3F15C", start_date=date(2026, 8, 21),
+        block_hours=2.0, credit_hours=4.5, tafb_hours=10.0,
+        duty_days=[DutyDay(date(2026, 8, 21), time(14, 0), time(23, 59), legs=legs)],
+    )
+    index = {"ORD": ord_, "DFW": dfw}
+    plan = build_import_plan(pairing, ImportMode.ACTUAL, airport_index=index)
+    assert [f.deadhead for f in plan.flights] == [False, True]
+    client = FakeClient(existing_trip_keys=set())
+    GristImporter(None, airport_index=index, client=client).sync_plan(plan)
+    flight_updates = [ups for table, ups in client.updates if table == F.TABLE_FLIGHTS][0]
+    dh_id = client.rows[F.TABLE_FLIGHTS][plan.flights[1].import_flight_key]
+    assert dict(flight_updates)[dh_id] == {
+        F.F_FLIGHT_NIGHT_TIME: 0.0, F.F_FLIGHT_DAY_LANDING: 0, F.F_FLIGHT_NIGHT_LANDING: 0,
+    }

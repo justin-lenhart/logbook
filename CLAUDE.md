@@ -46,7 +46,8 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
 - **Night time & landings** are computed inline per pairing (not by calendar day) via
   `astral` in `night_enrichment.py` (FAA civil-twilight rule).
 - **Deadheads** are excluded from flight-time sums and from the map (`not deadhead AND
-  (PIC>0 OR SIC>0)`).
+  (PIC>0 OR SIC>0)`). A deadhead row carries no Aircraft link, no Flight_Position, and
+  zero in every time and landing column (night included) — the importer enforces this.
 - **Stable keys** (`keys.py`): Trip / Duty Period / Import Flight keys make imports
   idempotent (upsert, not append). See `AGENTRULES.md` → *Stable Keys*.
 

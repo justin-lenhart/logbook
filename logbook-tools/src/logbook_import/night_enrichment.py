@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
-from astral import LocationInfo
-from astral.sun import sun
+from astral import LocationInfo, Observer
+from astral.sun import elevation, sun
 
 
 def civil_twilight_times(
@@ -39,6 +39,18 @@ def _ensure_utc(dt: datetime) -> datetime:
     return dt
 
 
+# Night (14 CFR 1.1): the time between the end of evening civil twilight and
+# the beginning of morning civil twilight, i.e. the sun's centre more than 6
+# degrees below the horizon.
+_CIVIL_TWILIGHT_ELEVATION = -6.0
+_SAMPLE_SECONDS = 60
+
+
+def _is_dark(lat: float, lon: float, at_utc: datetime) -> bool:
+    """True if the sun is below civil twilight at this place and instant."""
+    return elevation(Observer(lat, lon), at_utc, with_refraction=False) < _CIVIL_TWILIGHT_ELEVATION
+
+
 def _night_overlap_seconds(
     out_utc: datetime,
     in_utc: datetime,
@@ -50,29 +62,30 @@ def _night_overlap_seconds(
     """
     Return the total seconds during [out_utc, in_utc] that fall in darkness.
 
-    For each UTC calendar day touched by the flight, we compute the night
-    window as [dusk, dawn] for that date.  For US airports the two values are
-    on the same UTC day (dusk ≈ 02:xx, dawn ≈ 10:xx).  We sum any overlaps
-    from every day the flight spans.
+    The flight is sampled once a minute (at each minute's midpoint) at a
+    position interpolated between origin and destination, and each sample is
+    tested against the sun's elevation directly.
+
+    An earlier version built one [dusk, dawn] window per UTC calendar date and
+    dropped it when dusk was not earlier than dawn on that date. That only
+    holds while evening dusk falls after 0000Z (US summer); from autumn on,
+    dusk falls before 0000Z and every flight came out with zero night. Testing
+    the sun's elevation has no calendar-date dependence at all.
     """
-    total = 0.0
-    checked: set[date] = set()
-    for dt in (out_utc, in_utc):
-        d = dt.date()
-        if d in checked:
-            continue
-        checked.add(d)
-        try:
-            _, dusk = civil_twilight_times(origin_lat, origin_lon, d)
-            dawn, _ = civil_twilight_times(dest_lat, dest_lon, d)
-        except ValueError:
-            continue
-        if dusk >= dawn:
-            continue  # degenerate twilight (polar edge case)
-        overlap_start = max(out_utc, dusk)
-        overlap_end = min(in_utc, dawn)
-        total += max(0.0, (overlap_end - overlap_start).total_seconds())
-    return total
+    total_seconds = (in_utc - out_utc).total_seconds()
+    if total_seconds <= 0:
+        return 0.0
+    dark = 0.0
+    start = 0.0
+    while start < total_seconds:
+        step = min(_SAMPLE_SECONDS, total_seconds - start)
+        frac = (start + step / 2) / total_seconds
+        lat = origin_lat + (dest_lat - origin_lat) * frac
+        lon = origin_lon + (dest_lon - origin_lon) * frac
+        if _is_dark(lat, lon, out_utc + timedelta(seconds=start + step / 2)):
+            dark += step
+        start += step
+    return dark
 
 
 def _is_night_arrival(
@@ -80,17 +93,9 @@ def _is_night_arrival(
     dest_lat: float,
     dest_lon: float,
 ) -> bool:
-    """
-    True if the arrival time falls after civil twilight end and before civil
-    twilight begin at the destination on the arrival UTC date.
-    """
-    try:
-        dawn, dusk = civil_twilight_times(dest_lat, dest_lon, in_utc.date())
-    except ValueError:
-        return False
-    if dusk >= dawn:
-        return False  # polar edge case
-    return dusk <= in_utc < dawn
+    """True if the arrival falls between the end of evening civil twilight and
+    the beginning of morning civil twilight at the destination."""
+    return _is_dark(dest_lat, dest_lon, in_utc)
 
 
 def compute_night_data(
@@ -112,8 +117,7 @@ def compute_night_data(
     - night_landing: 1 if gets_landing_credit and arrival is at or after civil
       twilight end at the destination; otherwise 0.
 
-    Naive datetimes are treated as UTC.  If twilight data is unavailable (polar
-    route or astral computation failure), returns (0.0, 0, 0).
+    Naive datetimes are treated as UTC.
 
     # TODO: Confirm SkyWest takeoff credit rule.  Currently assumes takeoffs
     # alternate on the same odd/even leg pattern as landings (PIC=odd, SIC=even).

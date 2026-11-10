@@ -73,3 +73,73 @@ def test_no_landing_credit() -> None:
     assert night_hours > 0.0  # night time is still recorded
     assert day_landing == 0
     assert night_landing == 0
+
+
+# --- Seasonal regression: evening dusk falls BEFORE 0000Z from autumn on -----
+# The old per-UTC-date [dusk, dawn] window was discarded in that case and
+# every flight logged zero night. Cases below are real 2026 legs.
+
+_ORD = (41.9786, -87.9048)
+_SBN = (41.7087, -86.3173)
+_MSP = (44.882, -93.222)
+_YYZ = (43.6772, -79.6306)
+_GNV = (29.6900, -82.2718)
+_PHX = (33.4343, -112.0116)
+_SGF = (37.2457, -93.3886)
+_UTC = timezone.utc
+
+
+def test_autumn_dusk_before_midnight_utc() -> None:
+    # In November, dusk at ORD is ~2300Z and dawn ~1200Z on the same UTC date.
+    dawn, dusk = civil_twilight_times(*_ORD, date(2026, 11, 7))
+    assert dusk > dawn
+
+
+def test_autumn_evening_leg_logs_night() -> None:
+    # 5674 ORD-SBN 07 Nov 2026, 2222Z-2316Z: lands after evening civil twilight.
+    night, day_ldg, night_ldg = compute_night_data(
+        datetime(2026, 11, 7, 22, 22, tzinfo=_UTC), datetime(2026, 11, 7, 23, 16, tzinfo=_UTC),
+        *_ORD, *_SBN, True,
+    )
+    assert 0.1 <= night <= 0.4
+    assert (day_ldg, night_ldg) == (0, 1)
+
+
+def test_autumn_overnight_leg_is_all_night() -> None:
+    # 3866 MSP-YYZ 31 Oct 2026, 0322Z-0517Z: entirely dark.
+    night, day_ldg, night_ldg = compute_night_data(
+        datetime(2026, 10, 31, 3, 22, tzinfo=_UTC), datetime(2026, 10, 31, 5, 17, tzinfo=_UTC),
+        *_MSP, *_YYZ, True,
+    )
+    assert night == 1.9
+    assert (day_ldg, night_ldg) == (0, 1)
+
+
+def test_autumn_leg_crossing_midnight_utc_westbound() -> None:
+    # 9917 GNV-PHX 25 Sep 2026, 2349Z-0405Z: departs after dusk at GNV and
+    # chases the terminator west but never catches it.
+    night, _, night_ldg = compute_night_data(
+        datetime(2026, 9, 25, 23, 49, tzinfo=_UTC), datetime(2026, 9, 26, 4, 5, tzinfo=_UTC),
+        *_GNV, *_PHX, True,
+    )
+    assert night == 4.3
+    assert night_ldg == 1
+
+
+def test_autumn_predawn_departure_partial_night() -> None:
+    # 4073 YYZ-MSP 05 Oct 2026, 1006Z-1245Z: departs in the dark, lands in daylight.
+    night, day_ldg, night_ldg = compute_night_data(
+        datetime(2026, 10, 5, 10, 6, tzinfo=_UTC), datetime(2026, 10, 5, 12, 45, tzinfo=_UTC),
+        *_YYZ, *_MSP, True,
+    )
+    assert 0.9 <= night <= 1.5
+    assert (day_ldg, night_ldg) == (1, 0)
+
+
+def test_autumn_midday_leg_has_no_night() -> None:
+    # 5852 ORD-SGF 08 Nov 2026, 1431Z-1605Z: mid-morning local.
+    night, day_ldg, night_ldg = compute_night_data(
+        datetime(2026, 11, 8, 14, 31, tzinfo=_UTC), datetime(2026, 11, 8, 16, 5, tzinfo=_UTC),
+        *_ORD, *_SGF, True,
+    )
+    assert (night, day_ldg, night_ldg) == (0.0, 1, 0)

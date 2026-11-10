@@ -500,3 +500,20 @@ def test_deadhead_flight_has_zero_passengers() -> None:
     # No CSV here: the operated leg warns about the blank aircraft, the deadhead does not.
     blank = [w for w in plan.warnings if "no aircraft type" in w]
     assert len(blank) == 1 and "|5907|" in blank[0]
+
+
+def test_deadhead_flight_never_gets_aircraft_code() -> None:
+    legs = [
+        _line(1, "5907", "ORD", "GRB", (15, 26), (16, 51)),
+        _line(2, "4681", "GRB", "ORD", (18, 50), (20, 15), dhd="F"),
+    ]
+    for leg in legs:
+        leg.aircraft_type = "CR7"   # CSV supplied a type on both lines
+    pairing = PairingExport(
+        employee_id="1", employee_name="Test Pilot", base="ORD",
+        equipment_family="CRJ", role="FO", pairing_id="O1251",
+        start_date=date(2026, 7, 22), block_hours=2.0, credit_hours=4.2, tafb_hours=0.0,
+        duty_days=[DutyDay(date(2026, 7, 22), time(14, 50), time(20, 30), legs=legs)],
+    )
+    plan = build_import_plan(pairing, ImportMode.ACTUAL, role=CrewRole.SIC, airport_index=AIRPORTS)
+    assert [(f.deadhead, f.aircraft_code) for f in plan.flights] == [(False, "CR7"), (True, None)]
