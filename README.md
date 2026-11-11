@@ -233,6 +233,7 @@ logbook-import export-profile --target faa        # FAA 8710 / IACRA Section III
 logbook-import export-profile --target ual        # United
 logbook-import export-profile --target swa        # Southwest
 logbook-import export-profile --target allegiant  # Allegiant
+logbook-import export-profile --target jetblue    # JetBlue
 ```
 
 Every target ends with the same three-table **Application Reference** sheet, so a
@@ -257,6 +258,16 @@ exact flight times as of the application date; do not round", and it accepts no
 conversions, substitutions, landing credits, simulator or UAS time. The Southwest
 sortie conversion lives in the same module and must never reach it — there is a
 test that guards exactly that.
+
+**JetBlue** asks for almost nothing as an exact figure: total time and the time on
+each aircraft are picked from dropdown **bands**, and the recency questions are
+yes/no. So that sheet prints the band or the answer with, in brackets, the hours it
+was read from, so every entry traces back to the certified log pages. Only band
+labels actually seen on the application are encoded — anything outside them prints
+the hours and defers to the dropdown rather than inventing a label. Its aircraft
+rows group by type rating (the CRJ variants are one CL-65 row, the H-1s one row),
+and the recency questions are measured from the export's as-of date, so re-run it
+on the day the application goes in.
 
 Each run prints a one-line total (flights, total / PIC / SIC / dual) and the file
 it wrote: `logbook/exports/logbook-<target>-<date>.html`. `exports/` is gitignored
@@ -308,7 +319,7 @@ Everything else the CLI can do. You will rarely touch these.
 | `import-actual` | Import flown legs as Flight rows *(what the auto-importer runs)* |
 | `import-planned` | Import the schedule as planned Trips/Duty Periods |
 | `export-map` | Regenerate `docs/map_data.geojson` (add `--update` to push) |
-| `export-profile --target {faa,ual,swa,allegiant}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
+| `export-profile --target {faa,ual,swa,allegiant,jetblue}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
 | `backfill-sic-to-pic --workbook FILE` | One-off: fill `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51). Dry-run unless `--commit`; refuses to write unless the per-aircraft reconciliation gate matches exactly |
 | `backfill-training-codes` | One-off: rewrite the historical `Flights.Notes` remarks to their 4-digit military event codes, dropping the import preamble. Dry-run unless `--commit` |
 | `export-apps` | *(legacy, Airtable-only)* regenerate `docs/apps/*.html` |

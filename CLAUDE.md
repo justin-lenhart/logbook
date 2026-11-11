@@ -75,8 +75,8 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
   aggregators), `profiles.py` (per-target `Profile`/`Section` specs, `pilot.toml`),
   `profile_render.py` (print HTML + certified log pages). Per-flight pages never print
   night/instrument/XC/landings — synthetic on the pre-2026 rows. Targets: `faa`, `ual`,
-  `swa`, `allegiant`; `profiles.PENDING_TARGETS` names the ones still waiting on a real
-  field list (JetBlue, Delta) — never guess a carrier's fields.
+  `swa`, `allegiant`, `jetblue`; `profiles.PENDING_TARGETS` names the ones still waiting
+  on a real field list (Delta) — never guess a carrier's fields.
   - `REFERENCE_SECTIONS` (Totals by FAA Type / Hours by Category / Class Hours) is the
     standing application-reference block appended to **every** target. Group by
     `Aircraft.FAA_Type`, never a display name, so a spelling fix cannot move a grouping.
@@ -84,6 +84,13 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
     recompute them here, so a change to the importer's definition flows through on its own.
   - Allegiant forbids conversions of any kind and must never see `SORTIE_FACTOR`, which
     Southwest uses from the same module. `test_profiles.py` guards this; keep it.
+  - JetBlue reports flight time as dropdown **bands**, not figures. Only band labels seen
+    on the submitted application are in the ladders (`JETBLUE_TOTAL_BANDS`,
+    `JETBLUE_TYPE_BANDS`, `JETBLUE_TIMEFRAMES`); a value off the ladder prints
+    `OFF_LADDER` and the hours rather than inventing a label. Add the next label when the
+    hours grow past it. `JETBLUE_TYPE_NAMES` / `JETBLUE_MULTI_ENGINE_TYPES` reproduce the
+    aircraft rows as submitted — Grist records no engine count, so a twin-engine
+    helicopter is named, not inferred.
 - **One-off backfills (Grist writes, dry-run by default):** `sic_to_pic.py` fills
   `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51) behind a hard
   reconciliation gate; `training_codes.py` rewrites the historical `Flights.Notes` remarks
@@ -111,7 +118,7 @@ All import commands default to dry-run; add `--commit` to write.
   oldest column only fills gaps). Domicile reports have no efficiency pages.
 - `export-map [--output PATH] [--update]` — regenerate `docs/map_data.geojson`; `--update`
   commits + pushes (GitHub Pages).
-- `export-profile --target {faa|ual|swa|allegiant} [--output DIR] [--as-of DATE]
+- `export-profile --target {faa|ual|swa|allegiant|jetblue} [--output DIR] [--as-of DATE]
   [--pilot FILE] [--no-log]` — printable summary + target sections + the three
   application-reference tables + certified log pages. Read-only toward Grist (no
   `--commit`). Writes `exports/` (gitignored — never `docs/`, which is public). Pilot

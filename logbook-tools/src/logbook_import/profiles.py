@@ -1,4 +1,4 @@
-"""Export profiles: what each target (FAA 8710, United, Southwest) wants to see.
+"""Export profiles: what each target (FAA 8710 and the airlines) wants to see.
 
 A ``Profile`` is a list of ``Section`` specs. The carriers differ structurally,
 so each section names a layout ``kind``:
@@ -594,13 +594,281 @@ ALLEGIANT = Profile(
 )
 
 
+# -- JetBlue -----------------------------------------------------------------
+# JetBlue's application (SuccessFactors) almost never asks for an exact figure.
+# Flight time is picked from a dropdown of *bands* -- once for total time and
+# again on every aircraft row -- and the recency questions are plain yes/no. So
+# this profile prints the band or the answer the logbook supports with, in
+# brackets, the hours it was read from, so every entry traces to the certified
+# log pages.
+#
+# Only band labels actually seen on the application are encoded here. A figure
+# outside them prints the hours and defers to the dropdown rather than inventing
+# a label that may not be on the list. Add the next label to the ladder when the
+# hours grow past it.
+
+Band = tuple[float, float, str]      # low (inclusive), high (exclusive), label
+
+OFF_LADDER = "(no observed option — read the dropdown)"
+
+# "Total Number of Flight Hours". The form prints these with an en dash.
+JETBLUE_TOTAL_BANDS: tuple[Band, ...] = (
+    (1500.0, 2000.0, "1500 – 1999"),
+)
+
+# "Flight Time" on each aircraft row. The form prints these with a hyphen.
+JETBLUE_TYPE_BANDS: tuple[Band, ...] = (
+    (0.0, 100.0, "Less than 100"),
+    (100.0, 500.0, "100 - 499"),
+    (500.0, 1000.0, "500 - 999"),
+)
+
+# "Timeframe" on each flight-experience row. The gap is real: nothing between
+# one and two years was offered, so a span in it defers to the dropdown.
+JETBLUE_TIMEFRAMES: tuple[Band, ...] = (
+    (0.0, 1.0, "0-1 Year"),
+    (2.0, 200.0, "2 Years or More"),
+)
+
+# JetBlue's own fleet, for "a type rating in a fixed-wing aircraft other than
+# an A320 / E190 / A220".
+JETBLUE_FLEET_TYPES: tuple[str, ...] = ("A320", "E190", "A220")
+
+# These sections answer questions and pick bands, so the single column is not
+# headed "Hours" the way ``_ALL`` is.
+_ANSWER = (Column("Answer", lambda leg: True),)
+
+
+def _band(bands: Sequence[Band], value: float) -> str:
+    for low, high, label in bands:
+        if low <= value < high:
+            return label
+    return OFF_LADDER
+
+
+def _banded(bands: Sequence[Band], field: str = "block",
+            where: Predicate | None = None) -> Metric:
+    """The dropdown band for a total, with the hours behind it."""
+    def metric(legs: Sequence[Leg], ctx: Context) -> str:
+        value = pd.total(legs, field, where)
+        return f"{_band(bands, value)}  [{value:.1f} h]"
+    return metric
+
+
+def _threshold(needed: float, months: int,
+               where: Predicate | None = None) -> Metric:
+    """A yes/no recency question, with the hours that answer it."""
+    def metric(legs: Sequence[Leg], ctx: Context) -> str:
+        flown = pd.total(pd.within(legs, months, ctx.as_of), "block", where)
+        return f"{'Yes' if flown >= needed else 'No'}  [{flown:.1f} h]"
+    return metric
+
+
+def _at_least(needed: float, field: str) -> Metric:
+    """A yes/no question about a lifetime total."""
+    def metric(legs: Sequence[Leg], ctx: Context) -> str:
+        value = pd.total(legs, field)
+        return f"{'Yes' if value >= needed else 'No'}  [{value:.1f} h]"
+    return metric
+
+
+def _any_time(where: Predicate) -> Metric:
+    def metric(legs: Sequence[Leg], ctx: Context) -> str:
+        value = pd.total(legs, "block", where)
+        return f"{'Yes' if value > 0 else 'No'}  [{value:.1f} h]"
+    return metric
+
+
+# The aircraft rows are keyed on FAA_Type -- one row per type rating, which is
+# how the form is meant to be filled. The names are the ones already on file
+# with JetBlue, so a resubmission matches; an aircraft with no entry here falls
+# back to its model name rather than disappearing from the table.
+JETBLUE_TYPE_NAMES: dict[str, str] = {
+    "CL65": "Bombardier CRJ-200/550/700/900 (CL-65)",
+    "B300": "Beechcraft King Air 350ER / UC-12W (BE-300)",
+    "H1":   "Bell AH-1Z Viper (H-1 series: AH-1Z, AH-1W, UH-1Y)",
+    "H57":  "Bell TH-57B/C Sea Ranger",
+    "T6":   "Beechcraft T-6B Texan II",
+    "C172": "Cessna 172",
+    "PA44": "Piper PA-44 Seminole",
+    "V22":  "Bell Boeing MV-22B Osprey",
+}
+
+# The Engine Type dropdown reads "<Single|Multi> engine - <word>". Grist records
+# no engine count, so a multi-engine type outside the Multi-Engine Land class is
+# named here: the H-1s are twin-engine helicopters of class Rotorcraft.
+JETBLUE_MULTI_ENGINE_TYPES: tuple[str, ...] = ("H1",)
+
+JETBLUE_ENGINE_WORDS: dict[str, str] = {
+    "Turbofan": "Turbojet",
+    "Turboprop": "Turboprop",
+    "Turboshaft": "Helicopter",      # the only turboshaft option on the list
+    "Reciprocating": "Piston",
+}
+
+
+def _jetblue_name(leg: Leg) -> str:
+    return JETBLUE_TYPE_NAMES.get(leg.faa_type) or model(leg)
+
+
+def _jetblue_engine(leg: Leg) -> str:
+    multi = (leg.aircraft_class == "Multi-Engine Land"
+             or leg.faa_type in JETBLUE_MULTI_ENGINE_TYPES)
+    word = JETBLUE_ENGINE_WORDS.get(leg.engine_type, leg.engine_type)
+    return f"{'Multi' if multi else 'Single'} engine - {word}"
+
+
+def _jetblue_rule(leg: Leg) -> str:
+    """Grouping key for the flight-experience rows."""
+    return "Military" if pd.is_military(leg) else leg.operation or "(no rule)"
+
+
+def _jetblue_status(leg: Leg) -> str:
+    return "Military" if pd.is_military(leg) else "Civilian"
+
+
+def _jetblue_flying(leg: Leg) -> str:
+    if pd.is_military(leg):
+        return "United States Military"
+    return f"United States based {leg.operation}"
+
+
+def _jetblue_position(legs: Sequence[Leg], ctx: Context) -> str:
+    """The seat most of the row's hours were flown in.
+
+    SIC-to-PIC counts towards command time: it is time flown as pilot flying
+    under a supervising PIC, which is what this form means by Commander.
+    """
+    command = pd.total(legs, "pic") + pd.total(legs, "sic_to_pic")
+    second = pd.total(legs, "sic") - pd.total(legs, "sic_to_pic")
+    return "Commander" if command >= second else "Second in Command"
+
+
+def _jetblue_fleet(legs: Sequence[Leg], ctx: Context) -> str:
+    """JetBlue's "Aircraft Type" on an experience row: a jet, or not."""
+    return "EFIS and Jet" if any(pd.is_jet(leg) for leg in legs) else "Non Fighter"
+
+
+def _jetblue_timeframe(legs: Sequence[Leg], ctx: Context) -> str:
+    days = (max(leg.date for leg in legs) - min(leg.date for leg in legs)).days
+    years = days / 365.25
+    return f"{_band(JETBLUE_TIMEFRAMES, years)}  [{years:.1f} yr]"
+
+
+def _jetblue_other_type_rating(legs: Sequence[Leg], ctx: Context) -> str:
+    """Type ratings held that are not on JetBlue's own fleet.
+
+    Read from pilot.toml, not from the flights: a rating is held whether or not
+    it has been flown recently.
+    """
+    other = [t for t in ctx.pilot.type_ratings if t not in JETBLUE_FLEET_TYPES]
+    return f"Yes  [{', '.join(other)}]" if other else "No"
+
+
+JETBLUE = Profile(
+    target="jetblue",
+    title="JetBlue Airways — Pilot Application (flight time sections)",
+    sections=(
+        Section(
+            title="Pilots Only: Total Flight Time",
+            kind="matrix",
+            columns=_ANSWER,
+            rows=(
+                Row("125+ fixed-wing hours in the last 12 months?",
+                    _threshold(125.0, 12, _APL)),
+                Row("250+ fixed-wing hours in the last 24 months?",
+                    _threshold(250.0, 24, _APL)),
+                Row("Total Number of Flight Hours",
+                    _banded(JETBLUE_TOTAL_BANDS)),
+            ),
+            notes=(
+                "Both recency questions count fixed-wing time only, measured "
+                "back from the as-of date of this export -- so re-run it on the "
+                "day the application is submitted.",
+                "Flight time on this application is a dropdown band, never a "
+                "figure. The bracketed hours are what each band was read from.",
+            ),
+        ),
+        Section(
+            title="Pilots Only: Aircraft Type and Flight Time",
+            kind="by_type",
+            group=lambda leg: leg.faa_type or "(no type)",
+            rows=(
+                Row("AIRCRAFT TYPE (FILL IN)", distinct(_jetblue_name),
+                    in_totals=False),
+                Row("ENGINE TYPE", distinct(_jetblue_engine), in_totals=False),
+                Row("FLIGHT TIME", _banded(JETBLUE_TYPE_BANDS), in_totals=False),
+                Row("HOURS", hours()),
+            ),
+            totals=True,
+            notes=(
+                "One row per type rating, which is how the form groups: the CRJ "
+                "variants are one CL-65 row and the H-1s are one row.",
+                "The Engine Type list has no powered-lift option, so the MV-22 "
+                "tiltrotor reads as a multi-engine helicopter.",
+                "HOURS is not a field on the form; it is the figure each band "
+                "was read from.",
+            ),
+        ),
+        Section(
+            title="Pilots Only: Flight Experience",
+            kind="by_type",
+            group=_jetblue_rule,
+            rows=(
+                Row("FLYING STATUS", distinct(_jetblue_status), in_totals=False),
+                Row("TYPE OF FLYING", distinct(_jetblue_flying), in_totals=False),
+                Row("POSITION", _jetblue_position, in_totals=False),
+                Row("AIRCRAFT TYPE", _jetblue_fleet, in_totals=False),
+                Row("TIMEFRAME", _jetblue_timeframe, in_totals=False),
+                Row("HOURS", hours()),
+            ),
+            totals=True,
+            notes=(
+                "One row per flying status and operating rule. POSITION is the "
+                "seat most of the row's hours were flown in; SIC-to-PIC counts "
+                "as command time, which is what the form means by Commander.",
+                "TIMEFRAME is the span from the first to the last flight on that "
+                "row. Only “0-1 Year” and “2 Years or More” "
+                "were offered, so a span between them defers to the dropdown.",
+                SIC_TO_PIC_NOTE,
+            ),
+        ),
+        Section(
+            title="Pilots Only: Additional Questions",
+            kind="matrix",
+            columns=_ANSWER,
+            rows=(
+                Row("Instructor hours", hours("dual_given")),
+                Row("250 hours dual given or more as a flight instructor?",
+                    _at_least(250.0, "dual_given")),
+                Row("Check airman hours", zero),
+                Row("Military experience as a pilot?", _any_time(pd.is_military)),
+                Row("Type rating in a fixed-wing aircraft other than an "
+                    "A320 / E190 / A220?", _jetblue_other_type_rating),
+            ),
+            notes=(
+                "Instructor hours is logged Dual Given. The form takes a whole "
+                "number, so round it -- do not truncate.",
+                "Check airman hours is 0.0: none flown. Type ratings are read "
+                "from pilot.toml, not from the flights.",
+                "The rest of that section -- the R-ATP limitation, airline "
+                "leadership, base proximity, structured-training recency, "
+                "letters of recommendation -- are not logbook figures and are "
+                "left to the pilot.",
+            ),
+        ),
+    ),
+)
+
+
 # -- pending targets ---------------------------------------------------------
-# JetBlue (the pilot's first priority) and Delta: both need their real field
-# lists from the published applications before anything is built. JetBlue will
-# use the SIC-to-PIC column. Nothing is guessed here on purpose -- add a
-# Profile for each once the form is in hand and register it below.
-PENDING_TARGETS: tuple[str, ...] = ("jetblue", "delta")
+# Delta still needs its real field list from the published application before
+# anything is built. Nothing is guessed here on purpose -- add a Profile once
+# the form is in hand and register it below.
+PENDING_TARGETS: tuple[str, ...] = ("delta",)
 
 
-PROFILES: dict[str, Profile] = {p.target: p for p in (FAA, UAL, SWA, ALLEGIANT)}
+PROFILES: dict[str, Profile] = {
+    p.target: p for p in (FAA, UAL, SWA, ALLEGIANT, JETBLUE)
+}
 TARGETS: tuple[str, ...] = tuple(PROFILES)
