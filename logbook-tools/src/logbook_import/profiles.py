@@ -609,7 +609,7 @@ ALLEGIANT = Profile(
 
 Band = tuple[float, float, str]      # low (inclusive), high (exclusive), label
 
-OFF_LADDER = "(no observed option — read the dropdown)"
+OFF_LADDER = "(select the matching range)"
 
 # "Total Number of Flight Hours". The form prints these with an en dash.
 JETBLUE_TOTAL_BANDS: tuple[Band, ...] = (
@@ -734,14 +734,14 @@ def _jetblue_flying(leg: Leg) -> str:
 
 
 def _jetblue_position(legs: Sequence[Leg], ctx: Context) -> str:
-    """The seat most of the row's hours were flown in.
+    """The highest seat held on that equipment.
 
-    SIC-to-PIC counts towards command time: it is time flown as pilot flying
-    under a supervising PIC, which is what this form means by Commander.
+    The form asks which position was flown, not which one holds the most
+    hours, so any logged PIC time makes the row a command row. JetBlue asks
+    nothing about SIC time flown under supervision, so this target reads
+    neither ``sic_to_pic`` nor anything derived from it.
     """
-    command = pd.total(legs, "pic") + pd.total(legs, "sic_to_pic")
-    second = pd.total(legs, "sic") - pd.total(legs, "sic_to_pic")
-    return "Commander" if command >= second else "Second in Command"
+    return "Commander" if pd.total(legs, "pic") > 0 else "Second in Command"
 
 
 def _jetblue_fleet(legs: Sequence[Leg], ctx: Context) -> str:
@@ -782,11 +782,10 @@ JETBLUE = Profile(
                     _banded(JETBLUE_TOTAL_BANDS)),
             ),
             notes=(
-                "Both recency questions count fixed-wing time only, measured "
-                "back from the as-of date of this export -- so re-run it on the "
-                "day the application is submitted.",
-                "Flight time on this application is a dropdown band, never a "
-                "figure. The bracketed hours are what each band was read from.",
+                "Recency counts fixed-wing time only, over the 12 and 24 months "
+                "ending on the as-of date above.",
+                "Each answer shows the application's own range followed by the "
+                "exact logged hours behind it, in brackets.",
             ),
         ),
         Section(
@@ -797,17 +796,18 @@ JETBLUE = Profile(
                 Row("AIRCRAFT TYPE (FILL IN)", distinct(_jetblue_name),
                     in_totals=False),
                 Row("ENGINE TYPE", distinct(_jetblue_engine), in_totals=False),
-                Row("FLIGHT TIME", _banded(JETBLUE_TYPE_BANDS), in_totals=False),
-                Row("HOURS", hours()),
+                Row("FLIGHT TIME (SELECTED)", _banded(JETBLUE_TYPE_BANDS),
+                    in_totals=False),
+                Row("EXACT HOURS", hours()),
             ),
             totals=True,
             notes=(
-                "One row per type rating, which is how the form groups: the CRJ "
-                "variants are one CL-65 row and the H-1s are one row.",
-                "The Engine Type list has no powered-lift option, so the MV-22 "
-                "tiltrotor reads as a multi-engine helicopter.",
-                "HOURS is not a field on the form; it is the figure each band "
-                "was read from.",
+                "One row per type rating: the CRJ-200 / 550 / 700 / 900 are a "
+                "single CL-65 rating, and the AH-1Z / AH-1W / UH-1Y a single "
+                "H-1 series rating.",
+                "The MV-22B is a tiltrotor. The Engine Type list offers no "
+                "powered-lift option, so it is entered as multi-engine "
+                "helicopter.",
             ),
         ),
         Section(
@@ -824,13 +824,9 @@ JETBLUE = Profile(
             ),
             totals=True,
             notes=(
-                "One row per flying status and operating rule. POSITION is the "
-                "seat most of the row's hours were flown in; SIC-to-PIC counts "
-                "as command time, which is what the form means by Commander.",
-                "TIMEFRAME is the span from the first to the last flight on that "
-                "row. Only “0-1 Year” and “2 Years or More” "
-                "were offered, so a span between them defers to the dropdown.",
-                SIC_TO_PIC_NOTE,
+                "One row per flying status and operating rule.",
+                "POSITION is the highest seat held on that equipment; TIMEFRAME "
+                "is the span from the first to the last flight flown on it.",
             ),
         ),
         Section(
@@ -847,14 +843,9 @@ JETBLUE = Profile(
                     "A320 / E190 / A220?", _jetblue_other_type_rating),
             ),
             notes=(
-                "Instructor hours is logged Dual Given. The form takes a whole "
-                "number, so round it -- do not truncate.",
-                "Check airman hours is 0.0: none flown. Type ratings are read "
-                "from pilot.toml, not from the flights.",
-                "The rest of that section -- the R-ATP limitation, airline "
-                "leadership, base proximity, structured-training recency, "
-                "letters of recommendation -- are not logbook figures and are "
-                "left to the pilot.",
+                "Instructor hours is instruction given as a logged flight "
+                "instructor. No check airman time has been flown.",
+                "Type ratings held are listed in full on the first sheet.",
             ),
         ),
     ),

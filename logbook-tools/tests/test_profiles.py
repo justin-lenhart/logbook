@@ -397,8 +397,8 @@ def test_aircraft_rows_group_on_faa_type(legs: list[Leg]) -> None:
     assert list(groups) == ["CL65"]
     cells = {row.label: row.value(groups["CL65"].legs, CTX) for row in sec.rows}
     assert cells["AIRCRAFT TYPE (FILL IN)"] == "Bombardier CRJ-200/550/700/900 (CL-65)"
-    assert cells["FLIGHT TIME"] == "500 - 999  [600.0 h]"
-    assert cells["HOURS"] == pytest.approx(600.0)
+    assert cells["FLIGHT TIME (SELECTED)"] == "500 - 999  [600.0 h]"
+    assert cells["EXACT HOURS"] == pytest.approx(600.0)
 
 
 def test_aircraft_totals_row_totals_only_the_hours(legs: list[Leg]) -> None:
@@ -412,12 +412,17 @@ def test_aircraft_totals_row_totals_only_the_hours(legs: list[Leg]) -> None:
 
 # -- flight experience -------------------------------------------------------
 
-def test_supervised_sic_counts_as_command_time() -> None:
-    """A King Air leg flown as pilot flying under a supervising PIC."""
-    supervised = [leg(1, "2019-06-01", KINGAIR, block=2.0, sic=2.0, sic_to_pic=2.0)]
-    plain = [leg(1, "2026-05-10", CRJ, block=2.0, sic=2.0)]
-    assert profiles._jetblue_position(supervised, CTX) == "Commander"
-    assert profiles._jetblue_position(plain, CTX) == "Second in Command"
+def test_position_is_the_highest_seat_held_not_an_hours_majority() -> None:
+    """The form asks which seat was flown, not which one holds most hours.
+
+    A military career logs far more co-pilot than command time, so a majority
+    rule would report an aircraft commander as a Second in Command.
+    """
+    mostly_sic = [leg(1, "2019-06-01", COBRA, block=90.0, sic=90.0),
+                  leg(2, "2020-06-01", COBRA, block=10.0, pic=10.0)]
+    never_pic = [leg(1, "2026-05-10", CRJ, block=90.0, sic=90.0)]
+    assert profiles._jetblue_position(mostly_sic, CTX) == "Commander"
+    assert profiles._jetblue_position(never_pic, CTX) == "Second in Command"
 
 
 def test_experience_rows_split_military_from_each_operating_rule(
@@ -489,5 +494,51 @@ def test_jetblue_never_applies_the_sortie_conversion() -> None:
     assert "[499.0 h]" in rows["Total Number of Flight Hours"]
     sec = jetblue_section("Aircraft Type and Flight Time")
     cells = {row.label: row.value(sortied, CTX) for row in sec.rows}
-    assert cells["FLIGHT TIME"] == "100 - 499  [499.0 h]"
-    assert cells["HOURS"] == pytest.approx(499.0)
+    assert cells["FLIGHT TIME (SELECTED)"] == "100 - 499  [499.0 h]"
+    assert cells["EXACT HOURS"] == pytest.approx(499.0)
+
+
+# -- JetBlue asks nothing about supervised SIC time --------------------------
+
+def test_jetblue_output_is_unchanged_by_supervised_sic_time() -> None:
+    """JetBlue's application has no PIC-performing-SIC field, so nothing reads it.
+
+    The strongest form of that: the same flights with and without the
+    ``sic_to_pic`` column populated must produce an identical sheet.
+    """
+    with_it = [leg(1, "2019-06-01", KINGAIR, block=400.0, sic=400.0,
+                   sic_to_pic=400.0, xc=300.0, night=40.0),
+               leg(2, "2026-05-10", CRJ, block=200.0, sic=200.0)]
+    without = [dataclasses.replace(l, sic_to_pic=0.0) for l in with_it]
+    for sec in JETBLUE.sections:
+        for row in sec.rows:
+            assert row.value(with_it, CTX) == row.value(without, CTX), row.label
+
+    def sheet(legs: list[Leg]) -> str:
+        return "".join(render.render_section(s, legs, CTX) for s in JETBLUE.sections)
+
+    # The target's own sheet only. The shared reference block that closes every
+    # export does report SIC-to-PIC, and must keep doing so for Allegiant.
+    assert sheet(with_it) == sheet(without)
+
+
+def test_jetblue_sheet_never_mentions_sic_to_pic() -> None:
+    """It stays on the shared reference sheet; it does not reach this target."""
+    legs = [leg(1, "2019-06-01", KINGAIR, block=2.0, sic=2.0, sic_to_pic=2.0)]
+    sheet = "".join(render.render_section(s, legs, CTX) for s in JETBLUE.sections)
+    for banned in ("SIC-to-PIC", "61.51", "supervis", "pilot flying"):
+        assert banned not in sheet, banned
+    # ...but the standing reference block still explains it.
+    reference = "".join(render.render_section(s, legs, CTX)
+                        for s in REFERENCE_SECTIONS)
+    assert "61.51" in reference
+
+
+def test_jetblue_notes_are_written_for_the_airline() -> None:
+    """The sheet is sent to a recruiter, so the notes carry no build talk."""
+    internal = ("pilot.toml", "dropdown", "as-of date of this export", "re-run",
+                "not a field on the form", "left to the pilot", "Grist")
+    for sec in JETBLUE.sections:
+        for note in sec.notes:
+            for word in internal:
+                assert word not in note, f"{sec.title}: {note}"

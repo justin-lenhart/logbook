@@ -91,6 +91,14 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
     hours grow past it. `JETBLUE_TYPE_NAMES` / `JETBLUE_MULTI_ENGINE_TYPES` reproduce the
     aircraft rows as submitted — Grist records no engine count, so a twin-engine
     helicopter is named, not inferred.
+  - JetBlue's application has **no** PIC-performing-SIC field, so no JetBlue metric
+    may read `sic_to_pic` or anything derived from it (POSITION is the highest seat
+    held, not an hours majority). `test_profiles.py` guards this by rendering the
+    sheet with and without the column populated; keep it. Allegiant fields 7-9 and
+    the shared reference block still report it.
+  - Every note on a target sheet is read by the airline's recruiting department, not
+    by us: no file names, no "dropdown", no "re-run it", no build talk. There is a
+    test asserting that for the JetBlue notes.
 - **One-off backfills (Grist writes, dry-run by default):** `sic_to_pic.py` fills
   `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51) behind a hard
   reconciliation gate; `training_codes.py` rewrites the historical `Flights.Notes` remarks
