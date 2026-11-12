@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import tomllib
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 
@@ -79,6 +79,10 @@ class Profile:
     target: str
     title: str
     sections: tuple[Section, ...]
+    # False drops the supervised-SIC rows from the shared reference block as
+    # well: a carrier whose own form has no box for that time should not be
+    # handed a column it cannot read.
+    reports_supervised_sic: bool = True
 
 
 def load_pilot(path: Path) -> Pilot:
@@ -349,6 +353,29 @@ REFERENCE_SECTIONS: tuple[Section, ...] = (
         ),
     ),
 )
+
+# The supervised-SIC rows, by label, and the note that explains them.
+_SUPERVISED_ROWS: frozenset[str] = frozenset({"SIC->PIC", SIC_TO_PIC_LABEL})
+
+
+def reference_sections(profile: Profile) -> tuple[Section, ...]:
+    """The standing reference block as one target should see it.
+
+    Every other figure in the block is the same on every export, so a number
+    quoted on one application can still be traced from any other.
+    """
+    if profile.reports_supervised_sic:
+        return REFERENCE_SECTIONS
+    return tuple(
+        replace(
+            section,
+            rows=tuple(r for r in section.rows
+                       if r.label not in _SUPERVISED_ROWS),
+            notes=tuple(n for n in section.notes if n != SIC_TO_PIC_NOTE),
+        )
+        for section in REFERENCE_SECTIONS
+    )
+
 
 FAA = Profile(
     target="faa",
@@ -768,6 +795,9 @@ def _jetblue_other_type_rating(legs: Sequence[Leg], ctx: Context) -> str:
 JETBLUE = Profile(
     target="jetblue",
     title="JetBlue Airways — Pilot Application (flight time sections)",
+    # The application asks nothing about SIC time flown under supervision, so
+    # the reference block drops those rows on this target too.
+    reports_supervised_sic=False,
     sections=(
         Section(
             title="Pilots Only: Total Flight Time",

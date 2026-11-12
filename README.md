@@ -245,6 +245,11 @@ figure quoted on one application can be traced on any other:
 | Hours by Category | Airplane / Rotorcraft / Powered Lift, by role and condition |
 | Class Hours | ASEL / ASES / AMEL / AMES / Helicopter / Gyroplane with PIC, SIC, Instruction Received and Total — the Total column reconciles against Hours by Category |
 
+The one exception is SIC-to-PIC (§61.51): the JetBlue export drops those two rows,
+because that application has no field for supervised SIC time and the sheet goes to
+a recruiter. Every other target keeps them — Allegiant's fields 7–9 are answered
+from them.
+
 The per-aircraft **Summary by Aircraft Type** on the first sheet is kept as well:
 it groups by individual aircraft rather than by type rating, which is a different
 question.

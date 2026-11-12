@@ -514,24 +514,40 @@ def test_jetblue_output_is_unchanged_by_supervised_sic_time() -> None:
         for row in sec.rows:
             assert row.value(with_it, CTX) == row.value(without, CTX), row.label
 
-    def sheet(legs: list[Leg]) -> str:
-        return "".join(render.render_section(s, legs, CTX) for s in JETBLUE.sections)
-
-    # The target's own sheet only. The shared reference block that closes every
-    # export does report SIC-to-PIC, and must keep doing so for Allegiant.
-    assert sheet(with_it) == sheet(without)
+    assert (render.render_profile(JETBLUE, with_it, CTX, include_log=False)
+            == render.render_profile(JETBLUE, without, CTX, include_log=False))
 
 
-def test_jetblue_sheet_never_mentions_sic_to_pic() -> None:
-    """It stays on the shared reference sheet; it does not reach this target."""
+def test_jetblue_export_never_mentions_sic_to_pic() -> None:
+    """Not on the target's sheet, and not on its reference sheet either."""
     legs = [leg(1, "2019-06-01", KINGAIR, block=2.0, sic=2.0, sic_to_pic=2.0)]
-    sheet = "".join(render.render_section(s, legs, CTX) for s in JETBLUE.sections)
-    for banned in ("SIC-to-PIC", "61.51", "supervis", "pilot flying"):
-        assert banned not in sheet, banned
-    # ...but the standing reference block still explains it.
-    reference = "".join(render.render_section(s, legs, CTX)
-                        for s in REFERENCE_SECTIONS)
-    assert "61.51" in reference
+    doc = render.render_profile(JETBLUE, legs, CTX, include_log=False)
+    for banned in ("SIC-to-PIC", "SIC-&gt;PIC", "61.51", "supervis",
+                   "pilot flying"):
+        assert banned not in doc, banned
+
+
+def test_allegiant_still_gets_the_sic_to_pic_reference_rows() -> None:
+    """Its fields 7-9 are PIC-or-supervised-SIC, so the evidence must stay."""
+    legs = [leg(1, "2019-06-01", KINGAIR, block=2.0, sic=2.0, sic_to_pic=2.0)]
+    doc = render.render_profile(ALLEGIANT, legs, CTX, include_log=False)
+    assert "SIC-to-PIC" in doc and "61.51" in doc
+    assert profiles.reference_sections(ALLEGIANT) == REFERENCE_SECTIONS
+
+
+def test_dropping_sic_to_pic_changes_nothing_else_in_the_reference_block() -> None:
+    """Only those rows and that one note go; every other figure is shared."""
+    full, trimmed = REFERENCE_SECTIONS, profiles.reference_sections(JETBLUE)
+    assert [s.title for s in trimmed] == [s.title for s in full]
+    for before, after in zip(full, trimmed):
+        gone = [r.label for r in before.rows if r not in after.rows]
+        assert gone in ([], ["SIC->PIC"], [profiles.SIC_TO_PIC_LABEL]), gone
+        assert [r.label for r in after.rows] == [
+            r.label for r in before.rows if r.label not in gone]
+        assert after.notes == tuple(n for n in before.notes
+                                    if n != profiles.SIC_TO_PIC_NOTE)
+        assert (after.kind, after.columns, after.totals) == (
+            before.kind, before.columns, before.totals)
 
 
 def test_jetblue_notes_are_written_for_the_airline() -> None:

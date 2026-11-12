@@ -19,7 +19,6 @@ from html import escape
 from logbook_import import profile_data as pd
 from logbook_import.profile_data import Leg
 from logbook_import.profiles import (
-    REFERENCE_SECTIONS,
     SUMMARY_SECTIONS,
     SYNTHETIC_NOTE,
     Context,
@@ -27,6 +26,7 @@ from logbook_import.profiles import (
     Row,
     Section,
     Value,
+    reference_sections,
 )
 
 LOG_ROWS_PER_PAGE = 50
@@ -409,10 +409,11 @@ def render_profile(profile: Profile, legs: Sequence[Leg], ctx: Context,
         render_section(s, legs, ctx) for s in SUMMARY_SECTIONS)
     target = _identity(legs, ctx, profile.title) + "".join(
         render_section(s, legs, ctx) for s in profile.sections)
-    # The standing application-reference block closes every export, whatever
-    # the target, so any figure quoted on one application can be traced here.
+    # The standing application-reference block closes every export, so any
+    # figure quoted on one application can be traced here. A target whose own
+    # form never asks about supervised SIC time does not get those rows.
     reference = _identity(legs, ctx, "Application Reference") + "".join(
-        render_section(s, legs, ctx) for s in REFERENCE_SECTIONS)
+        render_section(s, legs, ctx) for s in reference_sections(profile))
     log = render_log_pages(legs, ctx) if include_log else ""
     title = escape(f"{ctx.pilot.name or 'Pilot'} — {profile.title}")
     return (

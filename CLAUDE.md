@@ -80,6 +80,10 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
   - `REFERENCE_SECTIONS` (Totals by FAA Type / Hours by Category / Class Hours) is the
     standing application-reference block appended to **every** target. Group by
     `Aircraft.FAA_Type`, never a display name, so a spelling fix cannot move a grouping.
+    `reference_sections(profile)` is what the renderer actually calls: a target with
+    `Profile.reports_supervised_sic=False` (JetBlue) loses the two SIC-to-PIC rows and
+    their note there too. Nothing else differs between targets — a figure quoted on one
+    application must stay traceable from any other.
   - Read `Cross_Country_Time`, `Night_Time` and `Instrument_Time` **as stored** — never
     recompute them here, so a change to the importer's definition flows through on its own.
   - Allegiant forbids conversions of any kind and must never see `SORTIE_FACTOR`, which
@@ -94,8 +98,9 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
   - JetBlue's application has **no** PIC-performing-SIC field, so no JetBlue metric
     may read `sic_to_pic` or anything derived from it (POSITION is the highest seat
     held, not an hours majority). `test_profiles.py` guards this by rendering the
-    sheet with and without the column populated; keep it. Allegiant fields 7-9 and
-    the shared reference block still report it.
+    whole export with and without the column populated; keep it. Allegiant fields 7-9
+    are *PIC or supervised SIC*, so Allegiant (and every other target) keeps the
+    reference rows that evidence them.
   - Every note on a target sheet is read by the airline's recruiting department, not
     by us: no file names, no "dropdown", no "re-run it", no build talk. There is a
     test asserting that for the JetBlue notes.
