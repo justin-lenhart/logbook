@@ -407,8 +407,13 @@ def render_profile(profile: Profile, legs: Sequence[Leg], ctx: Context,
     """The whole export as one self-contained HTML document."""
     summary = _identity(legs, ctx, "Flight Time Summary") + "".join(
         render_section(s, legs, ctx) for s in SUMMARY_SECTIONS)
-    target = _identity(legs, ctx, profile.title) + "".join(
-        render_section(s, legs, ctx) for s in profile.sections)
+    # A profile with no sections (the generic logbook) has no target sheet:
+    # a target sheet is one organisation's form, and the generic export is
+    # not aimed at anyone. Print no sheet rather than an empty one.
+    target = ""
+    if profile.sections:
+        target = _identity(legs, ctx, profile.title) + "".join(
+            render_section(s, legs, ctx) for s in profile.sections)
     # The standing application-reference block closes every export, so any
     # figure quoted on one application can be traced here. A target whose own
     # form never asks about supervised SIC time does not get those rows.
@@ -416,10 +421,10 @@ def render_profile(profile: Profile, legs: Sequence[Leg], ctx: Context,
         render_section(s, legs, ctx) for s in reference_sections(profile))
     log = render_log_pages(legs, ctx) if include_log else ""
     title = escape(f"{ctx.pilot.name or 'Pilot'} — {profile.title}")
+    target_sheet = f'<section class="sheet">{target}</section>' if target else ""
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         f"<title>{title}</title><style>{CSS}</style></head><body>"
-        f'<section class="sheet">{summary}</section>'
-        f'<section class="sheet">{target}</section>'
+        f'<section class="sheet">{summary}</section>{target_sheet}'
         f'<section class="sheet">{reference}</section>{log}</body></html>\n'
     )

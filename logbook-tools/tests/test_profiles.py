@@ -18,6 +18,7 @@ from logbook_import.profile_data import Leg
 from logbook_import.profiles import (
     ALLEGIANT,
     FAA,
+    GENERIC,
     JETBLUE,
     PROFILES,
     REFERENCE_SECTIONS,
@@ -247,6 +248,48 @@ def test_allegiant_prints_one_unrounded_decimal(legs: list[Leg]) -> None:
     html = render.render_section(ALLEGIANT.sections[0], legs, CTX)
     assert ">8.0<" in html and ">1.5<" in html
     assert ">8<" not in html
+
+
+# -- the generic logbook -----------------------------------------------------
+
+def test_generic_is_registered_first() -> None:
+    assert PROFILES["generic"] is GENERIC
+    assert profiles.TARGETS[0] == "generic"
+
+
+def test_generic_invents_no_sections() -> None:
+    """Not aimed at anyone, so it carries no organisation's form."""
+    assert GENERIC.sections == ()
+
+
+def test_generic_prints_the_summary_reference_and_log(legs: list[Leg]) -> None:
+    html = render.render_profile(GENERIC, legs, CTX)
+    assert "Flight Time Summary" in html
+    assert "Application Reference" in html
+    for title in ("Totals by FAA Type", "Hours by Category", "Class Hours"):
+        assert title in html
+    assert 'class="log-page"' in html
+
+
+def test_generic_prints_no_empty_target_sheet(legs: list[Leg]) -> None:
+    """A profile with no sections loses the sheet, not just its contents."""
+    generic = render.render_profile(GENERIC, legs, CTX, include_log=False)
+    faa = render.render_profile(FAA, legs, CTX, include_log=False)
+    assert generic.count('<section class="sheet">') == 2
+    assert faa.count('<section class="sheet">') == 3
+    assert "Record of Pilot Time" not in generic
+
+
+def test_generic_names_no_carrier(legs: list[Leg]) -> None:
+    html = render.render_profile(GENERIC, legs, CTX)
+    for carrier in ("United", "Southwest", "Allegiant", "JetBlue", "8710",
+                    "IACRA"):
+        assert carrier not in html, carrier
+
+
+def test_generic_keeps_the_supervised_sic_rows() -> None:
+    """It is the pilot's own record: nothing is withheld from it."""
+    assert GENERIC.reports_supervised_sic is True
 
 
 # -- pending targets ---------------------------------------------------------

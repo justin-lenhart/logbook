@@ -5,6 +5,7 @@ import subprocess
 import sys
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import click
 
@@ -21,10 +22,17 @@ from logbook_import.airtable_sync import AirtableImporter, format_commit_summary
 from logbook_import.backend import active_backend
 from logbook_import.config import INBOX_DIR, RECORDED_DIR, WORKSPACE_ROOT, discover_pairing_file_sets, move_processed_files
 from logbook_import.dry_run import format_run_summary
+from logbook_import.grist_settings import DEFAULT_GRIST_URL
 from logbook_import.import_planner import build_plans_for_exports
 from logbook_import.models import CrewRole, ImportMode, Operator
 from logbook_import.night_enrichment import compute_night_data
 from logbook_import.parsers.merge import load_pairing_export
+
+
+# The service binds the tailnet address, the same one Grist is reachable on,
+# so the IP is named in exactly one place.
+DEFAULT_SERVICE_HOST = urlsplit(DEFAULT_GRIST_URL).hostname or "127.0.0.1"
+DEFAULT_OUTBOX = Path.home() / "Logbook-Outbox"
 
 
 def _resolve_mode(command: str) -> ImportMode:
@@ -33,6 +41,19 @@ def _resolve_mode(command: str) -> ImportMode:
     if command == "import-actual":
         return ImportMode.ACTUAL
     raise click.ClickException(f"Unknown command: {command}")
+
+
+def _grist_client_for(what: str):
+    """A Grist client, or a clean CLI error saying what is missing."""
+    from logbook_import.grist_client import GristClient
+    from logbook_import.grist_settings import load_grist_settings
+
+    try:
+        if active_backend() != "grist":
+            raise click.ClickException(f"{what}: set LOGBOOK_BACKEND=grist")
+        return GristClient(load_grist_settings())
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @click.group()
@@ -873,9 +894,10 @@ def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None
     "--target",
     # Kept literal so --help works without importing the profile modules;
     # test_profiles.py asserts this list equals profiles.TARGETS.
-    type=click.Choice(["faa", "ual", "swa", "allegiant", "jetblue"]),
+    type=click.Choice(["generic", "faa", "ual", "swa", "allegiant", "jetblue"]),
     required=True,
-    help="Who the export is for: FAA 8710, United, Southwest, Allegiant or JetBlue.",
+    help="Who the export is for: nobody in particular (generic), FAA 8710, "
+         "United, Southwest, Allegiant or JetBlue.",
 )
 @click.option(
     "--output",
@@ -913,55 +935,95 @@ def export_profile(
     no_log: bool,
 ) -> None:
     """Export a printable logbook summary tailored to one target (read-only)."""
-    from logbook_import.grist_client import GristClient
-    from logbook_import.grist_settings import load_grist_settings
-    from logbook_import.profile_data import load_legs, total
-    from logbook_import.profile_render import render_profile
-    from logbook_import.profiles import PROFILES, Context, load_pilot
+    from logbook_import.profile_export import ExportError, build_export
 
+    client = _grist_client_for("export-profile reads Grist")
     try:
-        if active_backend() != "grist":
-            raise click.ClickException("export-profile reads Grist: set LOGBOOK_BACKEND=grist")
-        client = GristClient(load_grist_settings())
-    except ValueError as exc:
+        result = build_export(
+            client,
+            target,
+            output_dir=output_dir,
+            as_of=as_of.date() if as_of else None,
+            pilot_path=pilot_path,
+            include_log=not no_log,
+        )
+    except ExportError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    report_date = as_of.date() if as_of else date.today()
-    resolved_pilot = pilot_path or (WORKSPACE_ROOT / "pilot.toml")
-    pilot = load_pilot(resolved_pilot)
-    if not pilot.name:
-        click.echo(
-            f"WARNING: no pilot name in {resolved_pilot} — copy pilot.toml.example "
-            "to pilot.toml; the export will have a blank name.",
-            err=True,
-        )
+    for warning in result.warnings:
+        click.echo(f"WARNING: {warning}.", err=True)
+    click.echo(f"{result.summary} → {result.path}")
 
-    legs = [leg for leg in load_legs(client) if leg.date <= report_date]
-    if not legs:
-        raise click.ClickException("No flights found in Flights table")
-    for leg in legs:
-        if not leg.category:
-            click.echo(
-                f"WARNING: flight {leg.id} ({leg.date}, {leg.block:.1f} h) has no Aircraft "
-                "link — counted in total time but in no category/class/type.",
-                err=True,
-            )
 
-    html = render_profile(
-        PROFILES[target], legs, Context(as_of=report_date, pilot=pilot),
+@main.command("serve-exports")
+@click.option(
+    "--host",
+    default=DEFAULT_SERVICE_HOST,
+    show_default=True,
+    help="Address to bind. Tailscale-only by default — never use 0.0.0.0.",
+)
+@click.option("--port", default=8486, show_default=True, type=int,
+              help="Port to listen on.")
+@click.option(
+    "--outbox",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=None,
+    help="Syncthing folder the finished export is copied into "
+         "(default: ~/Logbook-Outbox).",
+)
+@click.option(
+    "--output",
+    "output_dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=None,
+    help="Directory the export itself is written to (default: exports/).",
+)
+@click.option(
+    "--pilot",
+    "pilot_path",
+    type=click.Path(path_type=Path, dir_okay=False),
+    default=None,
+    help="Pilot identity file (default: pilot.toml in repo root).",
+)
+@click.option("--no-log", "no_log", is_flag=True, default=False,
+              help="Leave the certified log pages out of every export.")
+@click.option("--allow-host", "allow_hosts", multiple=True,
+              help="Extra Host header to answer to, e.g. a MagicDNS name:port.")
+@click.option("--allow-origin", "allow_origins", multiple=True,
+              help="Extra page origin allowed to drive the button.")
+def serve_exports(
+    host: str,
+    port: int,
+    outbox: Path | None,
+    output_dir: Path | None,
+    pilot_path: Path | None,
+    no_log: bool,
+    allow_hosts: tuple[str, ...],
+    allow_origins: tuple[str, ...],
+) -> None:
+    """Serve the one-click export page (read-only; no Grist writes).
+
+    A button per target, meant to be framed in Grist as a custom widget and
+    linked from the server homepage. Each click renders one export and
+    copies it into the Syncthing outbox for the Mac. Deployed by
+    deploy/systemd/logbook-export.service.
+    """
+    from logbook_import.export_service import ServiceConfig, serve
+
+    # Fail at startup, not on the first click, if the backend is wrong.
+    _grist_client_for("serve-exports reads Grist")
+    config = ServiceConfig(
+        host=host,
+        port=port,
+        outbox=outbox or DEFAULT_OUTBOX,
+        output_dir=output_dir,
+        pilot_path=pilot_path,
         include_log=not no_log,
+        extra_hosts=tuple(allow_hosts),
+        extra_origins=tuple(allow_origins),
     )
-    resolved_dir = output_dir or (WORKSPACE_ROOT / "exports")
-    resolved_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-    out_file = resolved_dir / f"logbook-{target}-{report_date.isoformat()}.html"
-    out_file.write_text(html, encoding="utf-8")
-    out_file.chmod(0o600)
-
-    click.echo(
-        f"{len(legs)} flights, total {total(legs):.1f} h "
-        f"(PIC {total(legs, 'pic'):.1f} / SIC {total(legs, 'sic'):.1f} / "
-        f"dual {total(legs, 'dual_received'):.1f}) → {out_file}"
-    )
+    click.echo(f"export service on http://{host}:{port}/ → {config.outbox}")
+    serve(config)
 
 
 @main.command("backfill-sic-to-pic")

@@ -229,12 +229,17 @@ still runs, with a warning and a blank name.
 ```sh
 cd logbook/logbook-tools
 source .venv/bin/activate
+logbook-import export-profile --target generic    # your own logbook, no target sheet
 logbook-import export-profile --target faa        # FAA 8710 / IACRA Section III
 logbook-import export-profile --target ual        # United
 logbook-import export-profile --target swa        # Southwest
 logbook-import export-profile --target allegiant  # Allegiant
 logbook-import export-profile --target jetblue    # JetBlue
 ```
+
+On the server you do not have to type any of this: the **one-click export
+button** below runs the same thing from Grist (or the homepage) and drops the
+file in a folder that syncs to the Mac.
 
 Every target ends with the same three-table **Application Reference** sheet, so a
 figure quoted on one application can be traced on any other:
@@ -290,7 +295,9 @@ letter, log pages are landscape letter. In the print dialog leave margins on
 2. **The target's pages** — `faa`: the 8710 Section III grid (Airplane / Rotorcraft /
    Powered Lift) plus Class Hours; `ual`: one form block per aircraft to copy into
    pilothiring.united.com; `swa`: one block per aircraft with the 0.3-per-sortie
-   military conversion.
+   military conversion. `generic` has no target sheet at all: a target sheet is
+   shaped by one organisation's form, and the generic export is aimed at nobody,
+   so it is the summary, the reference tables and the log pages — your logbook.
 3. **Certified log pages** — every flight, 50 per page, with page totals, amount
    forwarded, totals to date, and the certification/signature block.
 
@@ -315,6 +322,136 @@ letter, log pages are landscape letter. In the print dialog leave margins on
 - No military conversion is applied anywhere except the Southwest block, where it
   is shown as its own rows.
 
+### One-click exports (the button)
+
+On mintbox the export is a button, not a command. `logbook-export.service`
+serves a small page with one button per target; a click renders the export and
+copies it into **`~/Logbook-Outbox`**, which Syncthing carries to
+`/Users/crush/Documents/Logbook-Outbox` on the Mac. It takes about a second.
+
+The page lives at **http://100.78.232.7:8486/** and is meant to be opened from
+either of two places:
+
+| Where | How it gets there |
+|---|---|
+| **Grist** (recommended) | A *custom widget* on a page of the logbook doc — the buttons sit next to the data they describe |
+| Homepage (`:3001`) | A link in `services.yaml`, which opens the same page |
+
+**Why a custom widget and not a Grist webhook.** Grist can fire an outgoing
+webhook when a row is added, which would mean a "press me" table. Two things
+rule it out: this Grist has no `ALLOWED_WEBHOOK_DOMAINS` in
+`/srv/homelab/stacks/grist/compose.yaml`, and with that unset Grist rejects
+*every* webhook target — so the route needs a compose edit and a container
+restart before it can work at all. And it would turn pressing a button into a
+row written to the canonical doc. A custom widget needs no Grist
+configuration whatsoever: paste a URL. The page is served by the service
+itself, so its own `fetch` is same-origin — no CORS, no API key, nothing to
+keep in sync.
+
+**What the service can and cannot do**
+
+- It runs **nothing but `export-profile`**, which has no `--commit` and never
+  writes to Grist. There is no importer behind it and no path the caller names.
+- It binds **the Tailscale address only** (`100.78.232.7:8486`, like Grist) and
+  refuses any request whose `Host` header is not that address, the same way
+  Grist refuses an unexpected hostname.
+- The target name is looked up in `profiles.TARGETS` and the export runs
+  **in-process** — nothing from the caller ever reaches a shell.
+- Only this page, Grist (`:8484`) and the homepage (`:3001`) may drive it; a
+  request carrying any other `Origin` is refused before anything runs.
+- The export lands in the outbox under a `*.part` name and is renamed into
+  place, so Syncthing never carries a half-written file. The outbox's
+  `.stignore` keeps the temporary name off the Mac.
+
+#### 1. Install the service (sudo, once)
+
+The live checkout (`/home/crushbox/Developer/logbook`) must be on a `main` that
+has `serve-exports` — its `.venv` is an editable install, so a `git pull` is
+enough; there is nothing to reinstall.
+
+```sh
+sudo cp deploy/systemd/logbook-export.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now logbook-export.service
+```
+
+Check it: `curl http://100.78.232.7:8486/healthz` →
+`{"ok": true, "targets": ["generic", "faa", ...]}`. Logs:
+`journalctl -u logbook-export.service -f` (every click logs the target, the
+delivered file, the one-line total, and any `WARN:` the export raised).
+
+The unit runs as `crushbox` from `/home/crushbox/Developer/logbook`, so it
+picks up `logbook-tools/.env` (Grist credentials) and `pilot.toml` (your name)
+exactly as a manual run does. `Restart=always` plus
+`After=tailscaled.service` means it survives a reboot and waits for the
+tailnet address to exist before binding.
+
+#### 2. Add the button to Grist
+
+1. Open the logbook doc → **Add New** (bottom left) → **Add Page**.
+2. Pick widget type **Custom**, select any table as the data source (the page
+   ignores it), and add the page.
+3. In the right-hand creator panel, open the widget dropdown and choose
+   **Custom URL**, then paste into **Enter Custom URL**:
+   `http://100.78.232.7:8486/`
+4. Leave access at **No document access** — the page needs none.
+5. Rename the page to *Export* and drag it where you want it.
+
+#### 3. Or add it to the homepage
+
+In the homelab repo, `stacks/homepage/config/services.yaml`, under
+*Grist - Data Management*:
+
+```yaml
+    - Export logbook:
+        href: http://100.78.232.7:8486/
+        description: One-click printable export to the Mac
+        icon: grist.png
+        siteMonitor: http://100.78.232.7:8486/healthz
+```
+
+No `server`/`container` here: the service is systemd, not Docker, so there is
+no container for the usual status dot — `siteMonitor` checks the port instead,
+the way the Home Assistant entry does.
+
+#### 4. Pair the outbox with the Mac (Syncthing)
+
+The mintbox side (`/home/crushbox/Logbook-Outbox`) already exists — the
+service creates it. The Mac side, `/Users/crush/Documents/Logbook-Outbox`,
+you have already made. To connect them, in the Syncthing web UI:
+
+**On mintbox** (http://localhost:8384, or over SSH port-forward):
+
+1. **Add Folder**.
+2. *Folder Label*: `Logbook Outbox` — *Folder ID*: `logbook-outbox`.
+3. *Folder Path*: `/home/crushbox/Logbook-Outbox`.
+4. **Sharing** tab → tick **Justins-MacBook-Pro**.
+5. **Advanced** tab → *Folder Type*: **Send Only** (the Mac never sends
+   exports back; this keeps a deletion on the Mac from deleting the original).
+6. **Save**.
+
+**On the Mac** (http://localhost:8384): a notification appears offering the
+new folder from `crushbox`.
+
+7. **Add** on that notification.
+8. *Folder Path*: `/Users/crush/Documents/Logbook-Outbox`.
+9. **Advanced** tab → *Folder Type*: **Receive Only**.
+10. **Save**.
+
+Within a few seconds the existing exports appear in
+`~/Documents/Logbook-Outbox` on the Mac. After that, every click of the button
+lands there by itself.
+
+> Syncthing config is yours to change — nothing here touches it, and the REST
+> API is not used (it would need an API key).
+
+#### Flags
+
+`serve-exports` takes `--host` / `--port` (defaults: the tailnet address and
+8486), `--outbox DIR`, `--output DIR`, `--pilot FILE`, `--no-log`, and
+`--allow-host` / `--allow-origin` for an extra name to answer to (a MagicDNS
+hostname, say). Never bind it to `0.0.0.0`.
+
 ### Command reference
 
 Everything else the CLI can do. You will rarely touch these.
@@ -324,7 +461,8 @@ Everything else the CLI can do. You will rarely touch these.
 | `import-actual` | Import flown legs as Flight rows *(what the auto-importer runs)* |
 | `import-planned` | Import the schedule as planned Trips/Duty Periods |
 | `export-map` | Regenerate `docs/map_data.geojson` (add `--update` to push) |
-| `export-profile --target {faa,ual,swa,allegiant,jetblue}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
+| `serve-exports` | Serve the one-click export page (Tailscale-only, read-only) — *what `logbook-export.service` runs* |
+| `export-profile --target {generic,faa,ual,swa,allegiant,jetblue}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
 | `backfill-sic-to-pic --workbook FILE` | One-off: fill `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51). Dry-run unless `--commit`; refuses to write unless the per-aircraft reconciliation gate matches exactly |
 | `backfill-training-codes` | One-off: rewrite the historical `Flights.Notes` remarks to their 4-digit military event codes, dropping the import preamble. Dry-run unless `--commit` |
 | `export-apps` | *(legacy, Airtable-only)* regenerate `docs/apps/*.html` |
@@ -459,7 +597,8 @@ logbook/
 ├── recorded/               # processed exports land here (git-ignored)
 │   ├── planned/
 │   └── actual/
-├── deploy/systemd/         # path/service units for the auto-importer
+├── exports/                # printable logbook exports (git-ignored, owner-only)
+├── deploy/systemd/         # units: the auto-importer + the export button
 ├── scripts/                # process-inbox.sh (watcher), update-map.sh
 ├── docs/                   # GitHub Pages site (the map + app pages)
 │   ├── index.html          # Leaflet map
@@ -473,8 +612,10 @@ logbook/
                             #   LOGBOOK_BACKEND=grist|airtable + GRIST_*/AIRTABLE_*
 ```
 
-Operational data (`inbox/`, `recorded/`, `backups/`, `misc/`, `.env`) is git-ignored —
-it contains crew names, tail numbers, and credentials and never leaves your machine.
+Operational data (`inbox/`, `recorded/`, `exports/`, `backups/`, `misc/`, `.env`,
+`pilot.toml`) is git-ignored — it contains crew names, tail numbers, certificate
+details and credentials, and never leaves your machine. `~/Logbook-Outbox`, which
+the export button writes to, is outside the repo for the same reason.
 
 ---
 
