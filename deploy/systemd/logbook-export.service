@@ -1,0 +1,27 @@
+[Unit]
+Description=One-click logbook export endpoint (Tailscale-only, read-only)
+# The address it binds is the tailnet IP, which only exists once tailscaled
+# is up, so wait for it rather than failing at boot.
+After=network-online.target tailscaled.service
+Wants=network-online.target
+# If it cannot bind (Tailscale still settling), back off instead of spinning.
+StartLimitIntervalSec=5min
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=crushbox
+Group=crushbox
+WorkingDirectory=/home/crushbox/Developer/logbook
+# Serves the picker page and runs one export-profile per click. Read-only
+# toward Grist: this command has no --commit and starts no importer. Reads
+# logbook-tools/.env for the Grist credentials and pilot.toml for the name.
+ExecStart=/home/crushbox/Developer/logbook/logbook-tools/.venv/bin/logbook-import serve-exports
+Restart=always
+RestartSec=10s
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

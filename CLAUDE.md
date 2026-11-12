@@ -39,6 +39,11 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
   failures quarantined to inbox/failed/                        └─ planned → import-planned
                                              actual imports also --update-map ─►
                                              docs/map_data.geojson ─► GitHub Pages (Leaflet)
+
+Grist ──► export-profile ──► exports/ ──► ~/Logbook-Outbox ─ Syncthing ─► Mac
+            ▲
+            └─ one click: logbook-export.service (Tailscale-only, read-only),
+               as a Grist custom widget or a homepage link
 ```
 - **Times** are stored in **UTC**. SkedPlus reports local time; `time_utils.py` uses
   `timezonefinder` (airport lat/lon → tz) to convert every out/in/report/release time to
@@ -73,10 +78,17 @@ SkedPlus .txt (+optional .csv)           systemd path unit fires
 - **Map:** `airport_map.py`, `grist_map.py`.
 - **Export profiles (read-only):** `profile_data.py` (`Leg`, `load_legs`, predicates,
   aggregators), `profiles.py` (per-target `Profile`/`Section` specs, `pilot.toml`),
-  `profile_render.py` (print HTML + certified log pages). Per-flight pages never print
-  night/instrument/XC/landings — synthetic on the pre-2026 rows. Targets: `faa`, `ual`,
-  `swa`, `allegiant`, `jetblue`; `profiles.PENDING_TARGETS` names the ones still waiting
-  on a real field list (Delta) — never guess a carrier's fields.
+  `profile_render.py` (print HTML + certified log pages), `profile_export.py`
+  (`build_export` — one export run, shared by the CLI and the button, plus
+  `deliver` into the Syncthing outbox), `export_service.py` (the one-click
+  endpoint; see *Commands*). Per-flight pages never print
+  night/instrument/XC/landings — synthetic on the pre-2026 rows. Targets: `generic`,
+  `faa`, `ual`, `swa`, `allegiant`, `jetblue`; `profiles.PENDING_TARGETS` names the ones
+  still waiting on a real field list (Delta) — never guess a carrier's fields.
+  - `generic` is the pilot's own logbook: a `Profile` with **no sections**, so
+    `render_profile` prints no target sheet at all (a target sheet is one
+    organisation's form). It is the summary + the three reference tables + the log
+    pages. Do not give it carrier-shaped sections.
   - `REFERENCE_SECTIONS` (Totals by FAA Type / Hours by Category / Class Hours) is the
     standing application-reference block appended to **every** target. Group by
     `Aircraft.FAA_Type`, never a display name, so a spelling fix cannot move a grouping.
@@ -131,11 +143,22 @@ All import commands default to dry-run; add `--commit` to write.
   oldest column only fills gaps). Domicile reports have no efficiency pages.
 - `export-map [--output PATH] [--update]` — regenerate `docs/map_data.geojson`; `--update`
   commits + pushes (GitHub Pages).
-- `export-profile --target {faa|ual|swa|allegiant|jetblue} [--output DIR] [--as-of DATE]
+- `export-profile --target {generic|faa|ual|swa|allegiant|jetblue} [--output DIR] [--as-of DATE]
   [--pilot FILE] [--no-log]` — printable summary + target sections + the three
   application-reference tables + certified log pages. Read-only toward Grist (no
   `--commit`). Writes `exports/` (gitignored — never `docs/`, which is public). Pilot
   identity comes from gitignored `pilot.toml` (see `pilot.toml.example`).
+- `serve-exports [--host H] [--port 8486] [--outbox DIR] [--allow-host H] [--allow-origin O]`
+  — the one-click export page (`export_service.py`), deployed as
+  `deploy/systemd/logbook-export.service`. A click runs **one `export-profile`** in
+  process and copies the file to `~/Logbook-Outbox`, which Syncthing carries to the
+  Mac. Keep its guard rails: Tailscale-only bind (never `0.0.0.0`), `Host` header
+  pinned to that address, `Origin` limited to the page itself / Grist (:8484) /
+  homepage (:3001), target validated against `profiles.TARGETS`, no shell, and
+  nothing that can write to Grist or start an importer. Added to Grist as a
+  **custom widget** (Custom URL) — Grist webhooks are a dead end here: this
+  instance sets no `ALLOWED_WEBHOOK_DOMAINS`, and with it unset Grist rejects every
+  webhook target.
 - `backfill-sic-to-pic --workbook FILE [--commit]` — fills `Flights.SIC_to_PIC` (SIC time
   flown as pilot flying under a supervising PIC) from the legacy AnytimeLogbook PF column.
   The workbook is read for the PF column **only**; every other figure in it is superseded
@@ -155,7 +178,8 @@ All import commands default to dry-run; add `--commit` to write.
 - Package is `uv`-managed (`logbook-tools/uv.lock`, `.venv` present). Python ≥ 3.11.
 - Run tests from `logbook-tools/`: **`uv run pytest`** (or activate `.venv` and run `pytest`).
   `pythonpath=src`, `testpaths=tests`. Coverage spans parsers, mappers, keys, night, time,
-  cli, config, export profiles and the one-off backfills (26 test modules).
+  cli, config, export profiles, the export service and the one-off backfills
+  (27 test modules).
 - **On mintbox** `uv` is not installed and `logbook-tools/.venv` is runtime-only (no
   `pytest`) — it is what the systemd importer runs, so do not add dev packages to it.
   Make a throwaway venv instead: `python3 -m venv /tmp/t && /tmp/t/bin/pip install -e
@@ -172,6 +196,12 @@ All import commands default to dry-run; add `--commit` to write.
   watch `inbox/{planned,actual,rsr}` and run `scripts/process-inbox.sh` (settle delay,
   txt/csv pair-wait, `flock`, always empties the watch dir). Transport: Syncthing
   (Mac↔mintbox). `sudo` install steps are the user's.
+- **Export button:** `deploy/systemd/logbook-export.service` runs `serve-exports` on
+  `http://100.78.232.7:8486/`; the outbox is `~/Logbook-Outbox` (outside the repo —
+  exports are flight data and must never be committed). Syncthing folder id
+  `logbook-outbox`, Send Only, paired with the Mac's
+  `/Users/crush/Documents/Logbook-Outbox` (Receive Only). README →
+  *One-click exports (the button)* has the install and pairing steps.
 
 ## Making changes — checklist
 1. Read the relevant `AGENTRULES.md` section (Stable Keys, Parsing Rules, Safety Rules,

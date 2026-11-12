@@ -229,7 +229,8 @@ def test_cli_targets_match_profiles() -> None:
     result = CliRunner().invoke(cli.main, ["export-profile", "--help"])
     assert result.exit_code == 0
     assert f"[{'|'.join(profiles.TARGETS)}]" in result.output
-    assert profiles.TARGETS == ("faa", "ual", "swa", "allegiant", "jetblue")
+    assert profiles.TARGETS == (
+        "generic", "faa", "ual", "swa", "allegiant", "jetblue")
     assert "--commit" not in result.output            # read-only: nothing to commit
 
 

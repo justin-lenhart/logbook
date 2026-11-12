@@ -882,6 +882,20 @@ JETBLUE = Profile(
 )
 
 
+# -- generic (no carrier) ----------------------------------------------------
+# The pilot's own logbook: everything every export already carries -- the
+# Flight Time Summary, the three Application Reference tables and the
+# certified log pages -- and no target sheet at all. A target sheet is
+# shaped by one organisation's form, so a generic export has none; with no
+# sections `render_profile` leaves that sheet out rather than printing an
+# empty one. `title` is only the document title here.
+GENERIC = Profile(
+    target="generic",
+    title="Pilot Logbook",
+    sections=(),
+)
+
+
 # -- pending targets ---------------------------------------------------------
 # Delta still needs its real field list from the published application before
 # anything is built. Nothing is guessed here on purpose -- add a Profile once
@@ -890,6 +904,6 @@ PENDING_TARGETS: tuple[str, ...] = ("delta",)
 
 
 PROFILES: dict[str, Profile] = {
-    p.target: p for p in (FAA, UAL, SWA, ALLEGIANT, JETBLUE)
+    p.target: p for p in (GENERIC, FAA, UAL, SWA, ALLEGIANT, JETBLUE)
 }
 TARGETS: tuple[str, ...] = tuple(PROFILES)
