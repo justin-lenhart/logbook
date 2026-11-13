@@ -12,7 +12,7 @@ Full living status: `homelab/TODO.md` (private repo).
   watcher (auto-imports to the live Grist doc), the flight map, and reference docs.
 - **logbook-visualize** (public) — Metabase frontend over a **read-only** SQLite sync of
   the Grist doc. 3 dashboards / 58 verified cards.
-- **homelab** (private) — infra + docs hub for the mintbox server.
+- **homelab** (private) — infra + docs hub for the crushbox server.
 - `logbook-grist` was a *branch* here (Grist migration), merged to `main` 2026-07-26 — not
   a separate repo. The empty GitHub repo of that name is defunct.
 
@@ -194,7 +194,7 @@ All import commands default to dry-run; add `--commit` to write.
   `pythonpath=src`, `testpaths=tests`. Coverage spans parsers, mappers, keys, night, time,
   cli, config, export profiles, the export service and the one-off backfills
   (27 test modules).
-- **On mintbox** `uv` is not installed and `logbook-tools/.venv` is runtime-only (no
+- **On crushbox** `uv` is not installed and `logbook-tools/.venv` is runtime-only (no
   `pytest`) — it is what the systemd importer runs, so do not add dev packages to it.
   Make a throwaway venv instead: `python3 -m venv /tmp/t && /tmp/t/bin/pip install -e
   logbook-tools pytest && cd logbook-tools && /tmp/t/bin/python -m pytest`.
@@ -202,14 +202,25 @@ All import commands default to dry-run; add `--commit` to write.
   `openpyxl`; dev: `pytest`.
 
 ## Config & deployment
+- **The server is `crushbox`** — the only host in this system. It runs Grist, the
+  systemd importers and the export button, and `100.78.232.7` is its own Tailscale
+  address. There is no second machine and nothing here is reached over SSH: a
+  "deploy" is `git pull` in `/home/crushbox/Developer/logbook` plus a
+  `systemctl restart`, run on this box. An earlier host name survived in prose
+  long after the move and sent readers looking for a machine that does not exist;
+  `tests/test_host_references.py` now fails if it reappears, if a doc quotes a
+  tailnet address other than the one `DEFAULT_GRIST_URL` dials, or if a unit file
+  names another user. If the server is ever genuinely renamed, change
+  `DEFAULT_GRIST_URL`, the unit files and the docs in one commit — do not delete
+  those tests to make a rename pass.
 - **Creds:** `logbook-tools/.env` (gitignored) — `LOGBOOK_BACKEND=grist`, `GRIST_URL`,
   `GRIST_API_KEY`, `GRIST_DOC` (legacy `AIRTABLE_*`). Template: `logbook-tools/.env.example`.
 - **Grist canonical URL:** `http://100.78.232.7:8484` (Tailscale-only; other hostnames
   rejected).
-- **Deployed on mintbox:** `deploy/systemd/logbook-import-{planned,actual,rsr}.{path,service}`
+- **Deployed on crushbox:** `deploy/systemd/logbook-import-{planned,actual,rsr}.{path,service}`
   watch `inbox/{planned,actual,rsr}` and run `scripts/process-inbox.sh` (settle delay,
   txt/csv pair-wait, `flock`, always empties the watch dir). Transport: Syncthing
-  (Mac↔mintbox). `sudo` install steps are the user's.
+  (Mac↔crushbox). `sudo` install steps are the user's.
 - **Export button:** `deploy/systemd/logbook-export.service` runs `serve-exports` on
   `http://100.78.232.7:8486/`; the outbox is `~/Logbook-Outbox` (outside the repo —
   exports are flight data and must never be committed). Syncthing folder id

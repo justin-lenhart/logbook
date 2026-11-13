@@ -2,7 +2,7 @@
 
 Imported the pilot's full pre-2026 handwritten logbook into Grist `Flights`, replacing the
 12 aggregate `Legacy_Summary` rows with **560 per-flight rows** (keys `HIST-0001…HIST-0560`,
-`Legacy_Summary = true`). Completed 2026-07-27 on mintbox.
+`Legacy_Summary = true`). Completed 2026-07-27 on crushbox.
 
 - **Source:** `LEN2J-AnytimeLogbook2025.12.01.xlsx`, **`Master` sheet only** (the other sheets
   hold credentials and were never opened). Extraction was done by reading `worksheets/sheet4.xml`

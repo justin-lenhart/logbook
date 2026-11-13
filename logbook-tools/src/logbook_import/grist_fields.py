@@ -1,4 +1,4 @@
-"""Grist table and column ids (mintbox Logbook doc schema).
+"""Grist table and column ids (crushbox Logbook doc schema).
 
 Mirrors ``airtable_fields.py`` for the Grist backend. Column ids come from the
 migrated schema (Grist normalizes names: spaces become underscores, and the

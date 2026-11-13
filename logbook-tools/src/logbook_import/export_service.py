@@ -1,6 +1,6 @@
 """The one-click export endpoint that runs on the home server.
 
-An export used to mean SSH-ing to mintbox, typing a command and then
+An export used to mean SSH-ing to crushbox, typing a command and then
 hunting for the file. This serves a small page with one button per target —
 added to the Grist doc as a custom widget, and linked from the homepage
 dashboard — and on a click renders the export and drops it in the Syncthing
