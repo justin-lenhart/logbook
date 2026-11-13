@@ -910,11 +910,43 @@ JETBLUE = Profile(
 # FAA Type table at the back of every export already carries them, grouped the
 # same way, so nothing is lost and no figure on this sheet can disagree with
 # the number typed into the form.
+#
+# The entry is also the ONLY place on the application that takes flight time,
+# so PIC and SIC between them have to account for the whole logbook. They do:
+# every row splits pic + sic + dual_received = block, and dual received is
+# reported as SIC (see ``_entry_sic``). Instructor time is NOT added on top --
+# it is flown in command and is already inside the PIC column, so adding it
+# would count those hours twice and break the very total this is for.
+#
+# The totals row therefore sums the cells as printed rather than rounding the
+# grand total separately: what matters is the figure the application arrives
+# at by adding the boxes. ``per_entry`` is what makes both agree.
 
 # The H-1 series: AH-1Z, AH-1W and UH-1Y are one FAA type (H1) and one
 # designation on the form, so they are reported as a single AH-1Z entry and
 # ``_aal_variant_note`` accounts for the other two underneath the table.
 AAL_COLLAPSED: dict[str, str] = {"H1": "AH-1Z"}
+
+# FAA types whose variants American lists as separate aircraft, so they get an
+# entry each. The CRJ-200 / 550 / 700 / 900 are one CL-65 type rating but four
+# options on the application, and the logbook records which was flown on every
+# leg -- so the split is reported rather than thrown away.
+#
+# This is the one place the grouping drops below ``Aircraft.FAA_Type`` and keys
+# on the Aircraft code, which is normally forbidden precisely because a rename
+# there moves a row. It is gated on this allowlist for that reason, and an
+# unrecognised code under a split type still gets its own entry under its model
+# name -- a rename shows up as a differently-named row, never as lost hours.
+AAL_SPLIT_TYPES: frozenset[str] = frozenset({"CL65"})
+
+# The designation to select for each variant, as American's own aircraft list
+# spells it. A code with no entry here falls back to its model name.
+AAL_VARIANT_NAMES: dict[str, str] = {
+    "CR2": "CRJ-200",
+    "CR5": "CRJ-550",
+    "CR7": "CRJ-700",
+    "CR9": "CRJ-900",
+}
 
 # Role wording for that note, in the order it reads best.
 _AAL_ROLE_WORDS: tuple[tuple[str, str], ...] = (
@@ -935,38 +967,72 @@ def _half_up(value: float) -> int:
     return math.floor(value + 0.5) if value >= 0 else math.ceil(value - 0.5)
 
 
-def whole(field: str = "block", where: Predicate | None = None) -> Metric:
-    """``field`` summed over the legs, as a whole number of hours."""
-    return lambda legs, ctx: _half_up(pd.total(legs, field, where))
-
-
-def whole_recent(months: int) -> Metric:
-    """Hours flown in the ``months`` ending on the as-of date, whole."""
-    return lambda legs, ctx: _half_up(
-        pd.total(pd.within(legs, months, ctx.as_of)))
-
-
-def _aal_landings(legs: Sequence[Leg], ctx: Context) -> int:
-    """One Landings field on the form; Grist counts day and night apart."""
-    return _half_up(pd.total(legs, "day_landings")
-                    + pd.total(legs, "night_landings"))
-
-
 def _aal_entry(leg: Leg) -> str:
-    """One application entry: an FAA type under one operating rule.
+    """One application entry: an aircraft under one operating rule.
 
     Grouping is on ``Aircraft.FAA_Type``, never a display name, so a spelling
     fix in the Aircraft table cannot move a row; the operating rule is part of
-    the key because American wants a separate entry for each one.
+    the key because American wants a separate entry for each one. A type in
+    ``AAL_SPLIT_TYPES`` additionally keys on the Aircraft code, because the
+    application lists those variants separately.
     """
-    return f"{leg.faa_type or '(no type)'} · {_operation(leg)}"
+    faa = leg.faa_type or "(no type)"
+    head = f"{faa}/{leg.aircraft}" if faa in AAL_SPLIT_TYPES else faa
+    return f"{head} · {_operation(leg)}"
+
+
+def per_entry(value: Callable[[pd.TypeAgg, Context], float]) -> Metric:
+    """A whole-number cell, and a totals row that adds up the printed cells.
+
+    The renderer hands a body cell one entry's legs and the totals row all of
+    them, so grouping here means both go through the same arithmetic: one
+    entry rounds once, and the total is the sum of the cells as printed rather
+    than a separately rounded grand total. Those differ -- 348.4 h of PIC
+    rounds to 348, while the eight entries as entered come to 349 -- and the
+    figure that matters is the one the application will add up from the boxes.
+    """
+    def metric(legs: Sequence[Leg], ctx: Context) -> int:
+        return sum(_half_up(value(agg, ctx))
+                   for agg in pd.by_type(legs, _aal_entry))
+    return metric
+
+
+def _entry_hours(field: str) -> Callable[[pd.TypeAgg, Context], float]:
+    return lambda agg, ctx: agg.total(field)
+
+
+def _entry_sic(agg: pd.TypeAgg, ctx: Context) -> float:
+    """Second in command, plus time flown under instruction.
+
+    The entry's only hour fields are PIC, SIC and instructor. Dual received is
+    none of those, and the application has nowhere else to put flight time, so
+    those hours would simply vanish -- the columns have to account for the
+    whole logbook. Second in command is the closest of the three: the pilot was
+    not in command. PIC + SIC therefore equals block time exactly, which is how
+    every row in this logbook already splits (pic + sic + dual_received =
+    block, on all of them).
+    """
+    return agg.total("sic") + agg.total("dual_received")
+
+
+def _entry_landings(agg: pd.TypeAgg, ctx: Context) -> float:
+    """One Landings field on the form; Grist counts day and night apart."""
+    return agg.total("day_landings") + agg.total("night_landings")
+
+
+def _entry_recent(months: int) -> Callable[[pd.TypeAgg, Context], float]:
+    return lambda agg, ctx: pd.total(pd.within(agg.legs, months, ctx.as_of))
 
 
 def _aal_type(legs: Sequence[Leg], ctx: Context) -> str:
     """The aircraft designation this entry is filed under."""
-    named = next((AAL_COLLAPSED[leg.faa_type] for leg in legs
-                  if leg.faa_type in AAL_COLLAPSED), None)
-    return named or distinct(type_group)(legs, ctx)
+    collapsed = next((AAL_COLLAPSED[leg.faa_type] for leg in legs
+                      if leg.faa_type in AAL_COLLAPSED), None)
+    if collapsed:
+        return collapsed
+    variant = next((AAL_VARIANT_NAMES.get(leg.aircraft) for leg in legs
+                    if leg.faa_type in AAL_SPLIT_TYPES), None)
+    return variant or distinct(type_group)(legs, ctx)
 
 
 def _join(parts: Sequence[str]) -> str:
@@ -1007,23 +1073,42 @@ def _aal_variant_note(legs: Sequence[Leg], ctx: Context) -> str:
 
 
 def _aal_dual_note(legs: Sequence[Leg], ctx: Context) -> str:
-    """Time the form has no field for, named so a 0 is never read as a gap.
-
-    PIC, SIC and instructor are the only hour fields on the entry, so hours
-    flown as a student under instruction land in none of them -- a trainer
-    would otherwise show 0 in every hours column with no explanation.
-    """
-    flown = [(agg, agg.total("dual_received"))
-             for agg in pd.by_type(legs, _aal_entry)
-             if agg.total("dual_received") > 0]
-    if not flown:
+    """Where time flown under instruction went, and why."""
+    dual = pd.total(legs, "dual_received")
+    if dual <= 0:
         return ""
-    listed = _join([f"{h:.1f} hours in the {_aal_type(agg.legs, ctx)}"
-                    for agg, h in flown])
-    return ("Time flown as a student under instruction is not one of the "
-            "form's hour fields, so it is in none of the columns above: "
-            f"{listed}. It is reported in full on the Application Reference "
-            "sheet.")
+    return (f"The second-in-command column includes {dual:.1f} hours flown "
+            "under instruction. The entry's hour fields are pilot in command, "
+            "second in command and instructor; of the three, second in command "
+            "is the closest to time flown while not in command, and the "
+            "application has no other field for it.")
+
+
+def _aal_total_note(legs: Sequence[Leg], ctx: Context) -> str:
+    """The reconciliation, so the two columns can be checked against the log."""
+    entries = pd.by_type(legs, _aal_entry)
+    pic = sum(_half_up(_entry_hours("pic")(agg, ctx)) for agg in entries)
+    sic = sum(_half_up(_entry_sic(agg, ctx)) for agg in entries)
+    flown = pd.total(legs)
+    note = (f"Pilot in command and second in command together account for "
+            f"every hour flown. The entries above come to {pic} hours in "
+            f"command and {sic} as second in command, {pic + sic} in all, "
+            f"against {flown:.1f} hours in the logbook.")
+    drift = (pic + sic) - flown
+    if abs(drift) >= 0.05:
+        note += (f" The {abs(drift):.1f} hour difference is rounding: each of "
+                 f"the {len(entries)} entries is entered as a whole number.")
+    return note
+
+
+def _aal_instructor_note(legs: Sequence[Leg], ctx: Context) -> str:
+    """Instructor time is inside PIC, not alongside it."""
+    given = pd.total(legs, "dual_given")
+    if given <= 0:
+        return ""
+    return (f"The {given:.1f} instructor hours were flown in command and are "
+            "already counted in the pilot-in-command column. They are listed "
+            "separately because the entry asks for them, not in addition to it.")
 
 
 AAL = Profile(
@@ -1034,29 +1119,34 @@ AAL = Profile(
             title="Aircraft (one entry per type and operating rule)",
             kind="by_type",
             group=_aal_entry,
+            totals=True,
             rows=(
                 Row("AIRCRAFT TYPE", _aal_type, in_totals=False),
                 Row("OPERATING RULE", distinct(_operation), in_totals=False),
-                Row("PIC", whole("pic")),
-                Row("SIC", whole("sic")),
-                Row("INSTRUCTOR", whole("dual_given")),
-                Row("LANDINGS", _aal_landings),
+                Row("PIC", per_entry(_entry_hours("pic"))),
+                Row("SIC", per_entry(_entry_sic)),
+                Row("INSTRUCTOR", per_entry(_entry_hours("dual_given"))),
+                Row("LANDINGS", per_entry(_entry_landings)),
                 Row("LAST FLOWN", last_flown("%m/%d/%Y"), in_totals=False),
-                Row("NIGHT", whole("night")),
-                Row("LAST 12 MO", whole_recent(12)),
-                Row("LAST 24 MO", whole_recent(24)),
+                Row("NIGHT", per_entry(_entry_hours("night"))),
+                Row("LAST 12 MO", per_entry(_entry_recent(12))),
+                Row("LAST 24 MO", per_entry(_entry_recent(24))),
                 Row("TYPE RATED", _type_rated, in_totals=False),
-                Row("SORTIES", whole("mil_sortie")),
+                Row("SORTIES", per_entry(_entry_hours("mil_sortie"))),
             ),
             notes=(
-                "One entry per aircraft type and operating rule: a type flown "
-                "under more than one rule is listed once for each.",
+                "One entry per aircraft and operating rule: a type flown under "
+                "more than one rule is listed once for each, and the CRJ-200 / "
+                "550 / 700 / 900 are listed separately because the application "
+                "asks for them that way, though they are one CL-65 type rating.",
                 "Hours are rounded to the nearest whole number, as the form "
                 "instructs. Landings are day and night landings added together, "
                 "and the sortie box is checked wherever the sortie count is not "
                 "zero.",
-                _aal_variant_note,
+                _aal_total_note,
                 _aal_dual_note,
+                _aal_instructor_note,
+                _aal_variant_note,
                 "The type-rating answer is the ratings held, which are listed in "
                 "full on the first sheet; it does not depend on recent flying.",
                 "Exact figures to the tenth of an hour, for every type listed "

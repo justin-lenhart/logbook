@@ -682,44 +682,225 @@ def test_aal_prints_whole_numbers_and_no_tenths(legs: list[Leg]) -> None:
         assert tenths not in table, tenths
 
 
-def test_aal_has_no_totals_row(legs: list[Leg]) -> None:
-    """A column of rounded entries does not add up to a rounded total.
+@pytest.fixture
+def accounting() -> list[Leg]:
+    """Every role the logbook uses, including the two with no field on the form.
 
-    Printing one would put a figure on the sheet that disagrees with its own
-    column; the exact totals live on the Application Reference sheet instead.
+    pic + sic + dual_received == block on every row, which is how the real
+    logbook splits; dual_given rides along inside the PIC row.
     """
-    assert aal_section().totals is False
-    assert "<tfoot>" not in render.render_section(aal_section(), legs, CTX)
+    return [
+        leg(1, "2019-06-01", COBRA, block=100.0, pic=100.0, dual_given=41.8),
+        leg(2, "2020-06-01", COBRA, block=60.0, sic=60.0),
+        leg(3, "2015-11-04", SKYHAWK, block=25.0, dual_received=25.0),
+        leg(4, "2026-05-10", CRJ, block=30.0, sic=20.0, dual_received=10.0),
+    ]
+
+
+def test_aal_pic_and_sic_account_for_every_hour_flown(
+        accounting: list[Leg]) -> None:
+    """THE GUARD: the entry is the only place the application takes hours.
+
+    So PIC + SIC across the entries must equal block time. The columns are
+    compared against ``block`` itself, never re-derived from the same metrics
+    they are testing -- a fixture with no dual time, or a check that reuses
+    the mapping, would pass whatever the mapping did.
+    """
+    sec = aal_section()
+    pic_row = next(r for r in sec.rows if r.label == "PIC")
+    sic_row = next(r for r in sec.rows if r.label == "SIC")
+    flown = render.pd.total(accounting)
+    assert flown == pytest.approx(215.0)
+    assert render.pd.total(accounting, "dual_received") > 0      # or this is vacuous
+
+    printed = pic_row.value(accounting, CTX) + sic_row.value(accounting, CTX)
+    entries = len(render.pd.by_type(accounting, sec.group))
+    assert abs(printed - flown) <= entries * 0.5, (printed, flown)
+
+
+def test_aal_no_role_in_the_logbook_falls_outside_both_columns(
+        accounting: list[Leg]) -> None:
+    """Dropping any role from the mapping has to show up as missing hours."""
+    sec = aal_section()
+    pic_row = next(r for r in sec.rows if r.label == "PIC")
+    sic_row = next(r for r in sec.rows if r.label == "SIC")
+    printed = pic_row.value(accounting, CTX) + sic_row.value(accounting, CTX)
+    for role in ("pic", "sic", "dual_received"):
+        assert render.pd.total(accounting, role) > 0, role
+        assert printed > render.pd.total(accounting, role), role
+    assert printed == pytest.approx(render.pd.total(accounting), abs=2.0)
+
+
+def test_aal_instruction_received_is_reported_as_sic() -> None:
+    """Dual received is no field on this form, so it rides in SIC.
+
+    Reporting it nowhere would drop the hours off the application; the pilot
+    was not in command, so SIC is the closest of the three hour fields.
+    """
+    student = [leg(1, "2015-11-04", SKYHAWK, block=10.0, dual_received=10.0)]
+    entry = next(iter(aal_entries(student).values()))
+    assert entry["PIC"] == 0
+    assert entry["SIC"] == 10
+
+
+def test_aal_instructor_time_is_not_added_on_top_of_pic() -> None:
+    """THE GUARD: dual given is flown in command and is already inside PIC.
+
+    Adding it would count those hours twice and break the totals it exists to
+    support, so varying it must not move the PIC column at all.
+    """
+    base = [leg(1, "2019-06-01", COBRA, block=100.0, pic=100.0, dual_given=40.0)]
+    more = [dataclasses.replace(base[0], dual_given=90.0)]
+    none = [dataclasses.replace(base[0], dual_given=0.0)]
+    pic = [next(iter(aal_entries(ls).values()))["PIC"] for ls in (base, more, none)]
+    assert pic == [100, 100, 100]
+    # The instructor column does follow it -- it is reported, just not added.
+    assert next(iter(aal_entries(base).values()))["INSTRUCTOR"] == 40
+    assert next(iter(aal_entries(more).values()))["INSTRUCTOR"] == 90
+
+
+def test_aal_totals_row_adds_the_cells_as_printed(legs: list[Leg]) -> None:
+    """THE GUARD: the total must be what the form arrives at from the boxes.
+
+    Rounding the grand total separately gives a different number from adding
+    the rounded entries -- 348.4 h of PIC rounds to 348, while the entries as
+    typed come to 349. The row has to show the second one.
+    """
+    sec = aal_section()
+    entries = aal_entries(legs)
+    for label in ("PIC", "SIC", "INSTRUCTOR", "LANDINGS", "NIGHT", "SORTIES"):
+        row = next(r for r in sec.rows if r.label == label)
+        assert row.value(legs, CTX) == sum(e[label] for e in entries.values()), label
+
+
+def test_aal_totals_row_is_not_a_separately_rounded_grand_total() -> None:
+    """Two entries that each round up: 0.5 + 0.5 is 1 + 1, not 1."""
+    split = [leg(1, "2019-06-01", COBRA, block=0.5, pic=0.5),
+             leg(2, "2026-05-10", CRJ, block=0.5, pic=0.5)]
+    row = next(r for r in aal_section().rows if r.label == "PIC")
+    assert row.value(split, CTX) == 2
+    assert profiles._half_up(render.pd.total(split, "pic")) == 1
+
+
+def test_aal_reconciliation_note_quotes_the_real_figures() -> None:
+    """The logbook total is read from the legs, not from the rounded columns.
+
+    These two legs total 1.0 h but round to 1 + 1 = 2, so a note that quoted
+    its own column sum would read "2.0 hours in the logbook" and the gap it
+    exists to disclose would vanish.
+    """
+    drifting = [leg(1, "2019-06-01", COBRA, block=0.5, pic=0.5),
+                leg(2, "2026-05-10", CRJ, block=0.5, sic=0.5)]
+    note = profiles._aal_total_note(drifting, CTX)
+    assert "1 hours in command and 1 as second in command, 2 in all" in note
+    assert "1.0 hours in the logbook" in note
+    assert "2.0 hours in the logbook" not in note
+
+
+def test_aal_reconciliation_note_owns_up_to_the_rounding_gap() -> None:
+    """Where the entries do not add to the logbook total, the note says so."""
+    drifting = [leg(1, "2019-06-01", COBRA, block=0.5, pic=0.5),
+                leg(2, "2026-05-10", CRJ, block=0.5, sic=0.5)]
+    assert "difference is rounding" in profiles._aal_total_note(drifting, CTX)
+    exact = [leg(1, "2019-06-01", COBRA, block=2.0, pic=2.0)]
+    assert "difference is rounding" not in profiles._aal_total_note(exact, CTX)
 
 
 # -- one entry per type and operating rule -----------------------------------
 
 def test_aal_groups_on_faa_type_not_a_display_name() -> None:
-    """Renaming the Aircraft code must not split or move an entry."""
-    renamed = leg(1, "2026-01-01", {**CRJ, "aircraft": "CRJ-700 (renamed)"},
+    """Renaming the Aircraft code must not split or move an entry.
+
+    Uses a type American lists once, which is every type except the CRJs --
+    those key on the variant on purpose, and have their own tests below.
+    """
+    renamed = leg(1, "2019-06-01", {**KINGAIR, "aircraft": "UC-12W (renamed)"},
                   block=1.0, sic=1.0)
-    plain = leg(2, "2026-01-02", CRJ, block=1.0, sic=1.0)
-    assert list(aal_entries([renamed, plain])) == ["CL65 · FAR Part 121"]
+    plain = leg(2, "2019-06-02", KINGAIR, block=1.0, sic=1.0)
+    assert list(aal_entries([renamed, plain])) == ["B300 \u00b7 Military"]
 
 
 def test_aal_splits_one_type_flown_under_two_operating_rules() -> None:
     """THE GUARD, American's own banner: "For aircraft operated under multiple
     operating rules ... please create separate entries for each."
     """
-    part121 = leg(1, "2026-01-01", CRJ, block=10.0, sic=10.0)
-    part91 = leg(2, "2026-02-01", {**CRJ, "operation": "Part 91"},
+    military = leg(1, "2019-06-01", KINGAIR, block=10.0, sic=10.0)
+    part91 = leg(2, "2020-02-01", {**KINGAIR, "operation": "Part 91"},
                  block=4.0, pic=4.0)
-    entries = aal_entries([part121, part91])
-    assert set(entries) == {"CL65 · FAR Part 121", "CL65 · FAR Part 91"}
-    assert entries["CL65 · FAR Part 121"]["SIC"] == 10
-    assert entries["CL65 · FAR Part 121"]["PIC"] == 0
-    assert entries["CL65 · FAR Part 91"]["PIC"] == 4
-    assert entries["CL65 · FAR Part 91"]["OPERATING RULE"] == "FAR Part 91"
+    entries = aal_entries([military, part91])
+    assert set(entries) == {"B300 \u00b7 Military", "B300 \u00b7 FAR Part 91"}
+    assert entries["B300 \u00b7 Military"]["SIC"] == 10
+    assert entries["B300 \u00b7 Military"]["PIC"] == 0
+    assert entries["B300 \u00b7 FAR Part 91"]["PIC"] == 4
+    assert entries["B300 \u00b7 FAR Part 91"]["OPERATING RULE"] == "FAR Part 91"
+
+
+# -- the CRJ variants ---------------------------------------------------------
+# One CL-65 type rating, four options on American's aircraft list. The logbook
+# records which variant flew every leg, so the split is reported.
+
+CRJ_VARIANTS = {"CR2": "CRJ-200", "CR5": "CRJ-550",
+                "CR7": "CRJ-700", "CR9": "CRJ-900"}
+
+
+def crj_legs() -> list[Leg]:
+    return [leg(i, f"2026-0{i+1}-01", {**CRJ, "aircraft": code},
+                block=10.0 * (i + 1), sic=10.0 * (i + 1))
+            for i, code in enumerate(CRJ_VARIANTS)]
+
+
+def test_aal_gives_each_crj_variant_its_own_entry() -> None:
+    entries = aal_entries(crj_legs())
+    assert len(entries) == len(CRJ_VARIANTS)
+    named = {cells["AIRCRAFT TYPE"] for cells in entries.values()}
+    assert named == set(CRJ_VARIANTS.values())
+
+
+def test_aal_crj_entry_keys_still_carry_the_faa_type() -> None:
+    """The variant is appended to the type, not substituted for it."""
+    for key in aal_entries(crj_legs()):
+        assert key.startswith("CL65/"), key
+        assert key.split("/", 1)[1].split(" ")[0] in CRJ_VARIANTS
+
+
+def test_aal_splitting_the_crjs_moves_no_hours() -> None:
+    """A finer grouping must not change what the columns add up to."""
+    legs = crj_legs()
+    entries = aal_entries(legs)
+    assert sum(e["SIC"] for e in entries.values()) == 100        # 10+20+30+40
+    assert render.pd.total(legs) == pytest.approx(100.0)
+
+
+def test_aal_only_allowlisted_types_split_by_variant() -> None:
+    """THE GUARD: keying on the Aircraft code is gated, not the default.
+
+    The TH-57B and TH-57C are two aircraft under one FAA type, and American
+    is not known to list them apart, so they stay one entry.
+    """
+    assert profiles.AAL_SPLIT_TYPES == frozenset({"CL65"})
+    th57 = [leg(1, "2016-01-01", {**TH57, "aircraft": "TH-57B"}, block=1.0,
+                dual_received=1.0),
+            leg(2, "2016-02-01", TH57, block=1.0, dual_received=1.0)]
+    assert list(aal_entries(th57)) == ["H57 \u00b7 Military"]
+
+
+def test_aal_an_unknown_variant_code_still_gets_an_entry() -> None:
+    """A rename under a split type shows up as a row, never as lost hours."""
+    odd = [leg(1, "2026-01-01", {**CRJ, "aircraft": "CR7 (renamed)"},
+               block=5.0, sic=5.0)]
+    entries = aal_entries(odd)
+    assert len(entries) == 1
+    cells = next(iter(entries.values()))
+    assert cells["SIC"] == 5
+    assert cells["AIRCRAFT TYPE"]          # named, not blank
 
 
 def test_aal_one_rule_gives_one_entry(legs: list[Leg]) -> None:
     """Nothing in the live logbook is flown under two rules today."""
-    assert len(aal_entries(legs)) == len({(l.faa_type, l.operation) for l in legs})
+    expected = {(l.faa_type,
+                 l.aircraft if l.faa_type in profiles.AAL_SPLIT_TYPES else "",
+                 l.operation) for l in legs}
+    assert len(aal_entries(legs)) == len(expected)
 
 
 # -- the H-1 series ----------------------------------------------------------
@@ -793,14 +974,23 @@ def test_aal_type_rating_comes_from_pilot_toml_not_the_flights() -> None:
     assert row.value(crjs, CTX) == "No"
 
 
-def test_aal_names_the_hours_the_form_has_no_field_for() -> None:
-    """A trainer would otherwise read 0 in every hours column, unexplained."""
-    student = [leg(1, "2015-11-04", {**SKYHAWK, "aircraft": "T-6B",
-                                     "faa_type": "T6", "operation": "Military"},
-                   block=68.2, dual_received=68.2)]
+def test_aal_says_where_instruction_received_went() -> None:
+    """The note has to match where the hours actually are, now SIC."""
+    student = [leg(1, "2015-11-04", SKYHAWK, block=68.2, dual_received=68.2)]
     note = profiles._aal_dual_note(student, CTX)
-    assert "68.2 hours in the T-6B" in note
+    assert "68.2 hours flown under instruction" in note
+    assert "second-in-command column includes" in note
     assert profiles._aal_dual_note(
+        [leg(1, "2026-06-01", CRJ, block=1.0, sic=1.0)], CTX) == ""
+
+
+def test_aal_instructor_note_says_the_hours_are_already_in_pic() -> None:
+    instructing = [leg(1, "2019-06-01", COBRA, block=50.0, pic=50.0,
+                       dual_given=41.8)]
+    note = profiles._aal_instructor_note(instructing, CTX)
+    assert "41.8 instructor hours" in note
+    assert "already counted in the pilot-in-command column" in note
+    assert profiles._aal_instructor_note(
         [leg(1, "2026-06-01", CRJ, block=1.0, sic=1.0)], CTX) == ""
 
 
