@@ -1,4 +1,4 @@
-"""Backend selection: Airtable (legacy) vs Grist (mintbox).
+"""Backend selection: Airtable (legacy) vs Grist (crushbox).
 
 Set ``LOGBOOK_BACKEND=grist`` (env or logbook-tools/.env) to write to the
 self-hosted Grist doc; the default remains ``airtable`` until cutover.

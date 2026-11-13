@@ -138,7 +138,7 @@ warning, so it's safe to have other junk in `inbox/`.
 
 ### Automatic imports (server)
 
-On the home server (mintbox) the two subfolders are watched by systemd path
+On the home server (crushbox) the two subfolders are watched by systemd path
 units: drop a txt/csv export pair into **`inbox/planned/`** or **`inbox/actual/`**
 and the matching import runs by itself with `--commit` — no terminal needed.
 Syncthing shares `inbox/` with the Mac (folder id `logbook-inbox`), so the daily
@@ -354,7 +354,7 @@ letter, log pages are landscape letter. In the print dialog leave margins on
 
 ### One-click exports (the button)
 
-On mintbox the export is a button, not a command. `logbook-export.service`
+On crushbox the export is a button, not a command. `logbook-export.service`
 serves a small page with one button per target; a click renders the export and
 copies it into **`~/Logbook-Outbox`**, which Syncthing carries to
 `/Users/crush/Documents/Logbook-Outbox` on the Mac. It takes about a second.
@@ -446,11 +446,11 @@ the way the Home Assistant entry does.
 
 #### 4. Pair the outbox with the Mac (Syncthing)
 
-The mintbox side (`/home/crushbox/Logbook-Outbox`) already exists — the
+The crushbox side (`/home/crushbox/Logbook-Outbox`) already exists — the
 service creates it. The Mac side, `/Users/crush/Documents/Logbook-Outbox`,
 you have already made. To connect them, in the Syncthing web UI:
 
-**On mintbox** (http://localhost:8384, or over SSH port-forward):
+**On crushbox** (http://localhost:8384, or over SSH port-forward):
 
 1. **Add Folder**.
 2. *Folder Label*: `Logbook Outbox` — *Folder ID*: `logbook-outbox`.

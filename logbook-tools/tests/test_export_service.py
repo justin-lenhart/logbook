@@ -250,10 +250,10 @@ def test_allowed_hosts_and_origins_are_the_service_and_its_frames() -> None:
     }
     extra = ServiceConfig(host="100.78.232.7", port=8486,
                           outbox=Path("/tmp/outbox"),
-                          extra_hosts=("mintbox:8486",),
-                          extra_origins=("http://mintbox:8484",))
-    assert "mintbox:8486" in extra.allowed_hosts
-    assert "http://mintbox:8484" in extra.allowed_origins
+                          extra_hosts=("example.test:8486",),
+                          extra_origins=("http://example.test:8484",))
+    assert "example.test:8486" in extra.allowed_hosts
+    assert "http://example.test:8484" in extra.allowed_origins
 
 
 def test_the_service_binds_one_address_not_every_interface(config, monkeypatch) -> None:
