@@ -22,6 +22,7 @@ from logbook_import.profiles import (
     SUMMARY_SECTIONS,
     SYNTHETIC_NOTE,
     Context,
+    Note,
     Profile,
     Row,
     Section,
@@ -56,8 +57,12 @@ def _cell(value: Value, tag: str = "td") -> str:
     return f"<{tag}{cls}>{escape(fmt(value))}</{tag}>"
 
 
-def _notes(notes: Sequence[str]) -> str:
-    return "".join(f'<p class="note">{escape(n)}</p>' for n in notes)
+def _notes(notes: Sequence[Note], legs: Sequence[Leg], ctx: Context) -> str:
+    """Notes under a table. A note may be written from the legs on the sheet,
+    so a figure quoted in prose is read from Grist like any other; one that
+    comes back empty is left out rather than printed as a blank line."""
+    text = [n(legs, ctx) if callable(n) else n for n in notes]
+    return "".join(f'<p class="note">{escape(n)}</p>' for n in text if n)
 
 
 # -- sections ---------------------------------------------------------------
@@ -158,7 +163,7 @@ _RENDERERS: dict[str, Callable[[Section, Sequence[Leg], Context], str]] = {
 def render_section(section: Section, legs: Sequence[Leg], ctx: Context) -> str:
     body = _RENDERERS[section.kind](section, legs, ctx)
     return (f'<section class="section kind-{section.kind}"><h2>{escape(section.title)}</h2>'
-            f"{body}{_notes(section.notes)}</section>")
+            f"{body}{_notes(section.notes, legs, ctx)}</section>")
 
 
 # -- certified log pages ----------------------------------------------------

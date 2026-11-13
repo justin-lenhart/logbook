@@ -235,6 +235,7 @@ logbook-import export-profile --target ual        # United
 logbook-import export-profile --target swa        # Southwest
 logbook-import export-profile --target allegiant  # Allegiant
 logbook-import export-profile --target jetblue    # JetBlue
+logbook-import export-profile --target aal        # American
 ```
 
 On the server you do not have to type any of this: the **one-click export
@@ -278,6 +279,35 @@ the hours and defers to the dropdown rather than inventing a label. Its aircraft
 rows group by type rating (the CRJ variants are one CL-65 row, the H-1s one row),
 and the recency questions are measured from the export's as-of date, so re-run it
 on the day the application goes in.
+
+**American** is one table of the application's repeating per-aircraft entry, and
+only that block — the rest of the form has not been transcribed, so none of it is
+guessed. Two of American's own instructions shape the sheet:
+
+- *"For aircraft operated under multiple operating rules (e.g., Part 121, Part 135,
+  etc), please create separate entries for each."* So a row is one `FAA_Type` under
+  **one operating rule**, and a type flown under two rules splits into two rows.
+  Nothing in the logbook does today — every type has exactly one rule — but the
+  split is built in, not left for someone to notice.
+- *"Round hours to the nearest whole number."* So every hours figure on the sheet
+  is a whole number, rounded half **up** and never truncated: 41.8 h of instruction
+  is 42, not 41. (`round()` would make 42.5 h into 42, which is why the sheet uses
+  its own `_half_up`.) The exact tenths are deliberately not repeated beside them —
+  the Application Reference sheet at the back already carries every one of these
+  figures to the tenth, grouped the same way, so nothing is lost and no figure on
+  the American sheet can disagree with the number typed into the form. For the same
+  reason the table has **no totals row**: a column of rounded entries does not add
+  up to a rounded total.
+
+The three H-1 variants are one entry, filed as the **AH-1Z**, with a note beneath
+the table giving the hours in the other two and the role they were flown in — read
+from the logbook, not assumed, so a mixed-role variant is reported as the split it
+actually is. Landings are day and night landings added together (one field on the
+form); the sortie checkbox is the sortie count being non-zero; the type-rating
+answer comes from `pilot.toml`, not from recent flying; "last 12 / 24 months" end
+on the export's as-of date, so re-run it on the day the application goes in. Time
+flown as a student under instruction has no field on this form, so a note names
+those hours rather than letting a trainer read 0 in every hours column.
 
 Each run prints a one-line total (flights, total / PIC / SIC / dual) and the file
 it wrote: `logbook/exports/logbook-<target>-<date>.html`. `exports/` is gitignored
@@ -462,7 +492,7 @@ Everything else the CLI can do. You will rarely touch these.
 | `import-planned` | Import the schedule as planned Trips/Duty Periods |
 | `export-map` | Regenerate `docs/map_data.geojson` (add `--update` to push) |
 | `serve-exports` | Serve the one-click export page (Tailscale-only, read-only) — *what `logbook-export.service` runs* |
-| `export-profile --target {generic,faa,ual,swa,allegiant,jetblue}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
+| `export-profile --target {generic,faa,ual,swa,allegiant,jetblue,aal}` | Printable logbook export (summary, target sections, application-reference tables, certified log pages) into gitignored `exports/`; read-only. Needs `pilot.toml` (copy `pilot.toml.example`) |
 | `backfill-sic-to-pic --workbook FILE` | One-off: fill `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51). Dry-run unless `--commit`; refuses to write unless the per-aircraft reconciliation gate matches exactly |
 | `backfill-training-codes` | One-off: rewrite the historical `Flights.Notes` remarks to their 4-digit military event codes, dropping the import preamble. Dry-run unless `--commit` |
 | `export-apps` | *(legacy, Airtable-only)* regenerate `docs/apps/*.html` |

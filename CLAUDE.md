@@ -83,8 +83,8 @@ Grist ──► export-profile ──► exports/ ──► ~/Logbook-Outbox ─
   `deliver` into the Syncthing outbox), `export_service.py` (the one-click
   endpoint; see *Commands*). Per-flight pages never print
   night/instrument/XC/landings — synthetic on the pre-2026 rows. Targets: `generic`,
-  `faa`, `ual`, `swa`, `allegiant`, `jetblue`; `profiles.PENDING_TARGETS` names the ones
-  still waiting on a real field list (Delta) — never guess a carrier's fields.
+  `faa`, `ual`, `swa`, `allegiant`, `jetblue`, `aal`; `profiles.PENDING_TARGETS` names
+  the ones still waiting on a real field list (Delta) — never guess a carrier's fields.
   - `generic` is the pilot's own logbook: a `Profile` with **no sections**, so
     `render_profile` prints no target sheet at all (a target sheet is one
     organisation's form). It is the summary + the three reference tables + the log
@@ -113,9 +113,23 @@ Grist ──► export-profile ──► exports/ ──► ~/Logbook-Outbox ─
     whole export with and without the column populated; keep it. Allegiant fields 7-9
     are *PIC or supervised SIC*, so Allegiant (and every other target) keeps the
     reference rows that evidence them.
+  - American (`aal`) is **one** block of its application — the repeating per-aircraft
+    entry — and nothing else of that form has been transcribed. A row is one
+    `FAA_Type` under **one operating rule** (the form demands a separate entry per
+    rule; no type in the logbook has two today, but the split is built in). Every
+    hours figure on that sheet is a whole number via `_half_up` — round half **up**,
+    never truncate, and never `round()`, which turns 42.5 into 42. The exact tenths
+    stay off the sheet and live on the Application Reference block, which is also
+    why the table has no totals row: rounded rows do not add up to a rounded total.
+    The three H-1 variants are one entry filed as the AH-1Z, and `_aal_variant_note`
+    writes the hours in the other two **and checks the role claim against the data**
+    — never hardcode "all SIC".
+  - `Section.notes` entries may be `str` **or** `fn(legs, ctx) -> str`, so a note can
+    quote a real figure; one that returns "" is left out. `profile_render._notes`
+    resolves them. Do not go back to static-only notes.
   - Every note on a target sheet is read by the airline's recruiting department, not
     by us: no file names, no "dropdown", no "re-run it", no build talk. There is a
-    test asserting that for the JetBlue notes.
+    test asserting that for the JetBlue and American notes.
 - **One-off backfills (Grist writes, dry-run by default):** `sic_to_pic.py` fills
   `Flights.SIC_to_PIC` from the legacy workbook's PF column (14 CFR 61.51) behind a hard
   reconciliation gate; `training_codes.py` rewrites the historical `Flights.Notes` remarks
@@ -143,7 +157,7 @@ All import commands default to dry-run; add `--commit` to write.
   oldest column only fills gaps). Domicile reports have no efficiency pages.
 - `export-map [--output PATH] [--update]` — regenerate `docs/map_data.geojson`; `--update`
   commits + pushes (GitHub Pages).
-- `export-profile --target {generic|faa|ual|swa|allegiant|jetblue} [--output DIR] [--as-of DATE]
+- `export-profile --target {generic|faa|ual|swa|allegiant|jetblue|aal} [--output DIR] [--as-of DATE]
   [--pilot FILE] [--no-log]` — printable summary + target sections + the three
   application-reference tables + certified log pages. Read-only toward Grist (no
   `--commit`). Writes `exports/` (gitignored — never `docs/`, which is public). Pilot

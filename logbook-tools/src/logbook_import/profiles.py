@@ -17,6 +17,7 @@ Pilot identity is not in Grist — it comes from a gitignored ``pilot.toml``.
 
 from __future__ import annotations
 
+import math
 import tomllib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
@@ -46,6 +47,11 @@ class Context:
 
 Metric = Callable[[Sequence[Leg], Context], Value]
 
+# A note under a table is either fixed wording or one written from the legs on
+# that sheet, so a figure quoted in prose is read from Grist like every other
+# figure on the page. A computed note that comes back empty is left out.
+Note = str | Callable[[Sequence[Leg], Context], str]
+
 
 @dataclass(frozen=True)
 class Row:
@@ -71,7 +77,7 @@ class Section:
     group: Callable[[Leg], str] = lambda leg: leg.aircraft   # per-type kinds
     totals: bool = False                        # by_type: append a totals row
     transpose: bool = False                     # matrix: classes down, metrics across
-    notes: tuple[str, ...] = ()
+    notes: tuple[Note, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -882,6 +888,186 @@ JETBLUE = Profile(
 )
 
 
+# -- American (aa.com pilot application) -------------------------------------
+# One block of American's application: a repeating per-aircraft entry, headed
+# "Aircraft 1", "Aircraft 2" and so on. Only that block is built here. The rest
+# of the form has not been transcribed, so nothing else about it is guessed --
+# see PENDING_TARGETS for how an unseen form is handled.
+#
+# Two of American's own instructions shape the whole sheet:
+#
+#   "For aircraft operated under multiple operating rules (e.g., Part 121,
+#   Part 135, etc), please create separate entries for each."
+#
+# so an entry is one aircraft type under ONE operating rule, which is what the
+# section groups on; and
+#
+#   "If you have no hours for any field, enter 0. Round hours to the nearest
+#   whole number."
+#
+# so every hours figure on this sheet is a whole number -- rounded, never
+# truncated. The exact tenths are not repeated here: the standing Totals by
+# FAA Type table at the back of every export already carries them, grouped the
+# same way, so nothing is lost and no figure on this sheet can disagree with
+# the number typed into the form.
+
+# The H-1 series: AH-1Z, AH-1W and UH-1Y are one FAA type (H1) and one
+# designation on the form, so they are reported as a single AH-1Z entry and
+# ``_aal_variant_note`` accounts for the other two underneath the table.
+AAL_COLLAPSED: dict[str, str] = {"H1": "AH-1Z"}
+
+# Role wording for that note, in the order it reads best.
+_AAL_ROLE_WORDS: tuple[tuple[str, str], ...] = (
+    ("pic", "pilot in command"),
+    ("sic", "second in command"),
+    ("dual_received", "a student under instruction"),
+    ("dual_given", "a flight instructor"),
+)
+
+
+def _half_up(value: float) -> int:
+    """Round to the nearest whole number, halves away from zero.
+
+    ``round()`` breaks a tie to the even number, so it reports 41.5 h as 42
+    and 42.5 h as 42. A form that says "nearest whole number" means half up,
+    and either way the figure is rounded, never truncated: 41.8 h is 42.
+    """
+    return math.floor(value + 0.5) if value >= 0 else math.ceil(value - 0.5)
+
+
+def whole(field: str = "block", where: Predicate | None = None) -> Metric:
+    """``field`` summed over the legs, as a whole number of hours."""
+    return lambda legs, ctx: _half_up(pd.total(legs, field, where))
+
+
+def whole_recent(months: int) -> Metric:
+    """Hours flown in the ``months`` ending on the as-of date, whole."""
+    return lambda legs, ctx: _half_up(
+        pd.total(pd.within(legs, months, ctx.as_of)))
+
+
+def _aal_landings(legs: Sequence[Leg], ctx: Context) -> int:
+    """One Landings field on the form; Grist counts day and night apart."""
+    return _half_up(pd.total(legs, "day_landings")
+                    + pd.total(legs, "night_landings"))
+
+
+def _aal_entry(leg: Leg) -> str:
+    """One application entry: an FAA type under one operating rule.
+
+    Grouping is on ``Aircraft.FAA_Type``, never a display name, so a spelling
+    fix in the Aircraft table cannot move a row; the operating rule is part of
+    the key because American wants a separate entry for each one.
+    """
+    return f"{leg.faa_type or '(no type)'} · {_operation(leg)}"
+
+
+def _aal_type(legs: Sequence[Leg], ctx: Context) -> str:
+    """The aircraft designation this entry is filed under."""
+    named = next((AAL_COLLAPSED[leg.faa_type] for leg in legs
+                  if leg.faa_type in AAL_COLLAPSED), None)
+    return named or distinct(type_group)(legs, ctx)
+
+
+def _join(parts: Sequence[str]) -> str:
+    if len(parts) < 2:
+        return "".join(parts)
+    return ", ".join(parts[:-1]) + (" and " if len(parts) == 2 else ", and ") + parts[-1]
+
+
+def _role_phrase(legs: Sequence[Leg]) -> str:
+    """How the time in ``legs`` was flown, checked against the logbook.
+
+    The claim is written from the hours, not assumed: time that is not all one
+    role is reported as the split it actually is.
+    """
+    parts = [(word, pd.total(legs, field)) for field, word in _AAL_ROLE_WORDS
+             if pd.total(legs, field) > 0]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return f"all flown as {parts[0][0]}"
+    return _join([f"{h:.1f} hours as {word}" for word, h in parts])
+
+
+def _aal_variant_note(legs: Sequence[Leg], ctx: Context) -> str:
+    """What a collapsed entry covers, in hours read from the logbook."""
+    sentences = []
+    for faa_type, primary in AAL_COLLAPSED.items():
+        others = [leg for leg in legs
+                  if leg.faa_type == faa_type and leg.aircraft != primary]
+        if not others:
+            continue
+        flown = _join([f"{agg.total():.1f} hours in the {agg.key}"
+                       for agg in pd.by_type(others, lambda leg: leg.aircraft)])
+        role = _role_phrase(others)
+        sentences.append(f"The {primary} entry includes {flown}, {role}."
+                         if role else f"The {primary} entry includes {flown}.")
+    return " ".join(sentences)
+
+
+def _aal_dual_note(legs: Sequence[Leg], ctx: Context) -> str:
+    """Time the form has no field for, named so a 0 is never read as a gap.
+
+    PIC, SIC and instructor are the only hour fields on the entry, so hours
+    flown as a student under instruction land in none of them -- a trainer
+    would otherwise show 0 in every hours column with no explanation.
+    """
+    flown = [(agg, agg.total("dual_received"))
+             for agg in pd.by_type(legs, _aal_entry)
+             if agg.total("dual_received") > 0]
+    if not flown:
+        return ""
+    listed = _join([f"{h:.1f} hours in the {_aal_type(agg.legs, ctx)}"
+                    for agg, h in flown])
+    return ("Time flown as a student under instruction is not one of the "
+            "form's hour fields, so it is in none of the columns above: "
+            f"{listed}. It is reported in full on the Application Reference "
+            "sheet.")
+
+
+AAL = Profile(
+    target="aal",
+    title="American Airlines — Aircraft Experience",
+    sections=(
+        Section(
+            title="Aircraft (one entry per type and operating rule)",
+            kind="by_type",
+            group=_aal_entry,
+            rows=(
+                Row("AIRCRAFT TYPE", _aal_type, in_totals=False),
+                Row("OPERATING RULE", distinct(_operation), in_totals=False),
+                Row("PIC", whole("pic")),
+                Row("SIC", whole("sic")),
+                Row("INSTRUCTOR", whole("dual_given")),
+                Row("LANDINGS", _aal_landings),
+                Row("LAST FLOWN", last_flown("%m/%d/%Y"), in_totals=False),
+                Row("NIGHT", whole("night")),
+                Row("LAST 12 MO", whole_recent(12)),
+                Row("LAST 24 MO", whole_recent(24)),
+                Row("TYPE RATED", _type_rated, in_totals=False),
+                Row("SORTIES", whole("mil_sortie")),
+            ),
+            notes=(
+                "One entry per aircraft type and operating rule: a type flown "
+                "under more than one rule is listed once for each.",
+                "Hours are rounded to the nearest whole number, as the form "
+                "instructs. Landings are day and night landings added together, "
+                "and the sortie box is checked wherever the sortie count is not "
+                "zero.",
+                _aal_variant_note,
+                _aal_dual_note,
+                "The type-rating answer is the ratings held, which are listed in "
+                "full on the first sheet; it does not depend on recent flying.",
+                "Exact figures to the tenth of an hour, for every type listed "
+                "here, are on the Application Reference sheet at the back.",
+                SYNTHETIC_NOTE,
+            ),
+        ),
+    ),
+)
+
+
 # -- generic (no carrier) ----------------------------------------------------
 # The pilot's own logbook: everything every export already carries -- the
 # Flight Time Summary, the three Application Reference tables and the
@@ -904,6 +1090,6 @@ PENDING_TARGETS: tuple[str, ...] = ("delta",)
 
 
 PROFILES: dict[str, Profile] = {
-    p.target: p for p in (GENERIC, FAA, UAL, SWA, ALLEGIANT, JETBLUE)
+    p.target: p for p in (GENERIC, FAA, UAL, SWA, ALLEGIANT, JETBLUE, AAL)
 }
 TARGETS: tuple[str, ...] = tuple(PROFILES)
