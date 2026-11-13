@@ -46,6 +46,15 @@ LABELS: dict[str, str] = {
     "aal": "American",
 }
 
+# Button grid geometry. BUTTON_MIN is the narrowest a button may be before
+# the grid reflows; GRID_MAX is sized to fit exactly GRID_COLUMNS of them with
+# GRID_GAP between, and nothing wider. test_export_service.py checks that
+# arithmetic, so the row cannot quietly become four wide or one long row again.
+GRID_COLUMNS = 3
+GRID_GAP = 8
+BUTTON_MIN = 140
+GRID_MAX = GRID_COLUMNS * BUTTON_MIN + (GRID_COLUMNS - 1) * GRID_GAP + 40
+
 # A click posts a form body, so no preflight and no CORS to get wrong.
 MAX_BODY = 4096
 
@@ -125,9 +134,17 @@ def render_page(config: ServiceConfig) -> str:
          font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; }}
   h1 {{ font-size: 14px; font-weight: 600; margin: 0 0 2px; }}
   p.lede {{ margin: 0 0 12px; color: var(--muted); font-size: 12px; }}
-  .grid {{ display: grid; gap: 8px;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }}
-  button {{ font: inherit; font-weight: 500; padding: 11px 12px; cursor: pointer;
+  /* Three buttons to a row. The width cap is what holds it to three: the
+     widget is framed in a pane far wider than this page needs, and without
+     it auto-fit spreads every target across one long row. Narrower than
+     GRID_MAX and auto-fit drops to two columns, then one, instead of
+     squeezing a label until it clips. */
+  .grid {{ display: grid; gap: 8px; max-width: {GRID_MAX}px;
+          grid-template-columns: repeat(auto-fit, minmax({BUTTON_MIN}px, 1fr)); }}
+  /* 13px over a {BUTTON_MIN}px minimum leaves the longest label
+     ("FAA 8710 / IACRA") room to sit on one line inside the padding. */
+  button {{ font: inherit; font-size: 13px; font-weight: 500; padding: 9px 11px;
+           cursor: pointer;
            color: var(--ink); background: transparent; border: 1px solid var(--edge);
            border-radius: 7px; text-align: left; }}
   button:hover:not(:disabled) {{ border-color: var(--accent); color: var(--accent); }}
