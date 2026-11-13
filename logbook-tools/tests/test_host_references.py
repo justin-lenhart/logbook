@@ -37,8 +37,15 @@ HOST = "crushbox"
 # The retired name, assembled so this file never contains it literally.
 RETIRED_HOST = "mint" + "box"
 
-# Tailscale hands out addresses in 100.64.0.0/10.
-TAILNET = re.compile(r"\b100\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
+# Tailscale hands out addresses in the 100.64/10 carrier-grade NAT range.
+# A CIDR range is not a host, so one written with a prefix length is skipped:
+# naming the range the tailnet lives in is correct, naming another box's
+# address is the mistake this looks for.
+TAILNET = re.compile(r"\b100\.\d{1,3}\.\d{1,3}\.\d{1,3}\b(?!/)")
+
+# This file is the one place that has to hold counter-examples -- a wrong
+# address, a foreign range -- so the address scan skips it and nothing else.
+SELF = Path(__file__).resolve()
 
 # Nothing here is prose a reader follows: lockfiles and sample data.
 SKIP_SUFFIXES = {".lock", ".geojson", ".png", ".jpg", ".pdf", ".xlsx"}
@@ -99,8 +106,12 @@ def test_the_docs_quote_the_address_the_code_dials() -> None:
     assert expected and TAILNET.fullmatch(expected), DEFAULT_GRIST_URL
 
     wrong: list[str] = []
+    skipped: list[Path] = []
     for path in tracked_files():
         if path.suffix.lower() not in {".md", ".py", ".service", ".path", ".sh"}:
+            continue
+        if path.resolve() == SELF:
+            skipped.append(path)
             continue
         text = readable_text(path)
         if text is None:
@@ -110,11 +121,25 @@ def test_the_docs_quote_the_address_the_code_dials() -> None:
                 if found != expected:
                     rel = path.relative_to(WORKSPACE_ROOT)
                     wrong.append(f"{rel}:{number}: {found}")
+    # One exclusion, and it is this file. Anything else must be scanned.
+    assert len(skipped) == 1, skipped
     assert not wrong, (
         f"these name a tailnet address that is not {expected}; if the server "
         "moved, move DEFAULT_GRIST_URL and the docs together:\n"
         + "\n".join(wrong)
     )
+
+
+def test_a_cidr_range_is_not_read_as_a_host_address() -> None:
+    """Describing the range the tailnet lives in is not naming another box.
+
+    The guard flagged its own comment the moment this file became tracked,
+    which is the distinction, not a nuisance: ``100.64.0.0/10`` is the block
+    Tailscale allocates from; ``100.64.0.0`` on its own would be a host.
+    """
+    assert not TAILNET.search("the 100.64.0.0/10 range")
+    assert TAILNET.search("ssh 100.64.0.0") is not None
+    assert TAILNET.search("http://100.99.1.4:8484") is not None
 
 
 def test_the_export_service_address_follows_grist() -> None:
