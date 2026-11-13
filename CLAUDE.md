@@ -119,11 +119,29 @@ Grist ──► export-profile ──► exports/ ──► ~/Logbook-Outbox ─
     rule; no type in the logbook has two today, but the split is built in). Every
     hours figure on that sheet is a whole number via `_half_up` — round half **up**,
     never truncate, and never `round()`, which turns 42.5 into 42. The exact tenths
-    stay off the sheet and live on the Application Reference block, which is also
-    why the table has no totals row: rounded rows do not add up to a rounded total.
+    stay off the sheet and live on the Application Reference block.
+  - The American entry is the **only** place on that application that takes flight
+    time, so `PIC + SIC` must account for the whole logbook. Dual received is
+    reported as **SIC** (`_entry_sic`) — it has no field of its own and the pilot
+    was not in command — which works because every row splits
+    `pic + sic + dual_received = block`. **Dual given is NOT added to PIC**: it is
+    flown in command and already inside that column, so adding it double-counts
+    and breaks the total. Its own column reports it, in addition to nothing.
+  - The American totals row sums the cells **as printed** (`per_entry`), not a
+    separately rounded grand total — 348.4 h of PIC rounds to 348 while the eight
+    entries as typed come to 349, and the figure that matters is the one the
+    application reaches by adding the boxes. `_aal_total_note` states the gap.
     The three H-1 variants are one entry filed as the AH-1Z, and `_aal_variant_note`
     writes the hours in the other two **and checks the role claim against the data**
     — never hardcode "all SIC".
+  - American lists the CRJ-200/550/700/900 separately, so `AAL_SPLIT_TYPES` (`CL65`
+    only) makes those entries key on the **Aircraft code** as well as the FAA type —
+    the one place the grouping drops below `FAA_Type`, gated on that allowlist for
+    exactly the reason the rule exists. `AAL_VARIANT_NAMES` holds the designations
+    as American's own list spells them; an unrecognised code still gets its own row
+    under its model name, so a rename is a differently-named row, never lost hours.
+    Splitting changes no totals. Do not add a type to that set without seeing it
+    listed separately on the application.
   - `Section.notes` entries may be `str` **or** `fn(legs, ctx) -> str`, so a note can
     quote a real figure; one that returns "" is left out. `profile_render._notes`
     resolves them. Do not go back to static-only notes.
