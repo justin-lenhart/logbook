@@ -16,6 +16,7 @@ from logbook_import import profiles
 from logbook_import import profile_render as render
 from logbook_import.profile_data import Leg
 from logbook_import.profiles import (
+    AAL,
     ALLEGIANT,
     FAA,
     GENERIC,
@@ -601,3 +602,234 @@ def test_jetblue_notes_are_written_for_the_airline() -> None:
         for note in sec.notes:
             for word in internal:
                 assert word not in note, f"{sec.title}: {note}"
+
+
+# -- American ----------------------------------------------------------------
+# One block of the application: the repeating per-aircraft entry. Its two
+# standing instructions -- a separate entry per operating rule, and hours
+# rounded to the nearest whole number -- are what these tests pin.
+
+COBRA_W = {**COBRA, "aircraft": "AH-1W"}
+HUEY = {**COBRA, "aircraft": "UH-1Y"}
+
+
+def aal_section() -> Section:
+    return AAL.sections[0]
+
+
+def aal_entries(legs: list[Leg]) -> dict[str, dict[str, object]]:
+    """{entry key: {column label: value}} -- the table as rendered."""
+    sec = aal_section()
+    return {agg.key: {row.label: row.value(agg.legs, CTX) for row in sec.rows}
+            for agg in render.pd.by_type(legs, sec.group)}
+
+
+def aal_notes(legs: list[Leg]) -> list[str]:
+    return [n(legs, CTX) if callable(n) else n for n in aal_section().notes]
+
+
+def test_aal_is_registered_and_no_longer_pending() -> None:
+    assert PROFILES["aal"] is AAL
+    assert "aal" not in profiles.PENDING_TARGETS
+    assert "American" in AAL.title
+
+
+def test_aal_columns_follow_the_form_field_order() -> None:
+    """The entry's own fields, in the order the application prints them."""
+    assert [r.label for r in aal_section().rows] == [
+        "AIRCRAFT TYPE", "OPERATING RULE", "PIC", "SIC", "INSTRUCTOR",
+        "LANDINGS", "LAST FLOWN", "NIGHT", "LAST 12 MO", "LAST 24 MO",
+        "TYPE RATED", "SORTIES",
+    ]
+
+
+def test_aal_builds_only_the_block_that_was_transcribed() -> None:
+    """One section. The rest of American's form has not been seen."""
+    assert len(AAL.sections) == 1
+
+
+# -- rounding ----------------------------------------------------------------
+
+def test_half_up_rounds_the_way_the_form_asks() -> None:
+    """THE GUARD: "Round hours to the nearest whole number" -- never truncate.
+
+    round() breaks a tie to the even number, so it would report 42.5 h as 42;
+    int() would report 41.8 h as 41. Neither is what the form asks for.
+    """
+    assert profiles._half_up(41.8) == 42
+    assert profiles._half_up(41.2) == 41
+    assert profiles._half_up(41.5) == 42
+    assert profiles._half_up(42.5) == 43      # round() gives 42 here
+    assert profiles._half_up(0.6) == 1        # int() gives 0 here
+    assert profiles._half_up(0.4) == 0
+    assert profiles._half_up(0.0) == 0
+
+
+def test_aal_instructor_hours_round_up_not_down() -> None:
+    """41.8 h of instruction given is 42 on the form, not 41."""
+    instructing = [leg(1, "2019-06-01", COBRA, block=41.8, pic=41.8,
+                       dual_given=41.8)]
+    entry = next(iter(aal_entries(instructing).values()))
+    assert entry["INSTRUCTOR"] == 42
+    assert entry["PIC"] == 42
+
+
+def test_aal_prints_whole_numbers_and_no_tenths(legs: list[Leg]) -> None:
+    html = render.render_section(aal_section(), legs, CTX)
+    table = html.split("<tbody>")[1].split("</tbody>")[0]
+    assert ">3<" in table and ">2<" in table
+    for tenths in (">3.0<", ">2.0<", ">1.5<"):
+        assert tenths not in table, tenths
+
+
+def test_aal_has_no_totals_row(legs: list[Leg]) -> None:
+    """A column of rounded entries does not add up to a rounded total.
+
+    Printing one would put a figure on the sheet that disagrees with its own
+    column; the exact totals live on the Application Reference sheet instead.
+    """
+    assert aal_section().totals is False
+    assert "<tfoot>" not in render.render_section(aal_section(), legs, CTX)
+
+
+# -- one entry per type and operating rule -----------------------------------
+
+def test_aal_groups_on_faa_type_not_a_display_name() -> None:
+    """Renaming the Aircraft code must not split or move an entry."""
+    renamed = leg(1, "2026-01-01", {**CRJ, "aircraft": "CRJ-700 (renamed)"},
+                  block=1.0, sic=1.0)
+    plain = leg(2, "2026-01-02", CRJ, block=1.0, sic=1.0)
+    assert list(aal_entries([renamed, plain])) == ["CL65 · FAR Part 121"]
+
+
+def test_aal_splits_one_type_flown_under_two_operating_rules() -> None:
+    """THE GUARD, American's own banner: "For aircraft operated under multiple
+    operating rules ... please create separate entries for each."
+    """
+    part121 = leg(1, "2026-01-01", CRJ, block=10.0, sic=10.0)
+    part91 = leg(2, "2026-02-01", {**CRJ, "operation": "Part 91"},
+                 block=4.0, pic=4.0)
+    entries = aal_entries([part121, part91])
+    assert set(entries) == {"CL65 · FAR Part 121", "CL65 · FAR Part 91"}
+    assert entries["CL65 · FAR Part 121"]["SIC"] == 10
+    assert entries["CL65 · FAR Part 121"]["PIC"] == 0
+    assert entries["CL65 · FAR Part 91"]["PIC"] == 4
+    assert entries["CL65 · FAR Part 91"]["OPERATING RULE"] == "FAR Part 91"
+
+
+def test_aal_one_rule_gives_one_entry(legs: list[Leg]) -> None:
+    """Nothing in the live logbook is flown under two rules today."""
+    assert len(aal_entries(legs)) == len({(l.faa_type, l.operation) for l in legs})
+
+
+# -- the H-1 series ----------------------------------------------------------
+
+def test_aal_h1_variants_are_one_entry_filed_as_the_ah1z() -> None:
+    h1 = [leg(1, "2019-06-01", COBRA, block=692.3, pic=242.5, sic=449.8),
+          leg(2, "2016-09-28", COBRA_W, block=5.6, sic=5.6),
+          leg(3, "2020-04-14", HUEY, block=3.4, sic=3.4)]
+    entries = aal_entries(h1)
+    assert list(entries) == ["H1 · Military"]
+    assert entries["H1 · Military"]["AIRCRAFT TYPE"] == "AH-1Z"
+    assert entries["H1 · Military"]["SIC"] == 459      # 458.8 rounded up
+
+
+def test_aal_variant_note_carries_the_real_hours() -> None:
+    h1 = [leg(1, "2019-06-01", COBRA, block=692.3, pic=242.5, sic=449.8),
+          leg(2, "2016-09-28", COBRA_W, block=5.6, sic=5.6),
+          leg(3, "2020-04-14", HUEY, block=3.4, sic=3.4)]
+    note = profiles._aal_variant_note(h1, CTX)
+    assert note == ("The AH-1Z entry includes 5.6 hours in the AH-1W and "
+                    "3.4 hours in the UH-1Y, all flown as second in command.")
+
+
+def test_aal_variant_note_checks_the_role_claim_against_the_hours() -> None:
+    """THE GUARD: "all SIC" is read from the logbook, never assumed.
+
+    Time in a variant that is not all one role must be reported as the split
+    it actually is -- a wrong role claim on an application is a false record.
+    """
+    mixed = [leg(1, "2019-06-01", COBRA, block=100.0, pic=100.0),
+             leg(2, "2016-09-28", COBRA_W, block=5.0, pic=2.0, sic=3.0)]
+    note = profiles._aal_variant_note(mixed, CTX)
+    assert "all flown as" not in note
+    assert ("2.0 hours as pilot in command and 3.0 hours as second in command"
+            in note)
+
+
+def test_aal_variant_note_is_left_out_when_nothing_was_collapsed(
+        legs: list[Leg]) -> None:
+    """No AH-1W or UH-1Y time means no sentence about it."""
+    assert profiles._aal_variant_note(legs, CTX) == ""
+    only_zulu = [leg(1, "2019-06-01", COBRA, block=10.0, pic=10.0)]
+    assert profiles._aal_variant_note(only_zulu, CTX) == ""
+
+
+# -- the remaining fields ----------------------------------------------------
+
+def test_aal_landings_add_day_and_night() -> None:
+    """The form has one Landings field; Grist counts the two apart."""
+    flown = [leg(1, "2019-06-01", COBRA, block=2.0, pic=2.0,
+                 day_landings=871, night_landings=263)]
+    assert next(iter(aal_entries(flown).values()))["LANDINGS"] == 1134
+
+
+def test_aal_recency_windows_end_on_the_as_of_date() -> None:
+    crjs = [leg(1, "2026-06-01", CRJ, block=200.0, sic=200.0),
+            leg(2, "2025-06-01", CRJ, block=100.0, sic=100.0),
+            leg(3, "2020-01-01", CRJ, block=900.0, sic=900.0)]
+    entry = next(iter(aal_entries(crjs).values()))
+    assert entry["LAST 12 MO"] == 200
+    assert entry["LAST 24 MO"] == 300
+    assert entry["LAST FLOWN"] == "06/01/2026"
+
+
+def test_aal_type_rating_comes_from_pilot_toml_not_the_flights() -> None:
+    """A rating is held whether or not the type has been flown lately."""
+    crjs = [leg(1, "2026-06-01", CRJ, block=1.0, sic=1.0)]
+    row = next(r for r in aal_section().rows if r.label == "TYPE RATED")
+    rated = dataclasses.replace(CTX, pilot=Pilot(type_ratings=("CL65",)))
+    assert row.value(crjs, rated) == "Yes"
+    assert row.value(crjs, CTX) == "No"
+
+
+def test_aal_names_the_hours_the_form_has_no_field_for() -> None:
+    """A trainer would otherwise read 0 in every hours column, unexplained."""
+    student = [leg(1, "2015-11-04", {**SKYHAWK, "aircraft": "T-6B",
+                                     "faa_type": "T6", "operation": "Military"},
+                   block=68.2, dual_received=68.2)]
+    note = profiles._aal_dual_note(student, CTX)
+    assert "68.2 hours in the T-6B" in note
+    assert profiles._aal_dual_note(
+        [leg(1, "2026-06-01", CRJ, block=1.0, sic=1.0)], CTX) == ""
+
+
+def test_aal_reads_stored_night_time() -> None:
+    """Never recomputed in a profile: a stored value is printed as stored."""
+    one = [leg(1, "2026-01-01", CRJ, block=5.0, sic=5.0, night=9.9)]
+    assert next(iter(aal_entries(one).values()))["NIGHT"] == 10
+
+
+# -- the conversion guard reaches American too -------------------------------
+
+def test_aal_never_applies_the_sortie_conversion(legs: list[Leg]) -> None:
+    """Southwest's x0.3 lives in this module; no hours column may absorb it."""
+    more = [dataclasses.replace(l, mil_sortie=l.mil_sortie * 10) for l in legs]
+    hours_rows = ("PIC", "SIC", "INSTRUCTOR", "NIGHT", "LAST 12 MO",
+                  "LAST 24 MO")
+    plain, inflated = aal_entries(legs), aal_entries(more)
+    assert set(plain) == set(inflated)
+    for key, cells in plain.items():
+        for label in hours_rows:
+            assert cells[label] == inflated[key][label], f"{key} {label}"
+    # ... while the sortie count itself does follow the data.
+    assert any(plain[k]["SORTIES"] != inflated[k]["SORTIES"] for k in plain)
+
+
+def test_aal_notes_are_written_for_the_airline(legs: list[Leg]) -> None:
+    """The sheet is sent to a recruiter, so the notes carry no build talk."""
+    internal = ("pilot.toml", "dropdown", "as-of date of this export", "re-run",
+                "not a field on the form", "left to the pilot", "Grist")
+    for note in aal_notes(legs):
+        for word in internal:
+            assert word not in note, note

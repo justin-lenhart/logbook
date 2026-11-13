@@ -894,10 +894,10 @@ def import_rsr(pdfs: tuple[Path, ...], inbox: Path | None, commit: bool) -> None
     "--target",
     # Kept literal so --help works without importing the profile modules;
     # test_profiles.py asserts this list equals profiles.TARGETS.
-    type=click.Choice(["generic", "faa", "ual", "swa", "allegiant", "jetblue"]),
+    type=click.Choice(["generic", "faa", "ual", "swa", "allegiant", "jetblue", "aal"]),
     required=True,
     help="Who the export is for: nobody in particular (generic), FAA 8710, "
-         "United, Southwest, Allegiant or JetBlue.",
+         "United, Southwest, Allegiant, JetBlue or American.",
 )
 @click.option(
     "--output",

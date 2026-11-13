@@ -199,6 +199,47 @@ def test_log_page_layout(legs: list[Leg]) -> None:
     assert "IFS, 5R4" in html
 
 
+# -- notes written from the legs --------------------------------------------
+
+def test_a_computed_note_is_written_from_the_legs(legs: list[Leg]) -> None:
+    """A figure quoted in prose is read from Grist like any other figure."""
+    sec = profiles.Section(
+        title="Computed",
+        kind="matrix",
+        columns=(profiles.Column("Hours", lambda leg: True),),
+        rows=(profiles.Row("Total", profiles.hours()),),
+        notes=(lambda ls, ctx: f"{len(ls)} flights to {ctx.as_of.isoformat()}.",),
+    )
+    html = render.render_section(sec, legs, CTX)
+    assert '<p class="note">6 flights to 2026-11-03.</p>' in html
+
+
+def test_a_computed_note_that_comes_back_empty_is_left_out(
+        legs: list[Leg]) -> None:
+    """No blank line on the sheet when there is nothing to say."""
+    sec = profiles.Section(
+        title="Quiet",
+        kind="matrix",
+        columns=(profiles.Column("Hours", lambda leg: True),),
+        rows=(profiles.Row("Total", profiles.hours()),),
+        notes=(lambda ls, ctx: "", "Fixed wording stays."),
+    )
+    html = render.render_section(sec, legs, CTX)
+    assert html.count('<p class="note">') == 1
+    assert "Fixed wording stays." in html
+
+
+def test_a_computed_note_is_escaped(legs: list[Leg]) -> None:
+    sec = profiles.Section(
+        title="Escaped",
+        kind="matrix",
+        columns=(profiles.Column("Hours", lambda leg: True),),
+        rows=(profiles.Row("Total", profiles.hours()),),
+        notes=(lambda ls, ctx: "<script>x</script>",),
+    )
+    assert "<script>" not in render.render_section(sec, legs, CTX)
+
+
 # -- document + CLI ---------------------------------------------------------
 
 @pytest.mark.parametrize("target", profiles.TARGETS)
@@ -230,7 +271,7 @@ def test_cli_targets_match_profiles() -> None:
     assert result.exit_code == 0
     assert f"[{'|'.join(profiles.TARGETS)}]" in result.output
     assert profiles.TARGETS == (
-        "generic", "faa", "ual", "swa", "allegiant", "jetblue")
+        "generic", "faa", "ual", "swa", "allegiant", "jetblue", "aal")
     assert "--commit" not in result.output            # read-only: nothing to commit
 
 

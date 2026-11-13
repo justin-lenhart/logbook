@@ -43,6 +43,7 @@ LABELS: dict[str, str] = {
     "swa": "Southwest",
     "allegiant": "Allegiant",
     "jetblue": "JetBlue",
+    "aal": "American",
 }
 
 # A click posts a form body, so no preflight and no CORS to get wrong.
