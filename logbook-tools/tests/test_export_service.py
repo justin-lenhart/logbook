@@ -18,7 +18,16 @@ from pathlib import Path
 import pytest
 
 from logbook_import import export_service, profiles
-from logbook_import.export_service import LABELS, ServiceConfig, build_server, render_page
+from logbook_import.export_service import (
+    BUTTON_MIN,
+    GRID_COLUMNS,
+    GRID_GAP,
+    GRID_MAX,
+    LABELS,
+    ServiceConfig,
+    build_server,
+    render_page,
+)
 from logbook_import.profile_export import ExportResult, deliver, prepare_outbox
 
 HOST = "127.0.0.1"
@@ -100,6 +109,40 @@ def test_page_offers_one_button_per_target(config: ServiceConfig) -> None:
         assert f'data-target="{target}"' in html, target
         assert LABELS[target] in html
     assert "Generic logbook" in html
+
+
+def test_the_buttons_sit_three_to_a_row(config: ServiceConfig) -> None:
+    """THE GUARD: the grid is capped so it cannot spread into one long row.
+
+    The page is framed in a pane much wider than it needs, so ``auto-fit``
+    alone put every target on a single line. ``GRID_MAX`` is what holds it to
+    three; these are the two inequalities that cap says.
+    """
+    assert GRID_COLUMNS * BUTTON_MIN + (GRID_COLUMNS - 1) * GRID_GAP <= GRID_MAX
+    wider = GRID_COLUMNS + 1
+    assert wider * BUTTON_MIN + (wider - 1) * GRID_GAP > GRID_MAX
+
+    css = render_page(config)
+    assert f"max-width: {GRID_MAX}px" in css
+    assert f"minmax({BUTTON_MIN}px, 1fr)" in css
+
+
+def test_a_button_is_wide_enough_for_the_longest_label(
+        config: ServiceConfig) -> None:
+    """Smaller buttons still have to show their text in full.
+
+    A column is the grid width shared three ways. At 13px the widest label
+    needs roughly 0.55em per character; the padding either side comes off
+    first. Generous on the per-character figure on purpose -- the point is
+    that the margin is real, not that it is exact.
+    """
+    column = (GRID_MAX - (GRID_COLUMNS - 1) * GRID_GAP) / GRID_COLUMNS
+    content = column - 2 * 11                       # button padding, each side
+    longest = max(LABELS.values(), key=len)
+    needed = len(longest) * 13 * 0.55
+    assert needed < content, (
+        f"{longest!r} needs ~{needed:.0f}px but a button offers {content:.0f}px"
+    )
 
 
 def test_page_is_self_contained(config: ServiceConfig) -> None:
