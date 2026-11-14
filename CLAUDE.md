@@ -121,16 +121,26 @@ Grist ──► export-profile ──► exports/ ──► ~/Logbook-Outbox ─
     never truncate, and never `round()`, which turns 42.5 into 42. The exact tenths
     stay off the sheet and live on the Application Reference block.
   - The American entry is the **only** place on that application that takes flight
-    time, so `PIC + SIC` must account for the whole logbook. Dual received is
-    reported as **SIC** (`_entry_sic`) — it has no field of its own and the pilot
-    was not in command — which works because every row splits
-    `pic + sic + dual_received = block`. **Dual given is NOT added to PIC**: it is
-    flown in command and already inside that column, so adding it double-counts
-    and breaks the total. Its own column reports it, in addition to nothing.
+    time, and its three hour fields are PIC, SIC and instructor. **Dual received is
+    none of them and must never be folded into SIC.** It was once, so that
+    `PIC + SIC` would equal block time; that made the sheet report 1268.1 logged
+    SIC hours as 1497, and a figure is the one thing a recruiter can check against
+    the logbook. `_aal_dual_note` names those hours per type under the table
+    instead — the claim goes in prose, not inside a number. The note exists for the
+    row that would otherwise read 0/0/0 against 352 landings and look like missing
+    data. `test_no_target_reports_instruction_received_as_sic` fences this across
+    **every** target, the way the sortie conversion is fenced out of Allegiant, and
+    `test_a_reference_table_that_reports_sic_reports_instruction_apart` keeps the
+    hours visible on the reference block, which is what makes the omission honest.
+  - **Dual given is NOT added to PIC** either: it is flown in command and already
+    inside that column, so adding it double-counts and breaks the total. Its own
+    column reports it, in addition to nothing.
   - The American totals row sums the cells **as printed** (`per_entry`), not a
     separately rounded grand total — 348.4 h of PIC rounds to 348 while the eight
     entries as typed come to 349, and the figure that matters is the one the
-    application reaches by adding the boxes. `_aal_total_note` states the gap.
+    application reaches by adding the boxes. `_aal_total_note` reconciles the two
+    columns plus the instruction-received hours against the logged total and states
+    the rounding gap; it must not claim PIC and SIC cover the logbook on their own.
     The three H-1 variants are one entry filed as the AH-1Z, and `_aal_variant_note`
     writes the hours in the other two **and checks the role claim against the data**
     — never hardcode "all SIC".

@@ -594,6 +594,99 @@ def test_dropping_sic_to_pic_changes_nothing_else_in_the_reference_block() -> No
             before.kind, before.columns, before.totals)
 
 
+# -- instruction received is nobody's SIC -----------------------------------
+
+def _sic_rows() -> list[tuple[str, object]]:
+    """Every row on every target whose label claims to be SIC time."""
+    found = []
+    for target, profile in PROFILES.items():
+        sections = list(profile.sections) + list(
+            profiles.reference_sections(profile))
+        for sec in sections:
+            for row in sec.rows:
+                label = row.label.lower()
+                if "sic" in label or "second in command" in label:
+                    found.append((f"{target}:{sec.title}:{row.label}", row))
+    return found
+
+
+def test_no_target_reports_instruction_received_as_sic() -> None:
+    """THE GUARD: a SIC figure means SIC, on every sheet in the export.
+
+    American briefly folded time flown under instruction into its SIC column
+    so that PIC + SIC would equal block time. That is the kind of rule which
+    spreads -- the sortie conversion had to be fenced out of Allegiant for the
+    same reason -- so the fence is built across all targets at once: doubling
+    instruction received must move no figure that calls itself SIC anywhere.
+    """
+    base = [leg(1, "2019-06-01", KINGAIR, block=60.0, sic=20.0,
+                dual_received=40.0, xc=30.0, night=10.0),
+            leg(2, "2015-03-01", SKYHAWK, block=25.0, dual_received=25.0),
+            leg(3, "2026-05-10", CRJ, block=30.0, sic=30.0)]
+    doubled = [dataclasses.replace(l, dual_received=l.dual_received * 2)
+               for l in base]
+    assert render.pd.total(doubled, "dual_received") == pytest.approx(130.0)
+
+    rows = _sic_rows()
+    assert len(rows) >= 4, rows          # or the scan found nothing to guard
+    for name, row in rows:
+        assert row.value(base, CTX) == row.value(doubled, CTX), name
+
+
+def _reads(row: object, field: str) -> bool:
+    """Does this row's figure move when ``field`` does? Asked, not assumed.
+
+    Probing the value is what makes the guard below independent of a row's
+    label: a renamed row still has to read the field, and a row that keeps
+    its label while losing the field is caught.
+    """
+    base = [leg(1, "2015-11-04", SKYHAWK, block=50.0, pic=10.0, sic=10.0,
+                dual_received=10.0, dual_given=5.0, sic_to_pic=5.0,
+                night=4.0, xc=6.0, instrument=2.0)]
+    more = [dataclasses.replace(base[0], **{field: 30.0})]
+    return row.value(base, CTX) != row.value(more, CTX)
+
+
+def test_a_reference_table_that_reports_sic_reports_instruction_apart() -> None:
+    """THE GUARD: keeping dual received out of SIC is only honest if it shows.
+
+    American's sheet cannot hold those hours in a column, so the standing
+    reference tables are where the figure lives. Any reference table that
+    breaks time down far enough to report SIC must therefore also report
+    instruction received as its own row -- checked by probing what each row
+    reads, so a rename cannot slip past and a relabelled row cannot fake it.
+    """
+    checked = 0
+    for target, profile in PROFILES.items():
+        for sec in profiles.reference_sections(profile):
+            rows = [r for r in sec.rows if r.label != "TYPES INCLUDED"]
+            if not any(_reads(r, "sic") for r in rows):
+                continue
+            assert any(_reads(r, "dual_received") for r in rows), (
+                f"{target}:{sec.title} reports SIC but not instruction "
+                "received; those hours then appear nowhere on the export")
+            checked += 1
+    # All three tables break down by role, on every one of the targets.
+    assert checked == 3 * len(PROFILES), checked
+
+
+def test_the_reference_block_prints_the_instruction_hours_in_full() -> None:
+    """And the figure itself reaches the page, to the tenth, on every target.
+
+    The leg logs 1.8 h in command alongside, so 68.2 can only have come from
+    the instruction row -- with the whole leg as dual received, the Total row
+    would print the same number and the check would pass either way.
+    """
+    student = [leg(1, "2015-11-04", SKYHAWK, block=70.0, pic=1.8,
+                   dual_received=68.2)]
+    for target in PROFILES:
+        doc = render.render_profile(PROFILES[target], student, CTX,
+                                    include_log=False)
+        # A table cell, not the Class Hours note that names the row in prose.
+        assert "<th>Instruction Received</th>" in doc, target
+        assert "68.2" in doc, target
+
+
 def test_jetblue_notes_are_written_for_the_airline() -> None:
     """The sheet is sent to a recruiter, so the notes carry no build talk."""
     internal = ("pilot.toml", "dropdown", "as-of date of this export", "re-run",
@@ -697,50 +790,52 @@ def accounting() -> list[Leg]:
     ]
 
 
-def test_aal_pic_and_sic_account_for_every_hour_flown(
-        accounting: list[Leg]) -> None:
-    """THE GUARD: the entry is the only place the application takes hours.
+def test_aal_sic_column_is_real_sic_only(accounting: list[Leg]) -> None:
+    """THE GUARD: time flown under instruction is not reported as SIC.
 
-    So PIC + SIC across the entries must equal block time. The columns are
-    compared against ``block`` itself, never re-derived from the same metrics
-    they are testing -- a fixture with no dual time, or a check that reuses
-    the mapping, would pass whatever the mapping did.
+    It was, briefly, so that PIC + SIC would equal block time. That made the
+    sheet state more SIC than the logbook holds, which is the one thing a
+    recruiter can check. The column is compared against ``sic`` read straight
+    off the legs, never re-derived from the metric under test.
     """
     sec = aal_section()
-    pic_row = next(r for r in sec.rows if r.label == "PIC")
     sic_row = next(r for r in sec.rows if r.label == "SIC")
-    flown = render.pd.total(accounting)
-    assert flown == pytest.approx(215.0)
-    assert render.pd.total(accounting, "dual_received") > 0      # or this is vacuous
+    assert render.pd.total(accounting, "dual_received") > 0   # or this is vacuous
 
-    printed = pic_row.value(accounting, CTX) + sic_row.value(accounting, CTX)
+    logged = render.pd.total(accounting, "sic")
+    assert logged == pytest.approx(80.0)
     entries = len(render.pd.by_type(accounting, sec.group))
-    assert abs(printed - flown) <= entries * 0.5, (printed, flown)
+    printed = sic_row.value(accounting, CTX)
+    assert abs(printed - logged) <= entries * 0.5, (printed, logged)
+    # And strictly less than it would be with instruction folded in.
+    assert printed < logged + render.pd.total(accounting, "dual_received")
 
 
-def test_aal_no_role_in_the_logbook_falls_outside_both_columns(
+def test_aal_varying_instruction_received_never_moves_a_column(
         accounting: list[Leg]) -> None:
-    """Dropping any role from the mapping has to show up as missing hours."""
-    sec = aal_section()
-    pic_row = next(r for r in sec.rows if r.label == "PIC")
-    sic_row = next(r for r in sec.rows if r.label == "SIC")
-    printed = pic_row.value(accounting, CTX) + sic_row.value(accounting, CTX)
-    for role in ("pic", "sic", "dual_received"):
-        assert render.pd.total(accounting, role) > 0, role
-        assert printed > render.pd.total(accounting, role), role
-    assert printed == pytest.approx(render.pd.total(accounting), abs=2.0)
+    """The strongest form: no hours cell on the sheet reads dual received.
 
-
-def test_aal_instruction_received_is_reported_as_sic() -> None:
-    """Dual received is no field on this form, so it rides in SIC.
-
-    Reporting it nowhere would drop the hours off the application; the pilot
-    was not in command, so SIC is the closest of the three hour fields.
+    Three of them legitimately might have -- PIC, SIC and the totals row --
+    so the check is every cell, not the two that were wrong before.
     """
+    doubled = [dataclasses.replace(l, dual_received=l.dual_received * 2)
+               for l in accounting]
+    assert (render.pd.total(doubled, "dual_received")
+            > render.pd.total(accounting, "dual_received"))
+    for label in ("PIC", "SIC", "INSTRUCTOR", "LANDINGS", "NIGHT", "SORTIES"):
+        row = next(r for r in aal_section().rows if r.label == label)
+        assert row.value(doubled, CTX) == row.value(accounting, CTX), label
+
+
+def test_aal_instruction_received_is_in_no_hours_column() -> None:
+    """A purely instructional row reports zero hours, and says why beneath."""
     student = [leg(1, "2015-11-04", SKYHAWK, block=10.0, dual_received=10.0)]
     entry = next(iter(aal_entries(student).values()))
     assert entry["PIC"] == 0
-    assert entry["SIC"] == 10
+    assert entry["SIC"] == 0
+    assert entry["INSTRUCTOR"] == 0
+    # The hours are not lost: the note under the table names them.
+    assert "10.0 hours in the C172" in profiles._aal_dual_note(student, CTX)
 
 
 def test_aal_instructor_time_is_not_added_on_top_of_pic() -> None:
@@ -786,15 +881,33 @@ def test_aal_reconciliation_note_quotes_the_real_figures() -> None:
     """The logbook total is read from the legs, not from the rounded columns.
 
     These two legs total 1.0 h but round to 1 + 1 = 2, so a note that quoted
-    its own column sum would read "2.0 hours in the logbook" and the gap it
-    exists to disclose would vanish.
+    its own column sum would read "2.0 hours" and the gap it exists to
+    disclose would vanish.
     """
     drifting = [leg(1, "2019-06-01", COBRA, block=0.5, pic=0.5),
                 leg(2, "2026-05-10", CRJ, block=0.5, sic=0.5)]
     note = profiles._aal_total_note(drifting, CTX)
     assert "1 hours in command and 1 as second in command, 2 in all" in note
-    assert "1.0 hours in the logbook" in note
-    assert "2.0 hours in the logbook" not in note
+    assert "The logbook holds 1.0 hours" in note
+    assert "2.0 hours" not in note
+
+
+def test_aal_reconciliation_note_accounts_for_instruction_separately() -> None:
+    """THE GUARD: the note must not present the two columns as the whole log.
+
+    It did when instruction received was folded into SIC. Now the hours sit
+    outside both columns, so the note has to say so and still reach the
+    logbook total.
+    """
+    mixed = [leg(1, "2019-06-01", COBRA, block=60.0, pic=60.0),
+             leg(2, "2015-11-04", SKYHAWK, block=40.0, dual_received=40.0)]
+    note = profiles._aal_total_note(mixed, CTX)
+    assert "60 hours in command and 0 as second in command, 60 in all" in note
+    assert "remaining 40.0 hours of the 100.0 flown" in note
+    assert "under instruction" in note
+    # No claim that the columns cover the logbook.
+    for overclaim in ("account for every hour", "together account"):
+        assert overclaim not in note, overclaim
 
 
 def test_aal_reconciliation_note_owns_up_to_the_rounding_gap() -> None:
@@ -974,12 +1087,19 @@ def test_aal_type_rating_comes_from_pilot_toml_not_the_flights() -> None:
     assert row.value(crjs, CTX) == "No"
 
 
-def test_aal_says_where_instruction_received_went() -> None:
-    """The note has to match where the hours actually are, now SIC."""
-    student = [leg(1, "2015-11-04", SKYHAWK, block=68.2, dual_received=68.2)]
+def test_aal_names_the_instruction_hours_by_type() -> None:
+    """A 0 in every hours column must never read as missing data.
+
+    The note names the hours per entry, so a trainer's row is visibly
+    complete without the sheet claiming the time was SIC.
+    """
+    student = [leg(1, "2015-11-04", SKYHAWK, block=68.2, dual_received=68.2),
+               leg(2, "2026-05-10", CRJ, block=10.0, dual_received=10.0)]
     note = profiles._aal_dual_note(student, CTX)
-    assert "68.2 hours flown under instruction" in note
-    assert "second-in-command column includes" in note
+    assert "68.2 hours in the C172" in note
+    assert "10.0 hours in the CRJ-700" in note
+    assert "is in none of the columns above" in note
+    assert "second-in-command column includes" not in note
     assert profiles._aal_dual_note(
         [leg(1, "2026-06-01", CRJ, block=1.0, sic=1.0)], CTX) == ""
 
