@@ -912,11 +912,22 @@ JETBLUE = Profile(
 # the number typed into the form.
 #
 # The entry is also the ONLY place on the application that takes flight time,
-# so PIC and SIC between them have to account for the whole logbook. They do:
-# every row splits pic + sic + dual_received = block, and dual received is
-# reported as SIC (see ``_entry_sic``). Instructor time is NOT added on top --
-# it is flown in command and is already inside the PIC column, so adding it
-# would count those hours twice and break the very total this is for.
+# and its three hour fields are PIC, SIC and instructor. Time flown under
+# instruction is none of the three, and it is NOT folded into SIC to make the
+# columns add up to block time. It was tried; it is wrong. Dual received is
+# not SIC to the FAA and not SIC to a recruiter, and a figure on this sheet is
+# what gets compared against the logbook if anyone checks -- folding it in
+# reported 1268.1 logged hours of SIC as 1497.
+#
+# ``_aal_dual_note`` names those hours per type underneath the table instead.
+# The claim belongs in prose, where a reader can weigh it, rather than inside
+# a number that states something the logbook does not say. What the note is
+# for is the row that would otherwise read 0 / 0 / 0 against 352 landings and
+# look like missing data.
+#
+# Instructor time is NOT added on top of PIC either, for the opposite reason:
+# it is flown in command and is already inside that column, so adding it would
+# count those hours twice.
 #
 # The totals row therefore sums the cells as printed rather than rounding the
 # grand total separately: what matters is the figure the application arrives
@@ -1001,20 +1012,6 @@ def _entry_hours(field: str) -> Callable[[pd.TypeAgg, Context], float]:
     return lambda agg, ctx: agg.total(field)
 
 
-def _entry_sic(agg: pd.TypeAgg, ctx: Context) -> float:
-    """Second in command, plus time flown under instruction.
-
-    The entry's only hour fields are PIC, SIC and instructor. Dual received is
-    none of those, and the application has nowhere else to put flight time, so
-    those hours would simply vanish -- the columns have to account for the
-    whole logbook. Second in command is the closest of the three: the pilot was
-    not in command. PIC + SIC therefore equals block time exactly, which is how
-    every row in this logbook already splits (pic + sic + dual_received =
-    block, on all of them).
-    """
-    return agg.total("sic") + agg.total("dual_received")
-
-
 def _entry_landings(agg: pd.TypeAgg, ctx: Context) -> float:
     """One Landings field on the form; Grist counts day and night apart."""
     return agg.total("day_landings") + agg.total("night_landings")
@@ -1073,28 +1070,48 @@ def _aal_variant_note(legs: Sequence[Leg], ctx: Context) -> str:
 
 
 def _aal_dual_note(legs: Sequence[Leg], ctx: Context) -> str:
-    """Where time flown under instruction went, and why."""
-    dual = pd.total(legs, "dual_received")
-    if dual <= 0:
+    """Time the form has no field for, named so a 0 is never read as a gap.
+
+    PIC, SIC and instructor are the only hour fields on the entry, so hours
+    flown as a student under instruction land in none of them -- a trainer
+    would otherwise show 0 in every hours column with no explanation. Naming
+    the hours shows the rows are complete, which reporting them as SIC would
+    do at the cost of saying something untrue about the time.
+    """
+    flown = [(agg, agg.total("dual_received"))
+             for agg in pd.by_type(legs, _aal_entry)
+             if agg.total("dual_received") > 0]
+    if not flown:
         return ""
-    return (f"The second-in-command column includes {dual:.1f} hours flown "
-            "under instruction. The entry's hour fields are pilot in command, "
-            "second in command and instructor; of the three, second in command "
-            "is the closest to time flown while not in command, and the "
-            "application has no other field for it.")
+    listed = _join([f"{h:.1f} hours in the {_aal_type(agg.legs, ctx)}"
+                    for agg, h in flown])
+    return ("Time flown as a student under instruction is not one of the "
+            "form's hour fields, so it is in none of the columns above: "
+            f"{listed}. It is reported in full on the Application Reference "
+            "sheet.")
 
 
 def _aal_total_note(legs: Sequence[Leg], ctx: Context) -> str:
-    """The reconciliation, so the two columns can be checked against the log."""
+    """The reconciliation, so the columns can be checked against the logbook.
+
+    Both figures are read from the legs, never from the rounded cells, and
+    time flown under instruction is accounted for openly rather than being
+    absorbed into one of the columns to make the arithmetic close.
+    """
     entries = pd.by_type(legs, _aal_entry)
     pic = sum(_half_up(_entry_hours("pic")(agg, ctx)) for agg in entries)
-    sic = sum(_half_up(_entry_sic(agg, ctx)) for agg in entries)
+    sic = sum(_half_up(_entry_hours("sic")(agg, ctx)) for agg in entries)
     flown = pd.total(legs)
-    note = (f"Pilot in command and second in command together account for "
-            f"every hour flown. The entries above come to {pic} hours in "
-            f"command and {sic} as second in command, {pic + sic} in all, "
-            f"against {flown:.1f} hours in the logbook.")
-    drift = (pic + sic) - flown
+    dual = pd.total(legs, "dual_received")
+    note = (f"The entries above come to {pic} hours in command and {sic} as "
+            f"second in command, {pic + sic} in all.")
+    if dual > 0:
+        note += (f" The remaining {dual:.1f} hours of the {flown:.1f} flown "
+                 "were logged under instruction, which the entry has no field "
+                 "for; they are named by type below.")
+    else:
+        note += f" The logbook holds {flown:.1f} hours."
+    drift = (pic + sic + dual) - flown
     if abs(drift) >= 0.05:
         note += (f" The {abs(drift):.1f} hour difference is rounding: each of "
                  f"the {len(entries)} entries is entered as a whole number.")
@@ -1124,7 +1141,7 @@ AAL = Profile(
                 Row("AIRCRAFT TYPE", _aal_type, in_totals=False),
                 Row("OPERATING RULE", distinct(_operation), in_totals=False),
                 Row("PIC", per_entry(_entry_hours("pic"))),
-                Row("SIC", per_entry(_entry_sic)),
+                Row("SIC", per_entry(_entry_hours("sic"))),
                 Row("INSTRUCTOR", per_entry(_entry_hours("dual_given"))),
                 Row("LANDINGS", per_entry(_entry_landings)),
                 Row("LAST FLOWN", last_flown("%m/%d/%Y"), in_totals=False),

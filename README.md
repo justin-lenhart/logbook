@@ -298,22 +298,29 @@ guessed. Two of American's own instructions shape the sheet:
   the American sheet can disagree with the number typed into the form.
 
 The per-aircraft entry is the **only** place on American's application that takes
-flight time, so the PIC and SIC columns between them have to account for the whole
-logbook — anything outside both appears nowhere on the application at all. They do:
+flight time, and it offers three hour fields: PIC, SIC and instructor. Time flown
+under instruction is none of the three, which leaves a real question about where
+those hours go:
 
-- **Time flown under instruction is reported as SIC.** It has no field of its own,
-  and of the three hour fields the pilot was not in command, so SIC is the closest.
-  This works exactly because every row in the logbook splits
-  `PIC + SIC + instruction received = block time`.
+- **Instruction received is not reported as SIC.** Folding it in would make
+  `PIC + SIC` equal block time, which is tidy and which this export did briefly.
+  It is also wrong: dual received is not SIC to the FAA and not SIC to a recruiter,
+  and the sheet would have claimed 1497 hours of SIC against the 1268.1 in the
+  logbook — a number anyone can check. So the hours stay out of the columns and a
+  note under the table names them by type, which answers the thing that actually
+  matters: a training row reading 0 / 0 / 0 against hundreds of landings looks like
+  missing data, and the note shows the row is complete. The figures themselves are
+  on the Application Reference sheet, to the tenth, where instruction received has
+  always had its own row.
 - **Instructor time is not added to PIC.** It was flown in command and is already
   inside that column; adding it would count those hours twice and break the very
   total this is for. The Instructor column reports it alongside, not on top.
 - **The totals row adds the cells as printed**, not a separately rounded grand
   total. 348.4 h of PIC rounds to 348, while the eight entries as typed come to
   349 — and the number that matters is the one American reaches by adding the
-  boxes. A note under the table gives both that figure and the exact logged total,
-  so the few tenths of rounding spread across the entries are stated rather than
-  hidden.
+  boxes. A note under the table gives that figure, the instruction-received hours
+  that sit outside both columns, and the exact logged total, so the few tenths of
+  rounding spread across the entries are stated rather than hidden.
 
 The three H-1 variants are one entry, filed as the **AH-1Z**, with a note beneath
 the table giving the hours in the other two and the role they were flown in — read
